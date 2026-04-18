@@ -1,0 +1,178 @@
+/* Wrapper for positioning */
+.model-selector-wrapper {
+  position: relative;
+}
+
+/* The trigger button — reuses .version-selector from App.css */
+.model-selector-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-selector-trigger .chevron {
+  transition: transform 0.2s ease;
+}
+
+.model-selector-trigger .chevron.rotated {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Panel */
+.model-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: 300px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  z-index: 500;
+  animation: dropdownIn 0.18s ease;
+}
+
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Header row */
+.model-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-decoration: none;
+  border-bottom: 1px solid var(--border-light);
+  transition: opacity 0.2s;
+}
+
+.model-dropdown-header svg {
+  flex-shrink: 0;
+  color: var(--brand-primary);
+  -webkit-text-fill-color: initial;
+}
+
+.model-dropdown-header:hover {
+  opacity: 0.8;
+}
+
+/* Model List */
+.model-list {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 310px; /* Show ~6.5 items to hint at scrolling */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-primary) transparent;
+}
+
+/* Custom scrollbar for Webkit */
+.model-list::-webkit-scrollbar {
+  width: 5px;
+}
+.model-list::-webkit-scrollbar-thumb {
+  background: var(--brand-primary);
+  border-radius: 10px;
+}
+.model-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Individual model item */
+.model-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: transparent;
+  text-align: left;
+  transition: background 0.15s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.model-item:hover:not(.locked) {
+  background: var(--bg-hover);
+}
+
+.model-item.selected {
+  background: var(--bg-hover);
+  border-color: var(--brand-primary);
+}
+
+.model-item.locked {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.model-item-icon {
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.model-item-name {
+  flex: 1;
+}
+
+.model-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  background: var(--brand-gradient);
+  color: white;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+
+.model-lock {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .model-dropdown {
+    width: 260px;
+    left: 0;
+  }
+  .model-dropdown-header {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+  .model-item {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .model-item-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+@media (max-width: 380px) {
+  .model-dropdown {
+    width: 230px;
+    left: 0;
+  }
+}
