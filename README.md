@@ -4,6 +4,7 @@
 
 ### Next-Generation Multi-Model Intelligence & Cognitive Canvas Workspace
 
+[![Live Production](https://img.shields.io/badge/Live_App-sumanai.sumanonline.com-4F46E5?style=for-the-badge&logo=googlechrome&logoColor=white)](http://sumanai.sumanonline.com/)
 [![Release](https://img.shields.io/badge/Release-v2.4.0-7C3AED?style=for-the-badge&logo=github&logoColor=white)](https://github.com/SumanCH8514/SumanAI-Chat-Platform/releases/tag/v2.4.0)
 [![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -12,6 +13,10 @@
 
 <p align="center">
   <strong>SumanAI</strong> is a high-throughput, privacy-first generative AI workspace engineered to eliminate latency and platform lock-in. Powered by <strong>Groq LPUs</strong>, <strong>NVIDIA NIM microservices</strong>, and <strong>Cloudflare Edge Workers</strong>, it combines instantaneous multi-model inference, an interactive split-view Canvas, client-side WebAssembly tools, and enterprise legal and support infrastructure.
+</p>
+
+<p align="center">
+  🚀 <strong>Live Production URL:</strong> <a href="http://sumanai.sumanonline.com/"><strong>http://sumanai.sumanonline.com/</strong></a>
 </p>
 
 [Explore Models](#-model-registry--intelligence-tiers) • [Architecture](#-system-architecture) • [Getting Started](#-getting-started) • [Legal & Support](#-legal--support-portal) • [Changelog](CHANGELOG.md)

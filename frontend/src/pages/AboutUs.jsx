@@ -57,12 +57,21 @@ const AboutUs = () => {
           <span>Build: September 29, 2026</span>
           <span>•</span>
           <a
-            href="https://github.com/SumanCH8514/SumanAI-Chat-Platform/releases/tag/v2.4.0"
+            href="http://sumanai.sumanonline.com/"
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: 'var(--brand-primary)', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
           >
-            GitHub Release Notes <ExternalLink size={12} />
+            sumanai.sumanonline.com <ExternalLink size={12} />
+          </a>
+          <span>•</span>
+          <a
+            href="https://github.com/SumanCH8514/SumanAI-Chat-Platform/releases/tag/v2.4.0"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+          >
+            Release Notes <ExternalLink size={12} />
           </a>
         </div>
       </div>
