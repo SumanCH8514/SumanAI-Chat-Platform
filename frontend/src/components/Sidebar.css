@@ -1,0 +1,527 @@
+.sb-user-wrapper {
+  position: relative;
+  flex-shrink: 0;
+  margin-top: auto;
+  border-top: 1px solid var(--border-light);
+  padding: 10px 12px 14px;
+}
+
+.sb-profile-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sb-profile-bar:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-light);
+}
+
+.sb-profile-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  object-fit: cover;
+  border: 1.5px solid var(--border-light);
+}
+
+.sb-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-primary);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.sb-profile-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 2px;
+}
+
+.sb-profile-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-profile-sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.sb-user-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 10px;
+  right: 10px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  z-index: 200;
+  animation: menuSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+@keyframes menuSlideUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.sb-menu-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 12px;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 4px;
+}
+
+.sb-menu-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  object-fit: cover;
+  border: 2px solid #8b5cf6;
+  padding: 1.5px;
+}
+
+.sb-menu-user-info {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sb-menu-name {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.sb-menu-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.sb-menu-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 4px 6px;
+}
+
+.sb-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.sb-menu-item:hover {
+  background: var(--bg-hover);
+  color: var(--brand-primary);
+}
+
+.sb-menu-icon {
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sb-menu-item:hover .sb-menu-icon {
+  color: var(--brand-primary);
+}
+
+.sb-menu-label {
+  flex: 1;
+}
+
+.sb-menu-arrow {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.chat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.18s ease;
+}
+
+.chat-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+
+.chat-item.active {
+  background: var(--bg-active);
+  color: var(--brand-primary);
+  border-color: var(--brand-border);
+  font-weight: 600;
+}
+
+.chat-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.chat-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.chat-item.active .chat-icon {
+  color: var(--brand-primary);
+}
+
+.pin-icon {
+  color: var(--brand-primary);
+  flex-shrink: 0;
+}
+
+.chat-title-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-options-container {
+  display: flex;
+  position: relative;
+  align-items: center;
+  height: 100%;
+}
+
+.chat-options-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  opacity: 0;
+  transition: all 0.18s ease;
+}
+
+.chat-item:hover .chat-options-btn,
+.chat-options-container:focus-within .chat-options-btn {
+  opacity: 1;
+}
+
+.chat-options-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.chat-options-portal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  background: transparent;
+}
+
+.chat-options-dropdown {
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28), 0 0 1px rgba(0, 0, 0, 0.15);
+  padding: 4px;
+  z-index: 99999;
+  min-width: 155px;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: dropdownIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (max-width: 768px) {
+  .chat-options-btn {
+    opacity: 0.85;
+  }
+}
+
+.chat-options-dropdown button {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s ease;
+}
+
+.chat-options-dropdown button:hover {
+  background: var(--bg-hover);
+}
+
+.chat-options-dropdown button.danger {
+  color: #EF4444;
+}
+
+.chat-options-dropdown button.danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.chat-options-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 3px 0;
+}
+
+.chat-item-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+.chat-empty-state {
+  padding: 18px 12px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.attachment-preview-bar {
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px 4px;
+  overflow-x: auto;
+}
+
+.attachment-thumb {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+
+.attachment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.remove-attachment {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 18px;
+  height: 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
+  transition: all 0.15s ease;
+}
+
+.remove-attachment:hover {
+  background: #EF4444;
+  color: white;
+  border-color: #EF4444;
+}
+
+.sb-login-card {
+  position: relative;
+  padding: 14px 14px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.sb-login-card:hover {
+  border-color: var(--brand-border);
+  box-shadow: var(--shadow-float);
+  transform: translateY(-2px);
+}
+
+.sb-login-card-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--brand-primary);
+  background: var(--brand-subtle);
+  border: 1px solid var(--brand-border);
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+}
+
+.sb-login-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.sb-login-card-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--brand-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(168, 85, 247, 0.3);
+}
+
+.sb-login-card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sb-login-card-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+
+.sb-login-card-btn {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brand-primary);
+  gap: 4px;
+}
+
+.sb-login-arrow {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sb-login-card:hover .sb-login-arrow {
+  transform: translateX(3px);
+}
+
+.sb-toast-pill {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  left: auto;
+  transform: none;
+  background: var(--bg-inverse);
+  color: var(--text-inverse);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: var(--radius-full);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  z-index: 100000;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: toastSlideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes toastSlideInRight {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .sb-toast-pill {
+    top: 16px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    max-width: calc(100vw - 32px);
+    animation: toastSlideInCenter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes toastSlideInCenter {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -10px);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+}

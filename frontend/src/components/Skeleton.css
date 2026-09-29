@@ -1,0 +1,58 @@
+:root {
+  --skeleton-base: rgba(15, 23, 42, 0.06);
+  --skeleton-highlight: rgba(255, 255, 255, 0.7);
+}
+
+html.dark {
+  --skeleton-base: rgba(255, 255, 255, 0.06);
+  --skeleton-highlight: rgba(255, 255, 255, 0.12);
+}
+
+.skeleton-element {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--skeleton-base);
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: block;
+}
+
+.skeleton--text {
+  border-radius: 6px;
+}
+
+.skeleton--circular {
+  border-radius: 50%;
+}
+
+.skeleton--rectangular {
+  border-radius: 10px;
+}
+
+.skeleton--animated {
+  background-image: linear-gradient(
+    90deg,
+    var(--skeleton-base) 0%,
+    var(--skeleton-highlight) 50%,
+    var(--skeleton-base) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: background-position;
+}
+
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton--animated {
+    animation: none;
+    background-image: none;
+  }
+}

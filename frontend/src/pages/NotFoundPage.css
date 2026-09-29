@@ -1,0 +1,64 @@
+.not-found-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  padding: 24px;
+}
+
+.not-found-card {
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  padding: 48px 32px;
+  border-radius: var(--radius-lg, 16px);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-md);
+}
+
+.not-found-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(176, 106, 179, 0.15);
+  color: var(--brand-primary);
+  margin-bottom: 24px;
+}
+
+.not-found-card h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.not-found-card p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.not-found-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-md, 12px);
+  background: var(--brand-primary);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.not-found-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}

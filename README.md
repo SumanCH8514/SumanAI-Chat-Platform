@@ -14,7 +14,7 @@ SumanAI is a professional-grade, high-performance AI chat interface designed to 
 | :--- | :--- |
 | **Purpose** | A unified hub for interacting with multiple AI models (Gemini, DeepSeek, Gemma) with a specialized focus on code execution and real-time previews. |
 | **Scope** | Core chat orchestration, model-specific providers, persistent thread management, and a side-by-side "Canvas" workspace. |
-| **Core Tech** | React 19, Vite 8, Zustand, Cloudflare Workers, Lucide Icons. |
+| **Core Tech** | React 19, Vite 8, Zustand, Firebase Auth, Cloudflare Workers, Lucide Icons. |
 | **Quickstart** | `npm install && npm run dev` |
 
 ---
@@ -42,14 +42,15 @@ SumanAI is a professional-grade, high-performance AI chat interface designed to 
 - **React 19**: Leverages the latest concurrent rendering features and hooks for a fluid UI.
 - **Vite 8**: Chosen for its near-instant cold starts and highly optimized production builds.
 - **Zustand**: A minimalistic state management library that provides high performance with zero boilerplate.
+- **Firebase Authentication**: Integrated for secure Google and Email-based user sign-in.
 - **React Router 7**: Enables declarative, URL-driven navigation for individual chat threads.
 
 ### Backend & Infrastructure
 - **Cloudflare Workers**: Serves as a high-speed proxy/gateway. Chosen for its edge-execution capabilities, which eliminate traditional server latency.
-- **Vanilla CSS**: Used to implement a bespoke design system with complex gradients and glassmorphism without the constraints of a framework.
+- **Vanilla CSS**: Used to implement a bespoke design system with refined solid colors and crisp modern typography without framework bloat.
 
 ### APIs & Tooling
-- **Inference**: Google Generative AI (Gemini) and NVIDIA NIM (DeepSeek/Gemma).
+- **Inference**: Groq LPU Inference (GPT-OSS 120B, GPT-OSS 20B, Qwen 3.8 27B) and Google Generative AI (Gemini).
 - **Icons**: Lucide React for consistent, lightweight vector iconography.
 - **Markdown**: `react-markdown` with GFM support for high-fidelity message rendering.
 
@@ -74,13 +75,22 @@ SumanAI is a professional-grade, high-performance AI chat interface designed to 
    ```
 
 3. **Configure Environment**:
-   Create a `.env` file in the root for frontend variables:
+   For the frontend, copy `frontend/.env_example` to `frontend/.env`:
    ```env
    VITE_WORKER_URL=http://localhost:8787
    ```
-   For the backend (in `/worker`), add secrets:
+   For the backend, copy `backend/.dev.vars.example` to `backend/.dev.vars` and add your keys:
+   ```env
+   GEMINI_API_KEY=your_gemini_key
+   GROQ_API_KEY=your_groq_key
+   FIREBASE_API_KEY=your_firebase_api_key
+   ```
+   For production deployment on Cloudflare, add secrets securely:
    ```bash
+   cd backend
    npx wrangler secret put GEMINI_API_KEY
+   npx wrangler secret put GROQ_API_KEY
+   npx wrangler secret put FIREBASE_API_KEY
    ```
 
 4. **Launch the application**:
@@ -90,7 +100,7 @@ SumanAI is a professional-grade, high-performance AI chat interface designed to 
 
 ### Build & Deployment
 - **Frontend Build**: `npm run build`
-- **Worker Deployment**: `cd worker && npx wrangler deploy`
+- **Backend Deployment**: `cd backend && npx wrangler deploy`
 
 ---
 
