@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: http://sumanai.sumanonline.com/sitemap.xml
+Sitemap: https://SumanAI.sumanonline.com/sitemap.xml

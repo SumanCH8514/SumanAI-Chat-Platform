@@ -4,7 +4,7 @@
 
 ### Next-Generation Multi-Model Intelligence & Cognitive Canvas Workspace
 
-[![Live Production](https://img.shields.io/badge/Live_App-sumanai.sumanonline.com-4F46E5?style=for-the-badge&logo=googlechrome&logoColor=white)](http://sumanai.sumanonline.com/)
+[![Live Production](https://img.shields.io/badge/Live_App-sumanai.sumanonline.com-4F46E5?style=for-the-badge&logo=googlechrome&logoColor=white)](https://SumanAI.sumanonline.com/)
 [![Release](https://img.shields.io/badge/Release-v2.4.0-7C3AED?style=for-the-badge&logo=github&logoColor=white)](https://github.com/SumanCH8514/SumanAI-Chat-Platform/releases/tag/v2.4.0)
 [![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  🚀 <strong>Live Production URL:</strong> <a href="http://sumanai.sumanonline.com/"><strong>http://sumanai.sumanonline.com/</strong></a>
+  🚀 <strong>Live Production URL:</strong> <a href="https://SumanAI.sumanonline.com/"><strong>https://SumanAI.sumanonline.com</strong></a>
 </p>
 
 [Explore Models](#-model-registry--intelligence-tiers) • [Architecture](#-system-architecture) • [Getting Started](#-getting-started) • [Legal & Support](#-legal--support-portal) • [Changelog](CHANGELOG.md)
@@ -213,10 +213,10 @@ SumanAI is equipped with dedicated, production-ready legal and company documenta
 
 | Document | Live Production URL | Source File | Description |
 | :--- | :--- | :--- | :--- |
-| **Terms of Service** | [sumanai.sumanonline.com/terms](http://sumanai.sumanonline.com/terms) | [`frontend/src/pages/TermsOfService.jsx`](frontend/src/pages/TermsOfService.jsx) | Platform terms, acceptable use, and IP ownership |
-| **Privacy Policy** | [sumanai.sumanonline.com/privacy](http://sumanai.sumanonline.com/privacy) | [`frontend/src/pages/PrivacyPolicy.jsx`](frontend/src/pages/PrivacyPolicy.jsx) | Zero-training guarantee and GDPR/CCPA data sovereignty |
-| **About SumanAI** | [sumanai.sumanonline.com/about](http://sumanai.sumanonline.com/about) | [`frontend/src/pages/AboutUs.jsx`](frontend/src/pages/AboutUs.jsx) | Mission, architecture pillars, and founder spotlight |
-| **Support & Contact** | [sumanai.sumanonline.com/contact](http://sumanai.sumanonline.com/contact) | [`frontend/src/pages/ContactPage.jsx`](frontend/src/pages/ContactPage.jsx) | Interactive ticket desk, live FAQs, and status monitor |
+| **Terms of Service** | [sumanai.sumanonline.com/terms](https://SumanAI.sumanonline.com/terms) | [`frontend/src/pages/TermsOfService.jsx`](frontend/src/pages/TermsOfService.jsx) | Platform terms, acceptable use, and IP ownership |
+| **Privacy Policy** | [sumanai.sumanonline.com/privacy](https://SumanAI.sumanonline.com/privacy) | [`frontend/src/pages/PrivacyPolicy.jsx`](frontend/src/pages/PrivacyPolicy.jsx) | Zero-training guarantee and GDPR/CCPA data sovereignty |
+| **About SumanAI** | [sumanai.sumanonline.com/about](https://SumanAI.sumanonline.com/about) | [`frontend/src/pages/AboutUs.jsx`](frontend/src/pages/AboutUs.jsx) | Mission, architecture pillars, and founder spotlight |
+| **Support & Contact** | [sumanai.sumanonline.com/contact](https://SumanAI.sumanonline.com/contact) | [`frontend/src/pages/ContactPage.jsx`](frontend/src/pages/ContactPage.jsx) | Interactive ticket desk, live FAQs, and status monitor |
 
 For formal enterprise inquiries, security disclosures, or partnership discussions, reach our team directly at:  
 📧 **[support_sumanai@sumanonline.com](mailto:support_sumanai@sumanonline.com)**

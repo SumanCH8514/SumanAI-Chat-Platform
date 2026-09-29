@@ -57,12 +57,12 @@ const AboutUs = () => {
           <span>Build: September 29, 2026</span>
           <span>•</span>
           <a
-            href="http://sumanai.sumanonline.com/"
+            href="https://SumanAI.sumanonline.com/"
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: 'var(--brand-primary)', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
           >
-            sumanai.sumanonline.com <ExternalLink size={12} />
+            SumanAI.sumanonline.com <ExternalLink size={12} />
           </a>
           <span>•</span>
           <a
