@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { useChatStore } from '../store/useChatStore';
 import { downloadImage } from '../utils/downloadUtils';
 import Skeleton from './Skeleton';
+import CodeBlock from './CodeBlock';
 import './ChatThread.css';
 
 const ChatThread = () => {
@@ -72,6 +73,28 @@ const ChatThread = () => {
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]}
                       components={{
+                        pre: ({ children }) => <>{children}</>,
+                        code: ({ className, children, ...props }) => {
+                          const match = /language-(\w+)/.exec(className || '');
+                          const codeString = String(children || '').replace(/\n$/, '');
+                          const isMultiLine = codeString.includes('\n');
+
+                          if (match || isMultiLine) {
+                            return (
+                              <CodeBlock 
+                                language={match ? match[1] : ''} 
+                                code={codeString} 
+                                fullMessageContent={msg.content}
+                              />
+                            );
+                          }
+
+                          return (
+                            <code className="inline-code" {...props}>
+                              {children}
+                            </code>
+                          );
+                        },
                         img: ({ src, alt }) => (
                           <div className="message-img-wrapper">
                             <img 

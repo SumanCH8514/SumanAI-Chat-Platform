@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Lock, ArrowRight, Sparkles, ImageOff, Image as ImageIcon } from 'lucide-react';
+import { ChevronDown, Lock, Sparkles, ImageOff, Image as ImageIcon, Zap, Crown } from 'lucide-react';
 import { useModel } from '../hooks/useModel';
 import { MODEL_LIST } from '../constants/models';
 import { useChatStore } from '../store/useChatStore';
@@ -8,7 +8,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import './ModelSelector.css';
 
 const ModelSelector = () => {
-  const { selectedModel, setSelectedModel, models, isGuest } = useModel();
+  const { selectedModel, setSelectedModel, models } = useModel();
   const { openAuthModal } = useAuthStore();
   const hasAttachments = useChatStore(state => state.hasAttachments);
   const hasImageGenActive = useChatStore(state => state.hasImageGenActive);
@@ -19,27 +19,40 @@ const ModelSelector = () => {
 
   const modelList = models && models.length > 0 ? models : MODEL_LIST;
 
-  useEffect(() => {
-    if (!open) return;
-    const updatePosition = () => {
-      if (!triggerRef.current) return;
-      const rect = triggerRef.current.getBoundingClientRect();
-      const isMobile = window.innerWidth <= 768;
-      if (isMobile) {
-        setDropdownPos({
-          top: Math.max(54, rect.bottom + 8),
-          left: window.innerWidth / 2,
-          transform: 'translateX(-50%)'
-        });
-      } else {
-        setDropdownPos({
-          top: rect.bottom + 8,
-          left: rect.left + rect.width / 2,
-          transform: 'translateX(-50%)'
-        });
-      }
-    };
+  const [tierTab, setTierTab] = useState(null);
+  const activeTier = tierTab || (selectedModel?.tier === 'premium' ? 'premium' : 'free');
 
+  const freeModels = useMemo(() => {
+    return modelList.filter(m => (m.tier || 'free') === 'free');
+  }, [modelList]);
+
+  const premiumModels = useMemo(() => {
+    return modelList.filter(m => m.tier === 'premium');
+  }, [modelList]);
+
+  const currentModels = activeTier === 'premium' ? premiumModels : freeModels;
+
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      setDropdownPos({
+        top: Math.max(54, rect.bottom + 8),
+        left: window.innerWidth / 2,
+        transform: 'translateX(-50%)'
+      });
+    } else {
+      setDropdownPos({
+        top: rect.bottom + 8,
+        left: rect.left + rect.width / 2,
+        transform: 'translateX(-50%)'
+      });
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
     updatePosition();
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
@@ -47,7 +60,7 @@ const ModelSelector = () => {
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [open]);
+  }, [open, updatePosition]);
 
   useEffect(() => {
     const handleClick = (e) => {
@@ -80,27 +93,39 @@ const ModelSelector = () => {
 
   const isSingle = modelList.length <= 1;
 
-  let headerText = isGuest ? 'Sign in with Google to unlock all models' : 'Access top AI models';
-  let footerNote = null;
+  const handleToggle = () => {
+    if (isSingle) return;
+    if (!open) {
+      updatePosition();
+    }
+    setOpen(prev => !prev);
+  };
 
+  let footerNote = null;
   if (hasAttachments) {
-    headerText = 'Vision models only';
     footerNote = 'Only vision-capable models are selectable while images are attached.';
   } else if (hasImageGenActive) {
-    headerText = 'Image Generation models';
     footerNote = 'Only image generation models are selectable in this mode.';
   }
+
+  const isSelectedPremium = selectedModel?.tier === 'premium';
 
   return (
     <div className="model-selector-wrapper">
       <button
         ref={triggerRef}
-        className={`version-selector model-selector-trigger ${isSingle ? 'single' : ''}`}
-        onClick={() => !isSingle && setOpen(prev => !prev)}
+        className={`version-selector model-selector-trigger ${isSingle ? 'single' : ''} ${isSelectedPremium ? 'trigger-premium' : ''}`}
+        onClick={handleToggle}
         style={{ cursor: isSingle ? 'default' : 'pointer' }}
         type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
       >
-        <Sparkles size={14} color="var(--brand-primary)" className="model-trigger-icon" />
+        {isSelectedPremium ? (
+          <Crown size={14} color="#F59E0B" className="model-trigger-icon" />
+        ) : (
+          <Sparkles size={14} color="var(--brand-primary)" className="model-trigger-icon" />
+        )}
         <span className="model-trigger-text">
           <span className="model-brand-prefix">SumanAI — </span>
           <span className="model-name-label">{selectedModel?.name || 'Model'}</span>
@@ -124,52 +149,80 @@ const ModelSelector = () => {
               transform: dropdownPos.transform
             }}
           >
-            <button
-              type="button"
-              className="model-dropdown-header"
-              onClick={() => {
-                if (isGuest) {
-                  setOpen(false);
-                  openAuthModal();
-                }
-              }}
-            >
-              <span>{headerText}</span>
-              <ArrowRight size={16} />
-            </button>
+            <div className="model-dropdown-sections" role="tablist" aria-label="Model Tiers">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTier === 'free'}
+                className={`model-section-tab ${activeTier === 'free' ? 'active' : ''}`}
+                onClick={() => setTierTab('free')}
+              >
+                <Zap size={13} className="section-tab-icon" />
+                <span>Free Models</span>
+                <span className="section-count-pill">{freeModels.length}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTier === 'premium'}
+                className={`model-section-tab ${activeTier === 'premium' ? 'active' : ''} tab-premium`}
+                onClick={() => setTierTab('premium')}
+              >
+                <Crown size={13} className="section-tab-icon crown-icon" />
+                <span>Premium Models</span>
+                <span className="section-pro-pill">PRO</span>
+              </button>
+            </div>
 
             <div className="model-list">
-              {modelList.map(model => {
-                const isDisabledByVision = hasAttachments && !model.supportsVision;
-                const isDisabledByImageGen = hasImageGenActive && !model.supportsImageGen;
-                const isDisabled = isDisabledByVision || isDisabledByImageGen;
-                
-                let badge = null;
-                if (isDisabledByVision) {
-                  badge = <span className="model-badge no-vision-badge"><ImageOff size={10} /> No Vision</span>;
-                } else if (isDisabledByImageGen) {
-                  badge = <span className="model-badge no-vision-badge"><ImageIcon size={10} /> No Image Gen</span>;
-                } else if (model.locked) {
-                  badge = <span className="model-badge" style={{ background: '#4285F4' }}>Unlock</span>;
-                } else if (model.badge) {
-                  badge = <span className="model-badge">{model.badge}</span>;
-                }
+              {activeTier === 'premium' && currentModels.length === 0 ? (
+                <div className="premium-placeholder-card">
+                  <div className="premium-crown-wrap">
+                    <Crown size={22} color="#F59E0B" />
+                  </div>
+                  <div className="premium-card-title">Premium Flagship Models</div>
+                  <div className="premium-card-desc">
+                    Ultra-fast inference, deep reasoning, and high-context frontier intelligence models are arriving soon.
+                  </div>
+                  <div className="premium-perks-row">
+                    <span className="premium-perk-badge"><Sparkles size={11} /> Flagship Intelligence</span>
+                    <span className="premium-perk-badge"><Zap size={11} /> Priority Compute</span>
+                    <span className="premium-perk-badge">Extended Context</span>
+                  </div>
+                </div>
+              ) : (
+                currentModels.map(model => {
+                  const isDisabledByVision = hasAttachments && !model.supportsVision;
+                  const isDisabledByImageGen = hasImageGenActive && !model.supportsImageGen;
+                  const isDisabled = isDisabledByVision || isDisabledByImageGen;
+                  
+                  let badge = null;
+                  if (isDisabledByVision) {
+                    badge = <span className="model-badge no-vision-badge"><ImageOff size={10} /> No Vision</span>;
+                  } else if (isDisabledByImageGen) {
+                    badge = <span className="model-badge no-vision-badge"><ImageIcon size={10} /> No Image Gen</span>;
+                  } else if (model.locked) {
+                    badge = <span className="model-badge" style={{ background: '#4285F4' }}>Unlock</span>;
+                  } else if (model.badge) {
+                    badge = <span className={`model-badge ${model.tier === 'premium' ? 'premium-model-badge' : ''}`}>{model.badge}</span>;
+                  }
 
-                return (
-                  <button
-                    key={model.id}
-                    className={`model-item ${selectedModel?.id === model.id ? 'selected' : ''} ${model.locked ? 'locked' : ''} ${isDisabled ? 'no-vision' : ''}`}
-                    onClick={() => select(model)}
-                    title={model.locked ? 'Click to sign in with Google and unlock this model' : isDisabled ? 'Not available in current mode' : model.name}
-                    type="button"
-                  >
-                    <span className="model-item-icon"><model.icon /></span>
-                    <span className="model-item-name">{model.name}</span>
-                    {badge}
-                    {model.locked && <Lock size={14} className="model-lock" />}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={model.id}
+                      className={`model-item ${selectedModel?.id === model.id ? 'selected' : ''} ${model.locked ? 'locked' : ''} ${isDisabled ? 'no-vision' : ''} ${model.tier === 'premium' ? 'model-item-premium' : ''}`}
+                      onClick={() => select(model)}
+                      title={model.locked ? 'Click to sign in with Google and unlock this model' : isDisabled ? 'Not available in current mode' : model.name}
+                      type="button"
+                    >
+                      <span className="model-item-icon"><model.icon /></span>
+                      <span className="model-item-name">{model.name}</span>
+                      {badge}
+                      {model.locked && <Lock size={14} className="model-lock" />}
+                    </button>
+                  );
+                })
+              )}
             </div>
 
             {footerNote && (

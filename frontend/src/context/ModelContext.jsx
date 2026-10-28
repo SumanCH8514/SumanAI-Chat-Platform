@@ -7,7 +7,7 @@ import { useAuthStore } from '../store/useAuthStore';
 const GUEST_MODEL_ID = 'qwen/qwen3.8-27b';
 
 export const ModelProvider = ({ children }) => {
-  const { user, openAuthModal } = useAuthStore();
+  const { user, openAuthModal, updateUserPreferences } = useAuthStore();
   const isGoogleUser = Boolean(user && !user.isAnonymous);
   const isGuest = !isGoogleUser;
 
@@ -18,24 +18,28 @@ export const ModelProvider = ({ children }) => {
     }));
   }, [isGuest]);
 
+  const defaultModel = dynamicModels.find((m) => m.id === 'openai/gpt-oss-120b') || dynamicModels[0];
   const qwenModel = dynamicModels.find((m) => m.id === GUEST_MODEL_ID) || dynamicModels[0];
 
-  const [customModelId, setCustomModelId] = useState(() => {
+  const [selectedModelId, setSelectedModelId] = useState(() => {
     const saved = localStorage.getItem('sumanai_selected_model');
-    if (!saved || saved === 'gemini-1.5-flash' || saved.startsWith('gemini')) {
-      localStorage.setItem('sumanai_selected_model', 'meta/llama-3.2-11b-vision-instruct');
-      return 'meta/llama-3.2-11b-vision-instruct';
+    if (saved && !saved.startsWith('gemini')) {
+      return saved;
     }
-    return saved;
+    return user?.preferences?.selectedModelId || 'openai/gpt-oss-120b';
   });
 
-  const activeModelId = isGuest
-    ? GUEST_MODEL_ID
-    : ((user?.preferences?.selectedModelId && !user.preferences.selectedModelId.startsWith('gemini'))
-        ? user.preferences.selectedModelId
-        : customModelId);
+  const [prevUserPrefModel, setPrevUserPrefModel] = useState(user?.preferences?.selectedModelId);
+  if (user?.preferences?.selectedModelId && user.preferences.selectedModelId !== prevUserPrefModel) {
+    setPrevUserPrefModel(user.preferences.selectedModelId);
+    if (!user.preferences.selectedModelId.startsWith('gemini')) {
+      setSelectedModelId(user.preferences.selectedModelId);
+      localStorage.setItem('sumanai_selected_model', user.preferences.selectedModelId);
+    }
+  }
 
-  const selectedModel = dynamicModels.find((m) => m.id === activeModelId) || qwenModel;
+  const activeModelId = isGuest ? GUEST_MODEL_ID : selectedModelId;
+  const selectedModel = dynamicModels.find((m) => m.id === activeModelId) || (isGuest ? qwenModel : defaultModel);
 
   const selectModel = (model) => {
     if (isGuest && model.id !== GUEST_MODEL_ID) {
@@ -43,10 +47,13 @@ export const ModelProvider = ({ children }) => {
       return false;
     }
 
-    setCustomModelId(model.id);
+    setSelectedModelId(model.id);
     localStorage.setItem('sumanai_selected_model', model.id);
 
     if (user?.uid && !user.isAnonymous) {
+      if (typeof updateUserPreferences === 'function') {
+        updateUserPreferences({ selectedModelId: model.id });
+      }
       firestoreService.updatePreferences(user.uid, { selectedModelId: model.id });
     }
     return true;

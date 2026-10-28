@@ -12,6 +12,18 @@ export const useAuthStore = create((set) => ({
   closeAuthModal: () => set({ authModalOpen: false }),
 
   setUser: (user) => set({ user, loading: false }),
+  updateUserPreferences: (preferences) =>
+    set((state) => ({
+      user: state.user
+        ? {
+            ...state.user,
+            preferences: {
+              ...(state.user.preferences || {}),
+              ...preferences,
+            },
+          }
+        : state.user,
+    })),
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error, loading: false }),
   

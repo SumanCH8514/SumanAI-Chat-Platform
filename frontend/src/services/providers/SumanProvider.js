@@ -4,8 +4,15 @@ import { getFirebaseAuth } from '../firebase';
 export const SumanProvider = async (modelId, messages, onChunk, options = {}) => {
   const WORKER_URL = env.WORKER_URL;
 
-  const trimmedMessages = messages.map((msg, idx) => {
-    if (idx < messages.length - 2 && msg.attachments) {
+  const validMessages = messages.filter((m, idx) => {
+    if (m.role === 'assistant' && !m.content?.trim() && idx === messages.length - 1) {
+      return false;
+    }
+    return true;
+  });
+
+  const trimmedMessages = validMessages.map((msg, idx) => {
+    if (idx < validMessages.length - 2 && msg.attachments) {
       const { attachments: _attachments, ...rest } = msg;
       return { ...rest, content: msg.content + " (Image omitted from history to save space)" };
     }

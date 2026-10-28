@@ -198,7 +198,9 @@ export default {
         'openai/gpt-oss-20b',
         'qwen/qwen3.8-27b',
         'canopylabs/orpheus-v1-english',
-        'canopylabs/orpheus-arabic-saudi'
+        'canopylabs/orpheus-arabic-saudi',
+        'llama-3.2-11b-vision-preview',
+        'llama-3.2-90b-vision-preview'
       ]);
 
       const nvidiaSupportedModels = new Set([
@@ -207,8 +209,7 @@ export default {
         'moonshotai/kimi-k3',
         'google/gemma-4-31b-it',
         'google/diffusiongemma-26b-a4b-it',
-        'meta/muse-glimmer-30b',
-        'meta/llama-3.2-11b-vision-instruct'
+        'meta/muse-glimmer-30b'
       ]);
 
       const isGoogle = isGoogleAuthenticated(request);
@@ -225,9 +226,12 @@ export default {
 
       let provider = 'groq';
 
-      if (targetModel.startsWith('gemini')) {
-        targetModel = 'meta/llama-3.2-11b-vision-instruct';
-        provider = 'nvidia';
+      if (targetModel === 'meta/llama-3.2-11b-vision-instruct' || targetModel.includes('vision')) {
+        targetModel = 'llama-3.2-11b-vision-preview';
+        provider = 'groq';
+      } else if (targetModel.startsWith('gemini')) {
+        targetModel = 'gemini-1.5-flash';
+        provider = 'google';
       } else if (nvidiaSupportedModels.has(targetModel)) {
         provider = 'nvidia';
       } else if (groqSupportedModels.has(targetModel)) {
@@ -259,7 +263,7 @@ export default {
       }
 
       const modelDisplayName = targetModel.split('/').pop().replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      const systemInstruction = `You are SumanAI - Model: ${modelDisplayName}. You are a helpful, minimalist AI assistant. Always get straight to the point. When asked who you are, introduce yourself as "SumanAI - Model: ${modelDisplayName}".${personalizationPrompt}`;
+      const systemInstruction = `You are SumanAI - Model: ${modelDisplayName}. You are a helpful, minimalist AI assistant. Always get straight to the point. When asked who you are, introduce yourself as "SumanAI - Model: ${modelDisplayName}". When providing code or scripts, always format them inside fenced Markdown code blocks with the appropriate programming language identifier (for example: \`\`\`python ... \`\`\` or \`\`\`javascript ... \`\`\`).${personalizationPrompt}`;
 
       if (provider === 'groq' || provider === 'nvidia') {
         const isNvidia = provider === 'nvidia';
@@ -267,9 +271,18 @@ export default {
           ? "https://integrate.api.nvidia.com/v1/chat/completions"
           : "https://api.groq.com/openai/v1/chat/completions";
 
-        const supportsVision = targetModel === 'meta/llama-3.2-11b-vision-instruct';
+        const supportsVision = targetModel === 'meta/llama-3.2-11b-vision-instruct' || 
+          targetModel.includes('vision') || 
+          targetModel === 'llama-3.2-11b-vision-preview';
 
-        const openAiMessages = messages.map((m, index) => {
+        const filteredMessages = messages.filter((m, idx) => {
+          if (m.role === 'assistant' && !m.content?.trim() && idx === messages.length - 1) {
+            return false;
+          }
+          return true;
+        });
+
+        const openAiMessages = filteredMessages.map((m, index) => {
           let textContent = (m.content || '').trim();
 
           if (index === 0 && (m.role === 'user' || !m.role)) {
@@ -285,7 +298,7 @@ export default {
               m.attachments.forEach(att => {
                 contentParts.push({
                   type: "image_url",
-                  image_url: { url: `data:${att.type};base64,${att.data}` }
+                  image_url: { url: `data:${att.type || 'image/jpeg'};base64,${att.data}` }
                 });
               });
               return { role: m.role || 'user', content: contentParts };
@@ -336,6 +349,7 @@ export default {
         (async () => {
           const reader = response.body.getReader();
           let buffer = "";
+          let hasWrittenTokens = false;
 
           try {
             while (true) {
@@ -356,9 +370,24 @@ export default {
 
                 try {
                   const data = JSON.parse(trimmed.slice(5).trim());
-                  const delta = data.choices?.[0]?.delta?.content || "";
+                  if (data.error) {
+                    const errMsg = data.error.message || JSON.stringify(data.error);
+                    const errorChunk = {
+                      candidates: [{
+                        content: {
+                          parts: [{ text: `⚠️ Error: ${errMsg}` }]
+                        }
+                      }]
+                    };
+                    hasWrittenTokens = true;
+                    await writer.write(encoder.encode(`data: ${JSON.stringify(errorChunk)}\n\n`));
+                    break;
+                  }
+
+                  const delta = data.choices?.[0]?.delta?.content || data.choices?.[0]?.text || "";
 
                   if (delta) {
+                    hasWrittenTokens = true;
                     const chunk = {
                       candidates: [{
                         content: {
@@ -372,6 +401,17 @@ export default {
                   void parseErr;
                 }
               }
+            }
+
+            if (!hasWrittenTokens) {
+              const fallbackChunk = {
+                candidates: [{
+                  content: {
+                    parts: [{ text: "⚠️ The model was unable to generate a response. Please try re-sending or use another model." }]
+                  }
+                }]
+              };
+              await writer.write(encoder.encode(`data: ${JSON.stringify(fallbackChunk)}\n\n`));
             }
           } catch (streamErr) {
             void streamErr;

@@ -1,18 +1,38 @@
 .canvas-container {
-  flex: 0 0 55%;
+  flex: 1 1 50%;
+  max-width: 50%;
+  min-width: 320px;
   height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--bg-main);
   border-left: 1px solid var(--border-light);
   overflow: hidden;
-  animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 50;
+  position: relative;
+}
+
+.canvas-container.expanded {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  max-width: 100%;
+  flex: 1 1 100%;
+  z-index: 100;
+  border-left: none;
 }
 
 @keyframes slideInRight {
-  from { transform: translateX(100%); opacity: 0; }
-  to   { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 .canvas-header {
@@ -24,6 +44,7 @@
   padding: 0 20px;
   border-bottom: 1px solid var(--border-light);
   background: rgba(255, 255, 255, 0.02);
+  flex-shrink: 0;
 }
 
 .canvas-info {
@@ -53,12 +74,13 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  font-weight: 600;
 }
 
 .canvas-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .canvas-actions button {
@@ -68,6 +90,9 @@
   cursor: pointer;
   padding: 6px;
   border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.2s;
 }
 
@@ -80,11 +105,18 @@
   color: var(--text-muted) !important;
 }
 
+.canvas-close-btn:hover {
+  color: #EF4444 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
 .canvas-nav {
   display: flex;
-  padding: 8px 20px;
+  padding: 8px 16px;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.03);
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
 }
 
 .canvas-tab {
@@ -100,22 +132,35 @@
   gap: 8px;
   font-weight: 500;
   transition: all 0.2s;
+  font-family: inherit;
 }
 
 .canvas-tab:hover {
   color: var(--text-primary);
+  background: var(--bg-hover);
 }
 
 .canvas-tab.active {
   background: var(--bg-hover);
   color: var(--brand-primary);
+  font-weight: 600;
+}
+
+.canvas-badge {
+  font-size: 10px;
+  background: var(--brand-primary);
+  color: white;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
 }
 
 .canvas-viewport {
   flex: 1;
   overflow: hidden;
   position: relative;
-  background: #0D0D0D;
+  background: var(--bg-main);
+  display: flex;
+  flex-direction: column;
 }
 
 .preview-container {
@@ -130,68 +175,144 @@
   background: white;
 }
 
-.code-container {
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  padding: 24px;
-}
-
-.code-container pre {
-  background: transparent !important;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.code-container code {
-  color: #E2E8F0;
-}
-
-.canvas-footer {
-  height: 40px;
-  min-height: 40px;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid var(--border-light);
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.footer-links {
-  display: flex;
-  gap: 16px;
-}
-
-.footer-links button {
-  background: none;
-  border: none;
-  color: inherit;
-  font-size: inherit;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.spinning {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-@media (max-width: 1024px) {
-  .canvas-container {
-    position: fixed;
-    top: 0; 
-    right: 0;
+  .canvas-code-wrapper {
     width: 100%;
     height: 100%;
-    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
-}
+
+
+    .canvas-file-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-light);
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+
+      .canvas-file-tab {
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--text-muted);
+        font-size: 12px;
+        font-family: 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+        padding: 4px 10px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+      }
+
+      .canvas-file-tab:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+      }
+
+      .canvas-file-tab.active {
+        background: var(--bg-hover);
+        border-color: var(--border-light);
+        color: var(--brand-primary);
+        font-weight: 600;
+      }
+
+      .canvas-code-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 20px 24px;
+      }
+
+      .canvas-footer {
+        height: 44px;
+        min-height: 44px;
+        padding: 0 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 1px solid var(--border-light);
+        font-size: 11.5px;
+        color: var(--text-muted);
+        background: var(--bg-card);
+        flex-shrink: 0;
+      }
+
+      .footer-links {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+        .footer-download-btn {
+          background: var(--bg-input);
+          border: 1px solid var(--border-light);
+          color: var(--text-primary);
+          font-size: 12px;
+          font-weight: 500;
+          padding: 5px 12px;
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.18s ease;
+          font-family: inherit;
+        }
+
+        .footer-download-btn:hover {
+          background: var(--bg-hover);
+          border-color: var(--brand-border);
+          color: var(--brand-primary);
+        }
+
+        .footer-download-btn:active {
+          transform: scale(0.97);
+        }
+
+        .footer-icon-btn {
+          background: var(--bg-input);
+          border: 1px solid var(--border-light);
+          color: var(--text-secondary);
+          padding: 6px;
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.18s ease;
+        }
+
+        .footer-icon-btn:hover {
+          background: var(--bg-hover);
+          color: var(--text-primary);
+          border-color: var(--border-light);
+        }
+
+        .spinning {
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @media (max-width: 1024px) {
+          .canvas-container {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 100%;
+            max-width: 100%;
+            height: 100%;
+            z-index: 2000;
+          }
+        }

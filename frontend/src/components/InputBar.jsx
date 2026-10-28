@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowUp, Globe, Paperclip, X, Plus,
-  Camera, Image as ImageIcon, Lightbulb, PenTool, Layers, Square, Sparkles
+  Camera, Image as ImageIcon, Lightbulb, PenTool, Layers, Square, Sparkles, Mic
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useModel } from '../hooks/useModel';
@@ -10,6 +10,7 @@ import { useChatStore } from '../store/useChatStore';
 import { chatService } from '../services/ChatService';
 import { DEFAULT_VISION_MODEL, DEFAULT_IMAGE_GEN_MODEL } from '../constants/models';
 import { compressImage } from '../utils/imageUtils';
+import { parseArtifact } from '../utils/artifactUtils';
 
 const InputBar = () => {
   const [text, setText] = useState('');
@@ -19,6 +20,8 @@ const InputBar = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [visionToast, setVisionToast] = useState(null);
+  const [isListening, setIsListening] = useState(false);
+  const [micToast, setMicToast] = useState(null);
 
   const navigate = useNavigate();
   const { selectedModel, setSelectedModel } = useModel();
@@ -27,6 +30,8 @@ const InputBar = () => {
   const inputRef = useRef(null);
   const actionMenuRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const baseTextRef = useRef('');
 
   const ensureActiveChat = useChatStore(state => state.ensureActiveChat);
   const addMessage = useChatStore(state => state.addMessage);
@@ -104,6 +109,87 @@ const InputBar = () => {
     }
   };
 
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        void 0;
+      }
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+  }, []);
+
+  const handleToggleMic = () => {
+    if (isListening) {
+      stopListening();
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setMicToast("Voice input is not supported in this browser.");
+      setTimeout(() => setMicToast(null), 3500);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = navigator.language || 'en-US';
+
+      baseTextRef.current = text ? (text.trim() + ' ') : '';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event) => {
+        let totalTranscript = '';
+        for (let i = 0; i < event.results.length; ++i) {
+          totalTranscript += event.results[i][0].transcript;
+        }
+        const updated = (baseTextRef.current + totalTranscript).trimStart();
+        setText(updated);
+        if (inputRef.current) {
+          inputRef.current.style.height = 'auto';
+          inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 180)}px`;
+        }
+      };
+
+      recognition.onerror = (event) => {
+        if (event.error === 'not-allowed') {
+          setMicToast("Microphone access denied. Please allow microphone permissions.");
+          setTimeout(() => setMicToast(null), 4000);
+        } else if (event.error !== 'no-speech') {
+          setMicToast(`Voice input error: ${event.error}`);
+          setTimeout(() => setMicToast(null), 3500);
+        }
+        stopListening();
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        recognitionRef.current = null;
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
+      setMicToast("Could not start microphone.");
+      setTimeout(() => setMicToast(null), 3500);
+      stopListening();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopListening();
+    };
+  }, [stopListening]);
+
   const handleStop = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -112,6 +198,7 @@ const InputBar = () => {
   };
 
   const handleSend = useCallback(async (cmdOrEvent = null, overrideOptions = {}) => {
+    stopListening();
     const isManualSend = typeof cmdOrEvent !== 'string';
     const promptValue = isManualSend ? text.trim() : cmdOrEvent;
 
@@ -121,6 +208,7 @@ const InputBar = () => {
     const useDeepThinking = overrideOptions.deepThinking !== undefined ? overrideOptions.deepThinking : deepThinking;
     const useSmartSearch = overrideOptions.smartSearch !== undefined ? overrideOptions.smartSearch : smartSearch;
     const currentAttachments = [...attachments];
+    let targetChatId = null;
 
     try {
       setIsGenerating(true);
@@ -136,6 +224,7 @@ const InputBar = () => {
       }
 
       const chatId = ensureActiveChat();
+      targetChatId = chatId;
 
       if (window.location.pathname === '/' || window.location.pathname === '') {
         navigate(`/${chatId}`, { replace: true });
@@ -156,20 +245,21 @@ const InputBar = () => {
 
       if (!activeChat) throw new Error("Chat initialization failed");
 
-      await chatService.generateResponse(
+      const finalResult = await chatService.generateResponse(
         selectedModel.id,
         activeChat.messages,
         (chunk) => {
           updateLastMessage(chatId, chunk);
 
-          const codeBlockRegex = /```(\w+)?\n([\s\S]*?)(?:```|$)/;
-          const match = chunk.match(codeBlockRegex);
-          if (match) {
+          const artifact = parseArtifact(chunk);
+          if (artifact && artifact.isWeb) {
             const { setCanvasState } = useChatStore.getState();
             setCanvasState({
               isOpen: true,
-              content: match[2].trim(),
-              language: match[1] || 'web',
+              content: artifact.content,
+              previewHtml: artifact.previewHtml,
+              files: artifact.files,
+              language: artifact.language || 'html',
               title: "Generated Artifact"
             });
           }
@@ -180,30 +270,49 @@ const InputBar = () => {
           signal: abortControllerRef.current.signal
         }
       );
+
+      const completedText = finalResult || '';
+      if (completedText) {
+        updateLastMessage(chatId, completedText);
+        const finalArtifact = parseArtifact(completedText);
+        if (finalArtifact && finalArtifact.isWeb) {
+          const { setCanvasState } = useChatStore.getState();
+          setCanvasState({
+            isOpen: true,
+            content: finalArtifact.content,
+            previewHtml: finalArtifact.previewHtml,
+            files: finalArtifact.files,
+            language: finalArtifact.language || 'html',
+            title: "Generated Artifact"
+          });
+        }
+      } else {
+        updateLastMessage(chatId, "⚠️ No response received from the model. Please try re-sending or use a different model.");
+      }
     } catch (err) {
       if (err.name !== 'AbortError') {
-        const { activeChatId } = useChatStore.getState();
-        if (activeChatId) {
-          let userFriendlyMsg = err.message;
+        let userFriendlyMsg = err.message || "⚠️ Connection interrupted. Please try re-sending.";
 
-          if (!userFriendlyMsg.includes('❌') && !userFriendlyMsg.includes('busy')) {
-            userFriendlyMsg = "⚠️ Connection interrupted. Please try re-sending.";
-
-            if (err.message.includes('DEGRADED') || err.message.includes('invoked')) {
-              userFriendlyMsg = "⚠️ Model currently under maintenance. Please try GPT-OSS 120B or Gemini!";
-            } else if (err.message.includes('401')) {
-              userFriendlyMsg = "⚠️ API Key issue detected. Please check your Worker secrets.";
-            }
+        if (!userFriendlyMsg.includes('❌') && !userFriendlyMsg.includes('busy')) {
+          if (err.message?.includes('DEGRADED') || err.message?.includes('invoked')) {
+            userFriendlyMsg = "⚠️ Model currently under maintenance. Please try GPT-OSS 120B or Gemini!";
+          } else if (err.message?.includes('401')) {
+            userFriendlyMsg = "⚠️ API Key issue detected. Please check your Worker secrets.";
+          } else {
+            userFriendlyMsg = `⚠️ ${err.message || 'Connection interrupted. Please try re-sending.'}`;
           }
+        }
 
-          updateLastMessage(activeChatId, userFriendlyMsg);
+        const finalChatId = targetChatId || useChatStore.getState().activeChatId;
+        if (finalChatId) {
+          updateLastMessage(finalChatId, userFriendlyMsg);
         }
       }
     } finally {
       setIsGenerating(false);
       abortControllerRef.current = null;
     }
-  }, [text, isGenerating, attachments, deepThinking, smartSearch, ensureActiveChat, navigate, addMessage, selectedModel, updateLastMessage, setHasImageGenActive]);
+  }, [text, isGenerating, attachments, deepThinking, smartSearch, ensureActiveChat, navigate, addMessage, selectedModel, updateLastMessage, setHasImageGenActive, stopListening]);
 
   useEffect(() => {
     if (isPendingGeneration) {
@@ -250,6 +359,16 @@ const InputBar = () => {
             <span>
               Switched to <strong>{visionToast.replace('Image Gen: ', '')}</strong> — {hasImageGenActive ? 'tailored for creative image generation.' : 'ready for visual input analysis.'}
             </span>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {micToast && typeof document !== 'undefined' && createPortal(
+        <div className="vision-toast" role="status" aria-live="polite">
+          <div className="vision-toast-content">
+            <Mic size={14} className="vision-toast-icon" />
+            <span>{micToast}</span>
           </div>
         </div>,
         document.body
@@ -346,6 +465,17 @@ const InputBar = () => {
                 )}
               </div>
             )}
+
+            <button
+              type="button"
+              className={`mic-btn ${isListening ? 'listening' : ''}`}
+              onClick={handleToggleMic}
+              disabled={isGenerating}
+              title={isListening ? "Listening... Click to stop" : "Voice input"}
+              aria-label={isListening ? "Listening... Click to stop" : "Voice input"}
+            >
+              <Mic size={18} />
+            </button>
 
             <button
               className={`send-btn ${isGenerating ? 'stop' : ''}`}
