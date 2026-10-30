@@ -593,10 +593,11 @@ export default {
 
           const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
             prompt: promptText,
-            num_steps: 4
+            steps: 4
           });
 
-          if (!result || !result.image) {
+          const imageBase64 = result?.image || result?.result?.image;
+          if (!imageBase64) {
             throw new Error("Cloudflare did not return image data. Please try again.");
           }
 
@@ -607,7 +608,7 @@ export default {
           (async () => {
             try {
               const cleanTitle = promptText.replace(/[\[\]\n\r]/g, ' ').slice(0, 70);
-              const markdown = `![${cleanTitle}](data:image/jpeg;base64,${result.image})\n\n*Generated with Flux 1 Schnell on Cloudflare Workers AI*`;
+              const markdown = `![${cleanTitle}](data:image/jpeg;base64,${imageBase64})\n\n*Generated with Flux 1 Schnell on Cloudflare Workers AI*`;
               const chunk = {
                 candidates: [{
                   content: {
