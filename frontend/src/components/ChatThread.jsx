@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Bot, User, Download } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useChatStore } from '../store/useChatStore';
 import { downloadImage } from '../utils/downloadUtils';
@@ -72,6 +72,7 @@ const ChatThread = () => {
                   msg.content ? (
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]}
+                      urlTransform={(url) => (url.startsWith('data:image/') ? url : defaultUrlTransform(url))}
                       components={{
                         pre: ({ children }) => <>{children}</>,
                         code: ({ className, children, ...props }) => {
