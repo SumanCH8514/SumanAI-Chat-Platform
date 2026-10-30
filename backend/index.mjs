@@ -607,11 +607,11 @@ export default {
 
           (async () => {
             try {
-              const cleanTitle = promptText.replace(/[\[\]\(\)\n\r]/g, ' ').trim().slice(0, 70) || 'AI Image';
+              const cleanTitle = promptText.replace(/[\[\]\(\)\n\r]/g, ' ').trim().slice(0, 70) || 'Image';
               const dataUri = imageBase64.startsWith('data:image/')
                 ? imageBase64
                 : `data:image/jpeg;base64,${imageBase64}`;
-              const markdown = `![${cleanTitle}](${dataUri})\n\n*Generated with Flux 1 Schnell on Cloudflare Workers AI*`;
+              const markdown = `![${cleanTitle}](${dataUri})`;
               const chunk = {
                 candidates: [{
                   content: {
