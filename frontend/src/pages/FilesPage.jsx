@@ -38,19 +38,53 @@ export const FilesPage = () => {
         chat.messages.forEach((msg, mIdx) => {
           if (Array.isArray(msg.attachments)) {
             msg.attachments.forEach((att, aIdx) => {
-              list.push({
-                id: `att-${chat.id}-${mIdx}-${aIdx}`,
-                name: att.name || `Image_Attachment_${chat.id.slice(0, 4)}.png`,
-                type: 'image',
-                url: att.url || att.data,
-                size: att.size || '320 KB',
-                chatTitle: chat.title,
-                createdAt: chat.createdAt || Date.now()
-              });
+              const fileUrl = att.url || (att.data ? `data:${att.type || 'image/png'};base64,${att.data}` : null);
+              if (fileUrl) {
+                list.push({
+                  id: `att-${chat.id}-${mIdx}-${aIdx}`,
+                  name: att.name || `Image_Attachment_${chat.id.slice(0, 4)}_${aIdx + 1}.png`,
+                  type: 'image',
+                  subtype: 'attachment',
+                  url: fileUrl,
+                  size: att.size || '320 KB',
+                  chatTitle: chat.title,
+                  createdAt: chat.createdAt || Date.now()
+                });
+              }
             });
           }
 
           if (typeof msg.content === 'string') {
+            const markdownImageRegex = /!\[(.*?)\]\(((?:data:image\/[^)]+)|(?:https?:\/\/[^)]+))\)/g;
+            let imgMatch;
+            let imgIdx = 0;
+            while ((imgMatch = markdownImageRegex.exec(msg.content)) !== null) {
+              const altText = (imgMatch[1] || 'Generated_Image').trim();
+              const imgUrl = imgMatch[2];
+              const cleanPrompt = altText
+                .replace(/[^a-zA-Z0-9_\-\s]/g, '')
+                .trim()
+                .replace(/\s+/g, '_')
+                .slice(0, 32) || 'AI_Generated_Image';
+              const isPng = imgUrl.startsWith('data:image/png') || imgUrl.endsWith('.png');
+              const isWebp = imgUrl.startsWith('data:image/webp') || imgUrl.endsWith('.webp');
+              const ext = isPng ? 'png' : (isWebp ? 'webp' : 'jpg');
+              const isData = imgUrl.startsWith('data:');
+              const sizeKb = isData ? Math.max(1, Math.round((imgUrl.length * 0.75) / 1024)) : 420;
+
+              list.push({
+                id: `gen-img-${chat.id}-${mIdx}-${imgIdx++}`,
+                name: `${cleanPrompt}.${ext}`,
+                type: 'image',
+                subtype: 'generated',
+                url: imgUrl,
+                size: `${sizeKb} KB`,
+                chatTitle: chat.title || 'AI Image Gen',
+                createdAt: chat.createdAt || Date.now(),
+                prompt: altText
+              });
+            }
+
             const codeBlockRegex = /```([a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g;
             let match;
             let blockIdx = 0;
@@ -100,15 +134,19 @@ export const FilesPage = () => {
     if (file.url) {
       const a = document.createElement('a');
       a.href = file.url;
-      a.download = file.name;
+      a.download = file.name || 'SumanAI_Generated_Image.jpg';
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
     } else if (file.content) {
       const blob = new Blob([file.content], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = file.name;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
   };
@@ -307,8 +345,10 @@ export const FilesPage = () => {
                       <td>
                         <div className="files-name-cell">
                           <div className="files-icon-box">
-                            {f.type === 'image' ? (
-                              <ImageIcon size={15} color="#3B82F6" />
+                            {f.type === 'image' && f.url ? (
+                              <img src={f.url} alt="" className="files-thumb-img" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                            ) : f.type === 'image' ? (
+                              <ImageIcon size={15} color={f.subtype === 'generated' ? '#A78BFA' : '#3B82F6'} />
                             ) : (
                               <FileCode size={15} color="#10B981" />
                             )}
@@ -318,8 +358,8 @@ export const FilesPage = () => {
                       </td>
 
                       <td>
-                        <span className={`files-type-tag type-${f.type}`}>
-                          {f.type === 'code' ? (f.language || 'Code').toUpperCase() : 'IMAGE'}
+                        <span className={`files-type-tag ${f.subtype === 'generated' ? 'type-generated' : `type-${f.type}`}`}>
+                          {f.subtype === 'generated' ? 'AI IMAGE' : f.type === 'code' ? (f.language || 'Code').toUpperCase() : 'IMAGE'}
                         </span>
                       </td>
 

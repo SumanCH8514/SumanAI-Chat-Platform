@@ -94,6 +94,24 @@ export const ImageGenerator = () => {
     img.onload = () => {
       setGeneratedImageUrl(url);
       setIsGenerating(false);
+      try {
+        const raw = localStorage.getItem('sumanai_uploaded_files');
+        const list = raw ? JSON.parse(raw) : [];
+        const cleanPrompt = prompt.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_').slice(0, 32) || 'Illustration';
+        const newFile = {
+          id: `gen-ig-${Date.now()}`,
+          name: `${cleanPrompt}.jpg`,
+          type: 'image',
+          subtype: 'generated',
+          url,
+          size: '512 KB',
+          chatTitle: 'AI Graphic Generator',
+          createdAt: Date.now()
+        };
+        localStorage.setItem('sumanai_uploaded_files', JSON.stringify([newFile, ...list.filter(item => item.url !== url)]));
+      } catch {
+        void 0;
+      }
     };
     img.onerror = () => {
       setGeneratedImageUrl(url);

@@ -146,6 +146,31 @@ const BGRemover = () => {
       setProcessedImage(resultUrl);
       setProgress(100);
       setStatusMessage('Background removed successfully!');
+      try {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const raw = localStorage.getItem('sumanai_uploaded_files');
+            const list = raw ? JSON.parse(raw) : [];
+            const newFile = {
+              id: `gen-bg-${Date.now()}`,
+              name: `Cutout_${Date.now().toString().slice(-6)}.png`,
+              type: 'image',
+              subtype: 'generated',
+              url: reader.result,
+              size: `${Math.round(resultBlob.size / 1024)} KB`,
+              chatTitle: 'Background Remover',
+              createdAt: Date.now()
+            };
+            localStorage.setItem('sumanai_uploaded_files', JSON.stringify([newFile, ...list]));
+          } catch {
+            void 0;
+          }
+        };
+        reader.readAsDataURL(resultBlob);
+      } catch {
+        void 0;
+      }
     } catch (err) {
       console.error("BG Removal Error:", err);
       stopTicker();
