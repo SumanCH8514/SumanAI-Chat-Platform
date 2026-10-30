@@ -6,6 +6,7 @@ import { useChatStore } from '../store/useChatStore';
 import { downloadImage } from '../utils/downloadUtils';
 import Skeleton from './Skeleton';
 import CodeBlock from './CodeBlock';
+import GeneratedImageCard from './GeneratedImageCard';
 import './ChatThread.css';
 
 const ChatThread = () => {
@@ -32,6 +33,11 @@ const ChatThread = () => {
     <div className="chat-thread">
       {activeChat.messages.map((msg, idx) => {
         const isUser = msg.role === 'user';
+        const previousUserPrompt = activeChat.messages
+          .slice(0, idx)
+          .reverse()
+          .find(m => m.role === 'user')?.content || '';
+
         return (
           <div key={idx} className={`message-wrapper ${isUser ? 'user' : 'ai'}`}>
             <div className="message-avatar">
@@ -72,7 +78,7 @@ const ChatThread = () => {
                   msg.content ? (
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]}
-                      urlTransform={(url) => (url.startsWith('data:image/') ? url : defaultUrlTransform(url))}
+                      urlTransform={(url) => (url.startsWith('data:image/') || url.startsWith('http://') || url.startsWith('https://') ? url : defaultUrlTransform(url))}
                       components={{
                         pre: ({ children }) => <>{children}</>,
                         code: ({ className, children, ...props }) => {
@@ -97,21 +103,11 @@ const ChatThread = () => {
                           );
                         },
                         img: ({ src, alt }) => (
-                          <div className="message-img-wrapper">
-                            <img 
-                              src={src} 
-                              alt={alt} 
-                              onClick={() => handleDownloadImage(src)} 
-                              className="chat-generated-img"
-                            />
-                            <button 
-                              className="img-download-btn" 
-                              onClick={() => handleDownloadImage(src)}
-                              title="Save image"
-                            >
-                              <Download size={14} /> Save Image
-                            </button>
-                          </div>
+                          <GeneratedImageCard 
+                            src={src} 
+                            alt={alt} 
+                            promptText={previousUserPrompt || alt} 
+                          />
                         ),
                         table: ({ children }) => (
                           <div className="table-responsive-container">

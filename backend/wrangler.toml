@@ -14,3 +14,7 @@ enabled = true
 
 [ai]
 binding = "AI"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "sumanai-chat-platform"

@@ -588,8 +588,26 @@ export default {
             return true;
           });
 
-          const promptMsg = filteredMessages.filter(m => m.role === 'user' || !m.role).pop();
-          const promptText = (promptMsg?.content || 'A vibrant artistic composition').trim();
+          const userMessages = filteredMessages.filter(m => m.role === 'user' || !m.role);
+          const promptMsg = userMessages.pop();
+          let promptText = (promptMsg?.content || 'A vibrant artistic composition').trim();
+
+          const lowerPrompt = promptText.toLowerCase();
+          const isStyleConversion = lowerPrompt.includes('convert this image') || 
+                                    lowerPrompt.includes('in this style') || 
+                                    lowerPrompt.includes('change style to') ||
+                                    lowerPrompt.startsWith('convert to');
+          if (isStyleConversion && userMessages.length > 0) {
+            const previousPromptMsg = userMessages.pop();
+            const previousText = (previousPromptMsg?.content || '').trim();
+            if (previousText) {
+              const cleanedStyle = promptText
+                .replace(/^(convert this image into|convert this image to|convert to|make this|change style to)\s+/i, '')
+                .replace(/\s+style$/i, '')
+                .trim();
+              promptText = `${previousText}, rendered in ${cleanedStyle} style, high quality artwork`;
+            }
+          }
 
           const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
             prompt: promptText,
@@ -607,11 +625,39 @@ export default {
 
           (async () => {
             try {
-              const cleanTitle = promptText.replace(/[\[\]\(\)\n\r]/g, ' ').trim().slice(0, 70) || 'Image';
-              const dataUri = imageBase64.startsWith('data:image/')
-                ? imageBase64
-                : `data:image/jpeg;base64,${imageBase64}`;
-              const markdown = `![${cleanTitle}](${dataUri})`;
+              const cleanTitle = (promptMsg?.content || promptText).replace(/[\[\]\(\)\n\r]/g, ' ').trim().slice(0, 70) || 'Generated Image';
+              const cleanBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+              const binaryString = atob(cleanBase64);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+
+              const imageFileName = `img_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
+              const r2Key = `generated-images/${imageFileName}`;
+              let finalImageUrl = `https://cdn.sumanai.r2.sumanonline.com/${r2Key}`;
+
+              if (env.R2_BUCKET) {
+                try {
+                  await env.R2_BUCKET.put(r2Key, bytes, {
+                    httpMetadata: {
+                      contentType: 'image/jpeg',
+                      contentDisposition: `inline; filename="${imageFileName}"`,
+                      cacheControl: 'public, max-age=31536000'
+                    }
+                  });
+                } catch {
+                  finalImageUrl = imageBase64.startsWith('data:image/')
+                    ? imageBase64
+                    : `data:image/jpeg;base64,${imageBase64}`;
+                }
+              } else {
+                finalImageUrl = imageBase64.startsWith('data:image/')
+                  ? imageBase64
+                  : `data:image/jpeg;base64,${imageBase64}`;
+              }
+
+              const markdown = `![${cleanTitle}](${finalImageUrl})`;
               const chunk = {
                 candidates: [{
                   content: {
