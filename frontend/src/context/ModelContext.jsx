@@ -1,16 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { MODEL_LIST } from '../constants/models';
 import { ModelContext } from './Contexts';
 import { firestoreService } from '../services/firestoreService';
 import { adminService } from '../services/adminService';
 import { useAuthStore } from '../store/useAuthStore';
+import { useChatStore } from '../store/useChatStore';
 
 const FALLBACK_GUEST_MODEL_ID = 'qwen/qwen3.8-27b';
 const FALLBACK_DEFAULT_MODEL_ID = 'openai/gpt-oss-120b';
+const FALLBACK_PRO_MODEL_ID = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
 export const ModelProvider = ({ children }) => {
   const { user, openAuthModal, updateUserPreferences } = useAuthStore();
   const [governance, setGovernance] = useState(null);
+  const hasImageGenActive = useChatStore(state => state.hasImageGenActive);
 
   useEffect(() => {
     let isMounted = true;
@@ -35,7 +38,9 @@ export const ModelProvider = ({ children }) => {
 
   const guestDefaultModelId = governance?.tiers?.guest?.defaultModelId || FALLBACK_GUEST_MODEL_ID;
   const freeDefaultModelId = governance?.tiers?.free?.defaultModelId || FALLBACK_DEFAULT_MODEL_ID;
-  const proDefaultModelId = governance?.tiers?.pro?.defaultModelId || FALLBACK_DEFAULT_MODEL_ID;
+  const proDefaultModelId = (governance?.tiers?.pro?.defaultModelId && governance.tiers.pro.defaultModelId !== FALLBACK_DEFAULT_MODEL_ID)
+    ? governance.tiers.pro.defaultModelId
+    : FALLBACK_PRO_MODEL_ID;
 
   const dynamicModels = useMemo(() => {
     const guestAllowedIds = governance?.tiers?.guest?.allowedModelIds || [FALLBACK_GUEST_MODEL_ID];
@@ -79,36 +84,55 @@ export const ModelProvider = ({ children }) => {
     });
   }, [isGuest, isPro, isAdmin, governance]);
 
-const defaultModelForTier = isGuest
-  ? dynamicModels.find((m) => m.id === guestDefaultModelId) || dynamicModels[0]
-  : (isPro || isAdmin)
-    ? dynamicModels.find((m) => m.id === proDefaultModelId) || dynamicModels[0]
-    : dynamicModels.find((m) => m.id === freeDefaultModelId) || dynamicModels[0];
+  const defaultModelForTier = useMemo(() => {
+    let targetId = freeDefaultModelId;
+    if (isGuest) {
+      targetId = guestDefaultModelId;
+    } else if (isPro || isAdmin) {
+      targetId = proDefaultModelId;
+    }
 
-const [selectedModelId, setSelectedModelId] = useState(() => {
-  const saved = localStorage.getItem('sumanai_selected_model');
-  if (saved && !saved.startsWith('gemini')) {
-    return saved;
+    const matched = dynamicModels.find((m) => m.id === targetId && !m.supportsImageGen);
+    if (matched && (!matched.locked || isAdmin)) return matched;
+
+    const fallbackNonImage = dynamicModels.find((m) => !m.supportsImageGen && (!m.locked || isAdmin));
+    return fallbackNonImage || dynamicModels[0];
+  }, [isGuest, isPro, isAdmin, guestDefaultModelId, freeDefaultModelId, proDefaultModelId, dynamicModels]);
+
+  const [selectedModelId, setSelectedModelId] = useState(() => {
+    const saved = localStorage.getItem('sumanai_selected_model');
+    if (saved && !saved.startsWith('gemini')) {
+      const matched = MODEL_LIST.find(m => m.id === saved);
+      if (matched && matched.supportsImageGen) {
+        return isGuest ? FALLBACK_GUEST_MODEL_ID : (isPro || isAdmin) ? FALLBACK_PRO_MODEL_ID : FALLBACK_DEFAULT_MODEL_ID;
+      }
+      return saved;
+    }
+    return user?.preferences?.selectedModelId || (isGuest ? FALLBACK_GUEST_MODEL_ID : (isPro || isAdmin) ? FALLBACK_PRO_MODEL_ID : FALLBACK_DEFAULT_MODEL_ID);
+  });
+
+  const [prevUserPrefModel, setPrevUserPrefModel] = useState(user?.preferences?.selectedModelId);
+  if (user?.preferences?.selectedModelId && user.preferences.selectedModelId !== prevUserPrefModel) {
+    setPrevUserPrefModel(user.preferences.selectedModelId);
+    if (!user.preferences.selectedModelId.startsWith('gemini')) {
+      const matched = MODEL_LIST.find(m => m.id === user.preferences.selectedModelId);
+      if (!matched?.supportsImageGen) {
+        setSelectedModelId(user.preferences.selectedModelId);
+        localStorage.setItem('sumanai_selected_model', user.preferences.selectedModelId);
+      }
+    }
   }
-  return user?.preferences?.selectedModelId || FALLBACK_DEFAULT_MODEL_ID;
-});
 
-const [prevUserPrefModel, setPrevUserPrefModel] = useState(user?.preferences?.selectedModelId);
-if (user?.preferences?.selectedModelId && user.preferences.selectedModelId !== prevUserPrefModel) {
-  setPrevUserPrefModel(user.preferences.selectedModelId);
-  if (!user.preferences.selectedModelId.startsWith('gemini')) {
-    setSelectedModelId(user.preferences.selectedModelId);
-    localStorage.setItem('sumanai_selected_model', user.preferences.selectedModelId);
-  }
-}
+  const activeModelId = isGuest ? guestDefaultModelId : selectedModelId;
+  const currentModelMatch = dynamicModels.find((m) => m.id === activeModelId);
+  const selectedModel = (!hasImageGenActive && currentModelMatch?.supportsImageGen)
+    ? defaultModelForTier
+    : (currentModelMatch && (!currentModelMatch.locked || isAdmin)
+      ? currentModelMatch
+      : defaultModelForTier);
 
-const activeModelId = isGuest ? guestDefaultModelId : selectedModelId;
-const currentModelMatch = dynamicModels.find((m) => m.id === activeModelId);
-const selectedModel = currentModelMatch && (!currentModelMatch.locked || isAdmin)
-  ? currentModelMatch
-  : defaultModelForTier;
-
-const selectModel = (model) => {
+  const selectModel = useCallback((model) => {
+    if (!model) return false;
     if (model.locked && !isAdmin) {
       if (model.lockReason === 'login_required' || isGuest) {
         openAuthModal();
@@ -127,7 +151,37 @@ const selectModel = (model) => {
       firestoreService.updatePreferences(user.uid, { selectedModelId: model.id });
     }
     return true;
-  };
+  }, [isAdmin, isGuest, openAuthModal, user, updateUserPreferences]);
+
+  const resetToDefaultModel = useCallback(() => {
+    if (!defaultModelForTier) return null;
+    setSelectedModelId(defaultModelForTier.id);
+    localStorage.setItem('sumanai_selected_model', defaultModelForTier.id);
+
+    if (user?.uid && !user.isAnonymous) {
+      if (typeof updateUserPreferences === 'function') {
+        updateUserPreferences({ selectedModelId: defaultModelForTier.id });
+      }
+      firestoreService.updatePreferences(user.uid, { selectedModelId: defaultModelForTier.id });
+    }
+    return defaultModelForTier;
+  }, [defaultModelForTier, user, updateUserPreferences]);
+
+  useEffect(() => {
+    const unsub = useChatStore.subscribe((state, prevState) => {
+      if (prevState.hasImageGenActive && !state.hasImageGenActive) {
+        setSelectedModelId(prev => {
+          const matched = MODEL_LIST.find(m => m.id === prev);
+          if (matched?.supportsImageGen) {
+            localStorage.setItem('sumanai_selected_model', defaultModelForTier.id);
+            return defaultModelForTier.id;
+          }
+          return prev;
+        });
+      }
+    });
+    return unsub;
+  }, [defaultModelForTier]);
 
   return (
     <ModelContext.Provider
@@ -141,7 +195,9 @@ const selectModel = (model) => {
         isPro,
         isAdmin,
         governance,
-        guestModelId: guestDefaultModelId
+        guestModelId: guestDefaultModelId,
+        defaultModelForTier,
+        resetToDefaultModel
       }}
     >
       {children}

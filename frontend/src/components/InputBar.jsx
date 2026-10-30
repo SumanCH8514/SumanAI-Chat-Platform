@@ -14,6 +14,47 @@ import { DEFAULT_VISION_MODEL, DEFAULT_IMAGE_GEN_MODEL } from '../constants/mode
 import { compressImage } from '../utils/imageUtils';
 import { parseArtifact } from '../utils/artifactUtils';
 
+const mergeSpeechTranscripts = (results) => {
+  if (!results || results.length === 0) return '';
+
+  const finalParts = [];
+  let interimText = '';
+
+  for (let i = 0; i < results.length; i++) {
+    const item = results[i];
+    const text = item[0]?.transcript?.trim() || '';
+    if (!text) continue;
+
+    if (item.isFinal) {
+      if (finalParts.length > 0) {
+        const last = finalParts[finalParts.length - 1];
+        if (text.toLowerCase().startsWith(last.toLowerCase())) {
+          finalParts[finalParts.length - 1] = text;
+        } else if (!last.toLowerCase().includes(text.toLowerCase())) {
+          finalParts.push(text);
+        }
+      } else {
+        finalParts.push(text);
+      }
+    } else {
+      interimText = text;
+    }
+  }
+
+  let combined = finalParts.join(' ');
+  if (interimText) {
+    if (!combined) {
+      combined = interimText;
+    } else if (interimText.toLowerCase().startsWith(combined.toLowerCase())) {
+      combined = interimText;
+    } else if (!combined.toLowerCase().endsWith(interimText.toLowerCase()) && !combined.toLowerCase().includes(interimText.toLowerCase())) {
+      combined = `${combined} ${interimText}`;
+    }
+  }
+
+  return combined.trim();
+};
+
 const InputBar = () => {
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState([]);
@@ -26,7 +67,7 @@ const InputBar = () => {
   const [micToast, setMicToast] = useState(null);
 
   const navigate = useNavigate();
-  const { selectedModel, setSelectedModel, governance } = useModel();
+  const { selectedModel, setSelectedModel, governance, defaultModelForTier, resetToDefaultModel } = useModel();
   const { user, openAuthModal } = useAuthStore();
   const fileRef = useRef(null);
   const cameraRef = useRef(null);
@@ -128,6 +169,12 @@ const InputBar = () => {
       }
     } else {
       setHasImageGenActive(false);
+      const fallback = resetToDefaultModel ? resetToDefaultModel() : defaultModelForTier;
+      if (fallback) {
+        setSelectedModel(fallback);
+        setVisionToast(`Switched back to ${fallback.name}`);
+        setTimeout(() => setVisionToast(null), 3000);
+      }
     }
   };
 
@@ -176,9 +223,11 @@ const InputBar = () => {
     const cleanBase = typeof baseText === 'string' ? baseText.trim() : '';
     startingPrefixRef.current = cleanBase ? cleanBase + ' ' : '';
 
+    const isMobile = typeof window !== 'undefined' && (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024));
+
     try {
       const recognition = new SpeechRecognition();
-      recognition.continuous = true;
+      recognition.continuous = !isMobile;
       recognition.interimResults = true;
       recognition.lang = navigator.language || 'en-US';
 
@@ -188,13 +237,7 @@ const InputBar = () => {
       };
 
       recognition.onresult = (event) => {
-        let sessionTranscript = '';
-        for (let i = 0; i < event.results.length; ++i) {
-          const item = event.results[i][0]?.transcript?.trim();
-          if (item) {
-            sessionTranscript += (sessionTranscript ? ' ' : '') + item;
-          }
-        }
+        const sessionTranscript = mergeSpeechTranscripts(event.results);
         const updated = (startingPrefixRef.current + sessionTranscript).trimStart();
         setText(updated);
         if (inputRef.current) {
@@ -261,7 +304,13 @@ const InputBar = () => {
     if (isGenerating) return;
     if (!promptValue && attachments.length === 0) return;
 
-    const isImageGen = Boolean(selectedModel?.supportsImageGen || hasImageGenActive);
+    const isImageGen = Boolean(
+      selectedModel?.supportsImageGen || 
+      hasImageGenActive || 
+      overrideOptions?.isImageGen || 
+      overrideOptions?.modelId === DEFAULT_IMAGE_GEN_MODEL?.id ||
+      overrideOptions?.modelId?.includes('flux')
+    );
     if (isImageGen) {
       const quota = usageService.checkImageGenAllowed(user, governance);
       if (!quota.allowed) {
@@ -287,6 +336,13 @@ const InputBar = () => {
         setText('');
         setAttachments([]);
         setHasImageGenActive(false);
+        if (isImageGen) {
+          if (resetToDefaultModel) {
+            resetToDefaultModel();
+          } else if (defaultModelForTier) {
+            setSelectedModel(defaultModelForTier);
+          }
+        }
         if (inputRef.current) {
           inputRef.current.style.height = 'auto';
         }
@@ -307,15 +363,18 @@ const InputBar = () => {
         });
       }
 
-      addMessage(chatId, { role: 'assistant', content: '' });
+      const modelToUse = overrideOptions?.modelId 
+        || (isImageGen && DEFAULT_IMAGE_GEN_MODEL ? DEFAULT_IMAGE_GEN_MODEL.id : selectedModel.id);
+      const modelDisplayName = selectedModel?.name || (isImageGen ? 'Flux 1 Schnell' : 'Llama 3.3 70b Instruct Fp8 Fast');
+
+      addMessage(chatId, { role: 'assistant', content: '', model: modelDisplayName });
 
       const { chats } = useChatStore.getState();
       const activeChat = chats.find(c => c.id === chatId);
-
       if (!activeChat) throw new Error("Chat initialization failed");
 
       const finalResult = await chatService.generateResponse(
-        selectedModel.id,
+        modelToUse,
         activeChat.messages,
         (chunk) => {
           updateLastMessage(chatId, chunk);
@@ -344,7 +403,7 @@ const InputBar = () => {
       const completedText = finalResult || '';
       if (completedText) {
         if (isImageGen) {
-          usageService.incrementDailyImageCount(user?.uid || 'guest');
+          usageService.recordGenerationTimestamp(user?.uid || 'guest');
         }
         updateLastMessage(chatId, completedText);
         const finalArtifact = parseArtifact(completedText);
@@ -385,8 +444,15 @@ const InputBar = () => {
     } finally {
       setIsGenerating(false);
       abortControllerRef.current = null;
+      if (isImageGen) {
+        if (resetToDefaultModel) {
+          resetToDefaultModel();
+        } else if (defaultModelForTier) {
+          setSelectedModel(defaultModelForTier);
+        }
+      }
     }
-  }, [text, isGenerating, attachments, deepThinking, smartSearch, ensureActiveChat, navigate, addMessage, selectedModel, updateLastMessage, setHasImageGenActive, stopListening, governance, hasImageGenActive, openAuthModal, user]);
+  }, [text, isGenerating, attachments, deepThinking, smartSearch, ensureActiveChat, navigate, addMessage, selectedModel, setSelectedModel, updateLastMessage, setHasImageGenActive, stopListening, governance, hasImageGenActive, openAuthModal, user, defaultModelForTier, resetToDefaultModel]);
 
   useEffect(() => {
     if (isPendingGeneration) {

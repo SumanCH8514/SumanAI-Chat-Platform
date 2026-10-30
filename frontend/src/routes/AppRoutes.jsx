@@ -28,6 +28,7 @@ const AdminDashboard = lazy(() => import('../pages/admin/AdminDashboard'));
 const AdminUsers = lazy(() => import('../pages/admin/AdminUsers'));
 const AdminModels = lazy(() => import('../pages/admin/AdminModels'));
 const AdminQuotas = lazy(() => import('../pages/admin/AdminQuotas'));
+const AdminPayments = lazy(() => import('../pages/admin/AdminPayments'));
 const ExplorePage = lazy(() => import('../pages/ExplorePage'));
 const LibraryPage = lazy(() => import('../pages/LibraryPage'));
 const FilesPage = lazy(() => import('../pages/FilesPage'));
@@ -407,6 +408,7 @@ export const AppRoutes = ({ onSettingsClick, onLoginClick }) => {
           <Route path="users" element={<AdminUsers />} />
           <Route path="models" element={<AdminModels />} />
           <Route path="quotas" element={<AdminQuotas />} />
+          <Route path="payments" element={<AdminPayments />} />
         </Route>
 
         <Route

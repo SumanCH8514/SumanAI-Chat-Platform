@@ -24,6 +24,29 @@ export const useAuthStore = create((set) => ({
           }
         : state.user,
     })),
+  updateUserProfileData: (profileData) =>
+    set((state) => ({
+      user: state.user
+        ? {
+            ...state.user,
+            ...profileData,
+            address: {
+              ...(state.user.address || {}),
+              ...(profileData?.address || {}),
+            },
+          }
+        : state.user,
+    })),
+  updateUserWallet: (credits, balance) =>
+    set((state) => ({
+      user: state.user
+        ? {
+            ...state.user,
+            credits: credits !== undefined ? credits : (state.user.credits || 0),
+            walletBalance: balance !== undefined ? balance : (state.user.walletBalance || 0),
+          }
+        : state.user,
+    })),
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error, loading: false }),
   

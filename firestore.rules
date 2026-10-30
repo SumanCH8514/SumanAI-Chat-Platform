@@ -18,7 +18,7 @@ service cloud.firestore {
     }
 
     function isValidUser(data, userId) {
-      return data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'lastLogin', 'role', 'preferences', 'createdAt', 'updatedAt'])
+      return data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'lastLogin', 'role', 'preferences', 'createdAt', 'updatedAt', 'phoneNumber', 'countryCode', 'address', 'preferredCurrency', 'credits', 'walletBalance', 'walletUpdatedAt', 'plan', 'proStartedAt', 'proExpiresAt', 'lastPaymentGateway', 'lastTransactionId', 'referralCode', 'referredBy', 'referredByUid', 'hasRedeemedReferral', 'referralCount', 'referralCreditsEarned'])
         && data.uid is string
         && data.uid == userId
         && (!('email' in data) || (data.email is string && data.email.size() <= 256))
@@ -28,7 +28,25 @@ service cloud.firestore {
         && (!('role' in data) || (data.role is string && data.role.size() <= 50))
         && (!('preferences' in data) || (data.preferences is map && data.preferences.size() <= 50))
         && (!('createdAt' in data) || (data.createdAt is number || data.createdAt is timestamp))
-        && (!('updatedAt' in data) || (data.updatedAt is number || data.updatedAt is timestamp));
+        && (!('updatedAt' in data) || (data.updatedAt is number || data.updatedAt is timestamp))
+        && (!('phoneNumber' in data) || (data.phoneNumber is string && data.phoneNumber.size() <= 50))
+        && (!('countryCode' in data) || (data.countryCode is string && data.countryCode.size() <= 10))
+        && (!('address' in data) || (data.address is map && data.address.size() <= 20))
+        && (!('preferredCurrency' in data) || (data.preferredCurrency is string && data.preferredCurrency.size() <= 10))
+        && (!('credits' in data) || data.credits is number)
+        && (!('walletBalance' in data) || data.walletBalance is number)
+        && (!('walletUpdatedAt' in data) || (data.walletUpdatedAt is number || data.walletUpdatedAt is timestamp))
+        && (!('plan' in data) || (data.plan is string && data.plan.size() <= 50))
+        && (!('proStartedAt' in data) || (data.proStartedAt is number || data.proStartedAt is timestamp))
+        && (!('proExpiresAt' in data) || (data.proExpiresAt is number || data.proExpiresAt is timestamp))
+        && (!('lastPaymentGateway' in data) || (data.lastPaymentGateway is string && data.lastPaymentGateway.size() <= 50))
+        && (!('lastTransactionId' in data) || (data.lastTransactionId is string && data.lastTransactionId.size() <= 150))
+        && (!('referralCode' in data) || (data.referralCode is string && data.referralCode.size() <= 50))
+        && (!('referredBy' in data) || (data.referredBy is string && data.referredBy.size() <= 50))
+        && (!('referredByUid' in data) || (data.referredByUid is string && data.referredByUid.size() <= 128))
+        && (!('hasRedeemedReferral' in data) || (data.hasRedeemedReferral is bool))
+        && (!('referralCount' in data) || data.referralCount is number)
+        && (!('referralCreditsEarned' in data) || data.referralCreditsEarned is number);
     }
 
     function isValidChat(data, chatId) {
@@ -41,17 +59,38 @@ service cloud.firestore {
         && (!('isPinned' in data) || (data.isPinned is bool));
     }
 
+    function isValidTransaction(data, txnId) {
+      return data.keys().hasOnly(['id', 'orderId', 'paymentId', 'gateway', 'amount', 'currency', 'purpose', 'title', 'credits', 'status', 'timestamp', 'billingAddress', 'phoneNumber', 'email', 'userId'])
+        && (!('id' in data) || (data.id is string && data.id.size() <= 150 && data.id == txnId))
+        && (!('orderId' in data) || (data.orderId is string && data.orderId.size() <= 150))
+        && (!('paymentId' in data) || (data.paymentId is string && data.paymentId.size() <= 150))
+        && (!('gateway' in data) || (data.gateway is string && data.gateway.size() <= 50))
+        && (!('amount' in data) || data.amount is number)
+        && (!('currency' in data) || (data.currency is string && data.currency.size() <= 10))
+        && (!('purpose' in data) || (data.purpose is string && data.purpose.size() <= 100))
+        && (!('title' in data) || (data.title is string && data.title.size() <= 200))
+        && (!('credits' in data) || data.credits is number)
+        && (!('status' in data) || (data.status is string && data.status.size() <= 50))
+        && (!('timestamp' in data) || (data.timestamp is number || data.timestamp is timestamp))
+        && (!('billingAddress' in data) || (data.billingAddress is map && data.billingAddress.size() <= 20))
+        && (!('phoneNumber' in data) || (data.phoneNumber is string && data.phoneNumber.size() <= 50))
+        && (!('email' in data) || (data.email is string && data.email.size() <= 256))
+        && (!('userId' in data) || (data.userId is string && data.userId.size() <= 128));
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
-      allow create: if isOwner(userId)
-        && isValidUser(request.resource.data, userId)
-        && (!('role' in request.resource.data) || request.resource.data.role == 'user');
+      allow create: if isValidUser(request.resource.data, userId)
+        && (
+          (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role in ['user', 'pro']))
+          || isAdmin()
+        );
       allow update: if isValidUser(request.resource.data, userId)
         && request.resource.data.uid == resource.data.uid
         && (!('createdAt' in resource.data) || (!('createdAt' in request.resource.data) || request.resource.data.createdAt == resource.data.createdAt))
         && (
-          (isOwner(userId) && (!('role' in request.resource.data) || ('role' in resource.data && request.resource.data.role == resource.data.role) || (!('role' in resource.data) && request.resource.data.role == 'user')))
+          (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role in ['user', 'pro'] || ('role' in resource.data && request.resource.data.role == resource.data.role)))
           || isAdmin()
         );
       allow delete: if isOwner(userId) || isAdmin();
@@ -66,6 +105,64 @@ service cloud.firestore {
           && (!('createdAt' in resource.data) || (!('createdAt' in request.resource.data) || request.resource.data.createdAt == resource.data.createdAt));
         allow delete: if isOwner(userId);
       }
+
+      match /usage/{dateKey} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /transactions/{txnId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isValidTransaction(request.resource.data, txnId)
+          && (
+            (isOwner(userId) && (!('userId' in request.resource.data) || request.resource.data.userId == userId))
+            || isAdmin()
+          );
+        allow update: if isAdmin() && isValidTransaction(request.resource.data, txnId);
+        allow delete: if isAdmin();
+      }
+
+      match /referrals/{refId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAuthenticated();
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    match /transactions/{txnId} {
+      allow get: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAuthenticated()
+        && isValidTransaction(request.resource.data, txnId)
+        && (
+          request.resource.data.userId == request.auth.uid
+          || isAdmin()
+        );
+      allow update: if isAdmin() && isValidTransaction(request.resource.data, txnId);
+      allow delete: if isAdmin();
+    }
+
+    match /{path=**}/transactions/{txnId} {
+      allow read: if isAdmin()
+        || (isAuthenticated() && (
+          ('userId' in resource.data && resource.data.userId == request.auth.uid)
+          || exists(/databases/$(database)/documents/users/$(request.auth.uid)/transactions/$(txnId))
+        ));
+    }
+
+    match /referrals/{refId} {
+      allow read: if isAuthenticated()
+        && (
+          resource.data.referrerId == request.auth.uid
+          || resource.data.refereeId == request.auth.uid
+          || isAdmin()
+        );
+      allow list: if isAdmin();
+      allow create: if isAuthenticated()
+        && (
+          request.resource.data.refereeId == request.auth.uid
+          || isAdmin()
+        );
+      allow update, delete: if isAdmin();
     }
 
     match /system/{docId} {

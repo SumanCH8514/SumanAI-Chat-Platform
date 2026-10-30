@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Lock, ImageOff, Image as ImageIcon, Zap, Crown, Cpu } from 'lucide-react';
+import { ChevronDown, Lock, ImageOff, Zap, Crown, Cpu } from 'lucide-react';
 import { useModel } from '../hooks/useModel';
 import { MODEL_LIST } from '../constants/models';
 import { useChatStore } from '../store/useChatStore';
@@ -136,9 +136,11 @@ const ModelSelector = () => {
     }
 
     const isDisabledByVision = hasAttachments && !model.supportsVision;
-    const isDisabledByImageGen = hasImageGenActive && !model.supportsImageGen;
 
-    if (!isDisabledByVision && !isDisabledByImageGen) {
+    if (!isDisabledByVision) {
+      if (hasImageGenActive && !model.supportsImageGen) {
+        useChatStore.getState().setHasImageGenActive(false);
+      }
       setSelectedModel(model);
       setOpen(false);
     }
@@ -157,8 +159,6 @@ const ModelSelector = () => {
   let footerNote = null;
   if (hasAttachments) {
     footerNote = 'Only vision-capable models are selectable while images are attached.';
-  } else if (hasImageGenActive) {
-    footerNote = 'Only image generation models are selectable in this mode.';
   }
 
   const isSelectedPremium = selectedModel?.tier === 'premium';
@@ -246,15 +246,12 @@ const ModelSelector = () => {
               ) : (
                 currentModels.map(model => {
                   const isDisabledByVision = hasAttachments && !model.supportsVision;
-                  const isDisabledByImageGen = hasImageGenActive && !model.supportsImageGen;
-                  const isDisabled = isDisabledByVision || isDisabledByImageGen;
+                  const isDisabled = isDisabledByVision;
                   const isEffectivelyLocked = model.locked && !hasProAccess && !isAdmin;
 
                   let badge = null;
                   if (isDisabledByVision) {
                     badge = <span className="model-badge no-vision-badge"><ImageOff size={10} /> No Vision</span>;
-                  } else if (isDisabledByImageGen) {
-                    badge = <span className="model-badge no-vision-badge"><ImageIcon size={10} /> No Image Gen</span>;
                   } else if (isEffectivelyLocked) {
                     const isProLock = model.lockReason === 'pro_required';
                     badge = (

@@ -1,0 +1,83 @@
+.image-quota-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border-light);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  user-select: none;
+  box-sizing: border-box;
+  max-width: 100%;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.image-quota-badge.guest {
+  cursor: pointer;
+  color: var(--brand-primary);
+  border-color: var(--brand-border);
+  background: var(--brand-subtle);
+}
+
+.image-quota-badge.guest:hover {
+  background: var(--bg-active);
+}
+
+.image-quota-badge.pro {
+  color: var(--brand-primary);
+  border-color: var(--brand-border);
+  background: var(--brand-subtle);
+  font-weight: 600;
+}
+
+.image-quota-badge.blocked {
+  color: #DC2626;
+  border-color: rgba(220, 38, 38, 0.25);
+  background: rgba(220, 38, 38, 0.08);
+  font-weight: 600;
+}
+
+.quota-clock-icon {
+  animation: quotaPulse 2s infinite ease-in-out;
+}
+
+.quota-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10B981;
+  display: inline-block;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px rgba(16, 185, 129, 0.4);
+}
+
+@keyframes quotaPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (max-width: 640px) {
+  .image-quota-badge {
+    padding: 5px 9px;
+    font-size: 11.5px;
+    gap: 5px;
+    flex-shrink: 0;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .image-quota-badge {
+    padding: 4px 7px;
+    font-size: 10.5px;
+    gap: 4px;
+  }
+}

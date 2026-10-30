@@ -177,6 +177,59 @@ export const useChatStore = create(
         });
       },
 
+      removeImageFromChat: (chatId, imgUrl) => {
+        if (!imgUrl) return;
+        set((state) => {
+          const updatedChats = state.chats.map((chat) => {
+            if (chatId && chat.id !== chatId) return chat;
+
+            let chatChanged = false;
+            const updatedMessages = (chat.messages || []).map((msg) => {
+              let msgChanged = false;
+              let newAttachments = msg.attachments;
+              if (Array.isArray(msg.attachments)) {
+                newAttachments = msg.attachments.filter((att) => {
+                  const match = att.url === imgUrl || (att.data && imgUrl.includes(att.data));
+                  if (match) msgChanged = true;
+                  return !match;
+                });
+              }
+
+              let newContent = msg.content;
+              if (typeof msg.content === 'string' && msg.content.includes(imgUrl)) {
+                const escapedUrl = imgUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(`!\\[[^\\]]*\\]\\(${escapedUrl}\\)`, 'g');
+                newContent = msg.content.replace(regex, '').trim();
+                msgChanged = true;
+              }
+
+              if (msgChanged) {
+                chatChanged = true;
+                return {
+                  ...msg,
+                  content: newContent,
+                  attachments: newAttachments
+                };
+              }
+              return msg;
+            }).filter((m) => m.content || (m.attachments && m.attachments.length > 0) || m.role === 'user');
+
+            if (chatChanged) {
+              const updatedChat = {
+                ...chat,
+                messages: updatedMessages
+              };
+              const userId = getUserId();
+              if (userId) firestoreService.saveChat(userId, updatedChat);
+              return updatedChat;
+            }
+            return chat;
+          });
+
+          return { chats: updatedChats };
+        });
+      },
+
       syncChats: async () => {
         const userId = getUserId();
         if (!userId) return;

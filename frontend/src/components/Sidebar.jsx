@@ -5,7 +5,7 @@ import {
   Search, Compass, BookOpen, FolderHeart, Clock,
   MessageSquare, Wrench, Plus, Zap, Sliders, User,
   Settings, HelpCircle, LogOut, ChevronRight, X, PlusCircle,
-  MoreHorizontal, Share, Edit2, Pin, Trash2, ShieldCheck
+  MoreHorizontal, Share, Edit2, Pin, Trash2, ShieldCheck, Wallet, Gift
 } from 'lucide-react';
 import Skeleton from './Skeleton';
 import RenameModal from './RenameModal';
@@ -22,7 +22,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
   const { user, logout } = useAuthStore();
   const isGuest = Boolean(user?.isAnonymous);
   const isAdmin = adminService.checkIsAdmin(user);
-  const isPro = Boolean(user?.role === 'pro' || isAdmin);
+  const isPro = adminService.checkHasProAccess(user);
   const userSubtitle = isGuest
     ? 'Guest (Qwen 3.8 27B)'
     : isAdmin
@@ -195,9 +195,22 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
     },
     {
       icon: <Zap size={16} />,
-      label: 'Upgrade plan',
+      label: isPro ? 'Pro Benefits' : 'Upgrade plan',
       dividerBefore: true,
       action: () => { setShowUserMenu(false); onSettingsClick('upgrade'); }
+    },
+    {
+      icon: <Wallet size={16} />,
+      label: 'Wallet & Credits',
+      dividerBefore: false,
+      action: () => { setShowUserMenu(false); onSettingsClick('wallet'); }
+    },
+    {
+      icon: <Gift size={16} />,
+      label: 'Refer & Earn',
+      badge: '+100 Cr',
+      dividerBefore: false,
+      action: () => { setShowUserMenu(false); onSettingsClick('referral'); }
     },
     {
       icon: <Sliders size={16} />,
@@ -241,7 +254,23 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
   return (
     <aside className={`sidebar${isOpen ? ' sidebar--open' : ''}`}>
       <div className="brand">
-        <div className="brand-logo-container">
+        <div
+          className="brand-logo-container"
+          onClick={() => {
+            navigate('/');
+            if (window.innerWidth <= 640 && typeof onClose === 'function') onClose();
+          }}
+          role="button"
+          tabIndex={0}
+          title="Return to Home"
+          style={{ cursor: 'pointer' }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              navigate('/');
+              if (window.innerWidth <= 640 && typeof onClose === 'function') onClose();
+            }
+          }}
+        >
           <img src="/sumanAI-logo1.png" alt="SumanAI" className="brand-logo" />
         </div>
         <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar">
@@ -405,6 +434,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
                 >
                   <span className="sb-menu-icon">{item.icon}</span>
                   <span className="sb-menu-label">{item.label}</span>
+                  {item.badge && <span className="sb-menu-badge">{item.badge}</span>}
                   {item.hasArrow && <ChevronRight size={13} className="sb-menu-arrow" />}
                 </button>
               </React.Fragment>

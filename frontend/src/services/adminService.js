@@ -7,6 +7,7 @@ import {
   updateDoc,
   deleteDoc,
   collection,
+  collectionGroup,
   query,
   orderBy,
   getDocs,
@@ -83,7 +84,7 @@ const DEFAULT_GOVERNANCE = {
         '@cf/meta/llama-3.2-11b-vision-instruct',
         '@cf/black-forest-labs/flux-1-schnell'
       ],
-      defaultModelId: 'openai/gpt-oss-120b',
+      defaultModelId: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
       imageGenLimit: -1,
       rateLimit: {
         requestsPerHour: 500,
@@ -322,6 +323,158 @@ export const adminService = {
     if (!db) throw new Error('Database not initialized');
     const userRef = doc(db, 'users', userId);
     await deleteDoc(userRef);
+  },
+
+  getPaymentGatewayConfig: async () => {
+    const defaultGatewayConfig = {
+      razorpay: { enabled: true, mode: 'test', keyId: '', keySecret: '', webhookSecret: '' },
+      zaakpay: { enabled: true, mode: 'sandbox', merchantId: '', secretKey: '' },
+      phonepe: { enabled: true, mode: 'uat', merchantId: '', saltKey: '', saltIndex: '1' },
+      stripe: { enabled: true, mode: 'test', publishableKey: '', secretKey: '', webhookSecret: '' },
+      paypal: { enabled: true, mode: 'sandbox', clientId: '', clientSecret: '' },
+      updatedAt: Date.now()
+    };
+    try {
+      const stored = localStorage.getItem('sumanai_payment_gateways');
+      if (stored) return { ...defaultGatewayConfig, ...JSON.parse(stored) };
+    } catch {
+      void 0;
+    }
+    const db = getFirebaseDb();
+    if (!db) return defaultGatewayConfig;
+    try {
+      const ref = doc(db, 'system', 'payment_gateways');
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data();
+        localStorage.setItem('sumanai_payment_gateways', JSON.stringify(data));
+        return { ...defaultGatewayConfig, ...data };
+      }
+    } catch {
+      void 0;
+    }
+    return defaultGatewayConfig;
+  },
+
+  savePaymentGatewayConfig: async (config) => {
+    const payload = {
+      ...config,
+      updatedAt: Date.now()
+    };
+    try {
+      localStorage.setItem('sumanai_payment_gateways', JSON.stringify(payload));
+      window.dispatchEvent(new CustomEvent('sumanai_payment_gateways_updated', { detail: payload }));
+    } catch {
+      void 0;
+    }
+    const db = getFirebaseDb();
+    if (db) {
+      const ref = doc(db, 'system', 'payment_gateways');
+      await setDoc(ref, payload, { merge: true });
+    }
+    return payload;
+  },
+
+  getAllPlatformTransactions: async () => {
+    const txnMap = new Map();
+
+    try {
+      const adminTxns = JSON.parse(localStorage.getItem('sumanai_admin_txns') || '[]');
+      if (Array.isArray(adminTxns)) {
+        adminTxns.forEach(t => {
+          const id = t?.id || t?.transactionId;
+          if (id) txnMap.set(id, t);
+        });
+      }
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sumanai_txns_')) {
+          try {
+            const userTxns = JSON.parse(localStorage.getItem(key) || '[]');
+            if (Array.isArray(userTxns)) {
+              userTxns.forEach(t => {
+                const id = t?.id || t?.transactionId;
+                if (id && !txnMap.has(id)) {
+                  txnMap.set(id, t);
+                }
+              });
+            }
+          } catch {
+            void 0;
+          }
+        }
+      }
+    } catch {
+      void 0;
+    }
+
+    const db = getFirebaseDb();
+    if (db) {
+      try {
+        const txnsRef = collection(db, 'transactions');
+        const q = query(txnsRef, orderBy('timestamp', 'desc'));
+        const snapshot = await getDocs(q);
+        snapshot.docs.forEach(d => {
+          const data = d.data();
+          const id = d.id || data.id || data.transactionId;
+          if (id) {
+            txnMap.set(id, { ...data, id });
+          }
+        });
+      } catch {
+        void 0;
+      }
+
+      try {
+        const cgRef = collectionGroup(db, 'transactions');
+        const cgSnap = await getDocs(cgRef);
+        cgSnap.docs.forEach(d => {
+          const data = d.data();
+          const id = d.id || data.id || data.transactionId;
+          if (id) {
+            txnMap.set(id, { ...data, id });
+          }
+        });
+      } catch {
+        void 0;
+      }
+
+      try {
+        const usersSnap = await getDocs(collection(db, 'users'));
+        for (const uDoc of usersSnap.docs) {
+          try {
+            const userTxnSnap = await getDocs(collection(db, 'users', uDoc.id, 'transactions'));
+            userTxnSnap.docs.forEach(d => {
+              const data = d.data();
+              const id = d.id || data.id || data.transactionId;
+              if (id) {
+                txnMap.set(id, { ...data, id, userId: data.userId || uDoc.id });
+              }
+            });
+          } catch {
+            void 0;
+          }
+        }
+      } catch {
+        void 0;
+      }
+    }
+
+    const allTxns = Array.from(txnMap.values());
+    allTxns.sort((a, b) => {
+      const tA = typeof a.timestamp === 'number' ? a.timestamp : new Date(a.timestamp || 0).getTime();
+      const tB = typeof b.timestamp === 'number' ? b.timestamp : new Date(b.timestamp || 0).getTime();
+      return tB - tA;
+    });
+
+    try {
+      localStorage.setItem('sumanai_admin_txns', JSON.stringify(allTxns));
+    } catch {
+      void 0;
+    }
+
+    return allTxns;
   }
 };
 

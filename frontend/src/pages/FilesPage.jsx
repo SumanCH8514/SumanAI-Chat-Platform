@@ -9,11 +9,11 @@ import {
   Trash2,
   FileCode,
   Image as ImageIcon,
-  FileText,
   Upload,
   X
 } from 'lucide-react';
 import { useChatStore } from '../store/useChatStore';
+import { env } from '../config/env';
 import './FilesPage.css';
 
 export const FilesPage = () => {
@@ -31,6 +31,15 @@ export const FilesPage = () => {
     }
   });
 
+  const [deletedFileIds, setDeletedFileIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sumanai_deleted_file_ids');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const chatFiles = useMemo(() => {
     const list = [];
     chats.forEach((chat) => {
@@ -40,15 +49,22 @@ export const FilesPage = () => {
             msg.attachments.forEach((att, aIdx) => {
               const fileUrl = att.url || (att.data ? `data:${att.type || 'image/png'};base64,${att.data}` : null);
               if (fileUrl) {
+                const tsMatch = typeof fileUrl === 'string' ? fileUrl.match(/img_(\d{10,13})/) : null;
+                const fileCreatedAt = tsMatch
+                  ? parseInt(tsMatch[1], 10)
+                  : (msg.createdAt || msg.timestamp || chat.updatedAt || chat.createdAt || Date.now());
+
                 list.push({
                   id: `att-${chat.id}-${mIdx}-${aIdx}`,
+                  chatId: chat.id,
+                  messageIdx: mIdx,
                   name: att.name || `Image_Attachment_${chat.id.slice(0, 4)}_${aIdx + 1}.png`,
                   type: 'image',
                   subtype: 'attachment',
                   url: fileUrl,
                   size: att.size || '320 KB',
                   chatTitle: chat.title,
-                  createdAt: chat.createdAt || Date.now()
+                  createdAt: fileCreatedAt
                 });
               }
             });
@@ -72,15 +88,22 @@ export const FilesPage = () => {
               const isData = imgUrl.startsWith('data:');
               const sizeKb = isData ? Math.max(1, Math.round((imgUrl.length * 0.75) / 1024)) : 420;
 
+              const tsMatch = imgUrl.match(/img_(\d{10,13})/);
+              const fileCreatedAt = tsMatch
+                ? parseInt(tsMatch[1], 10)
+                : (msg.createdAt || msg.timestamp || chat.updatedAt || chat.createdAt || Date.now());
+
               list.push({
                 id: `gen-img-${chat.id}-${mIdx}-${imgIdx++}`,
+                chatId: chat.id,
+                messageIdx: mIdx,
                 name: `${cleanPrompt}.${ext}`,
                 type: 'image',
                 subtype: 'generated',
                 url: imgUrl,
                 size: `${sizeKb} KB`,
                 chatTitle: chat.title || 'AI Image Gen',
-                createdAt: chat.createdAt || Date.now(),
+                createdAt: fileCreatedAt,
                 prompt: altText
               });
             }
@@ -94,13 +117,15 @@ export const FilesPage = () => {
               if (code.length > 40) {
                 list.push({
                   id: `code-${chat.id}-${mIdx}-${blockIdx++}`,
+                  chatId: chat.id,
+                  messageIdx: mIdx,
                   name: `Artifact_${lang}_${chat.title.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 16)}.${lang === 'python' ? 'py' : lang === 'javascript' || lang === 'js' ? 'js' : lang === 'html' ? 'html' : lang === 'css' ? 'css' : 'txt'}`,
                   type: 'code',
                   language: lang,
                   content: code,
                   size: `${Math.max(1, Math.round(code.length / 1024))} KB`,
                   chatTitle: chat.title,
-                  createdAt: chat.createdAt || Date.now()
+                  createdAt: msg.createdAt || msg.timestamp || chat.updatedAt || chat.createdAt || Date.now()
                 });
               }
             }
@@ -112,8 +137,17 @@ export const FilesPage = () => {
   }, [chats]);
 
   const allFiles = useMemo(() => {
-    return [...customFiles, ...chatFiles];
-  }, [customFiles, chatFiles]);
+    const deletedSet = new Set(deletedFileIds);
+    const combined = [...customFiles, ...chatFiles].filter(
+      (item) => !deletedSet.has(item.id) && !(item.url && deletedSet.has(item.url))
+    );
+
+    return combined.sort((a, b) => {
+      const timeA = typeof a.createdAt === 'number' ? a.createdAt : new Date(a.createdAt || 0).getTime();
+      const timeB = typeof b.createdAt === 'number' ? b.createdAt : new Date(b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+  }, [customFiles, chatFiles, deletedFileIds]);
 
   const filteredFiles = useMemo(() => {
     return allFiles.filter((item) => {
@@ -173,6 +207,53 @@ export const FilesPage = () => {
     });
   };
 
+  const handleDeleteImage = async (file) => {
+    if (!file) return;
+
+    const confirmDelete = window.confirm(`Are you sure you want to delete "${file.name}"? This will remove the image from storage and your workspace.`);
+    if (!confirmDelete) return;
+
+    const fileId = file.id;
+    const fileUrl = file.url;
+
+    setDeletedFileIds((prev) => {
+      const next = [...prev, fileId, ...(fileUrl ? [fileUrl] : [])];
+      try {
+        localStorage.setItem('sumanai_deleted_file_ids', JSON.stringify(next));
+      } catch {
+        void 0;
+      }
+      return next;
+    });
+
+    if (previewItem && (previewItem.id === fileId || previewItem.url === fileUrl)) {
+      setPreviewItem(null);
+    }
+
+    if (fileId.startsWith('upload-')) {
+      handleDeleteCustomFile(fileId);
+    }
+
+    if (file.chatId && fileUrl) {
+      useChatStore.getState().removeImageFromChat(file.chatId, fileUrl);
+    }
+
+    if (fileUrl && (fileUrl.startsWith('http://') || fileUrl.startsWith('https://'))) {
+      try {
+        const baseUrl = (env.WORKER_URL || '').replace(/\/+$/, '');
+        if (baseUrl) {
+          await fetch(`${baseUrl}/api/delete-image`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: fileUrl })
+          });
+        }
+      } catch {
+        void 0;
+      }
+    }
+  };
+
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -221,21 +302,30 @@ export const FilesPage = () => {
     <div className="files-page-wrap">
       {previewItem && (
         <div className="files-modal-backdrop" onClick={() => setPreviewItem(null)}>
-          <div className="files-modal-card" onClick={(e) => e.stopPropagation()}>
+          <div
+            className={`files-modal-card ${previewItem.type === 'image' ? 'is-image-modal' : ''}`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="files-modal-head">
               <span className="files-modal-title">{previewItem.name}</span>
               <button
                 type="button"
                 className="files-modal-close"
                 onClick={() => setPreviewItem(null)}
+                aria-label="Close preview"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="files-modal-body">
+            <div className={`files-modal-body ${previewItem.type === 'image' ? 'is-image-body' : ''}`}>
               {previewItem.type === 'image' && (
-                <img src={previewItem.url} alt="" className="files-preview-img" />
+                <img
+                  src={previewItem.url}
+                  alt={previewItem.name || 'Preview'}
+                  className="files-preview-img"
+                  loading="lazy"
+                />
               )}
               {previewItem.type === 'code' && (
                 <pre className="files-preview-code">
@@ -245,12 +335,23 @@ export const FilesPage = () => {
             </div>
 
             <div className="files-modal-footer">
+              {(previewItem.type === 'image' || previewItem.id.startsWith('upload-')) && (
+                <button
+                  type="button"
+                  className="files-btn-danger"
+                  onClick={() => handleDeleteImage(previewItem)}
+                  title="Delete from storage and workspace"
+                >
+                  <Trash2 size={13} />
+                  <span>Delete</span>
+                </button>
+              )}
               <button
                 type="button"
                 className="files-btn-secondary"
                 onClick={() => handleCopyContent(previewItem.id, previewItem)}
               >
-                Copy Content
+                {copiedId === previewItem.id ? 'Copied' : (previewItem.type === 'image' ? 'Copy URL' : 'Copy Content')}
               </button>
               <button
                 type="button"
@@ -339,11 +440,24 @@ export const FilesPage = () => {
                 {filteredFiles.map((f) => {
                   const isCopied = copiedId === f.id;
                   const isCustom = f.id.startsWith('upload-');
+                  const isImage = f.type === 'image';
 
                   return (
                     <tr key={f.id}>
                       <td>
-                        <div className="files-name-cell">
+                        <div
+                          className="files-name-cell clickable"
+                          onClick={() => setPreviewItem(f)}
+                          role="button"
+                          tabIndex={0}
+                          title="Click to preview file"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setPreviewItem(f);
+                            }
+                          }}
+                        >
                           <div className="files-icon-box">
                             {f.type === 'image' && f.url ? (
                               <img src={f.url} alt="" className="files-thumb-img" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
@@ -401,12 +515,12 @@ export const FilesPage = () => {
                           >
                             <Download size={14} />
                           </button>
-                          {isCustom && (
+                          {(isImage || isCustom) && (
                             <button
                               type="button"
                               className="files-action-btn btn-trash"
-                              onClick={() => handleDeleteCustomFile(f.id)}
-                              title="Delete file"
+                              onClick={() => handleDeleteImage(f)}
+                              title="Delete image from storage and workspace"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -426,4 +540,3 @@ export const FilesPage = () => {
 };
 
 export default FilesPage;
-

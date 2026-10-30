@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useChatStore } from '../../store/useChatStore';
 import { firestoreService } from '../../services/firestoreService';
 import { adminService } from '../../services/adminService';
+import { referralService } from '../../services/referralService';
 
 export const AuthObserver = ({ children }) => {
   const setUser = useAuthStore((state) => state.setUser);
@@ -12,6 +13,8 @@ export const AuthObserver = ({ children }) => {
   const syncChats = useChatStore((state) => state.syncChats);
 
   useEffect(() => {
+    referralService.captureUrlReferralCode();
+
     const auth = getFirebaseAuth();
     if (!auth) {
       setLoading(false);
@@ -33,7 +36,15 @@ export const AuthObserver = ({ children }) => {
             void 0;
           }
         }
-        setUser({ ...user, ...profile, role: isAdmin ? 'admin' : (profile?.role || 'user'), isAdmin });
+        let referralCode = profile?.referralCode;
+        if (!referralCode && !user.isAnonymous) {
+          try {
+            referralCode = await referralService.getOrGenerateReferralCode(user);
+          } catch {
+            void 0;
+          }
+        }
+        setUser({ ...user, ...profile, referralCode: referralCode || profile?.referralCode, role: isAdmin ? 'admin' : (profile?.role || 'user'), isAdmin });
         syncChats();
       } else {
         setUser(null);

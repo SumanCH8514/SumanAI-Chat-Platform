@@ -8,7 +8,8 @@ import {
   ArrowLeft,
   Menu,
   X,
-  ShieldCheck
+  ShieldCheck,
+  CreditCard
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import ThemeToggle from '../../components/ThemeToggle';
@@ -25,6 +26,7 @@ export const AdminLayout = () => {
     if (path.includes('/admin/users')) return 'User Management';
     if (path.includes('/admin/models')) return 'AI Model Governance';
     if (path.includes('/admin/quotas')) return 'Tier Quotas & Limits';
+    if (path.includes('/admin/payments')) return 'Payments & Gateways';
     return 'Console Overview';
   };
 
@@ -33,6 +35,7 @@ export const AdminLayout = () => {
     { to: '/admin/users', icon: Users, label: 'User Directory' },
     { to: '/admin/models', icon: Cpu, label: 'Model Governance' },
     { to: '/admin/quotas', icon: Sliders, label: 'Tier Quotas' },
+    { to: '/admin/payments', icon: CreditCard, label: 'Payments & Gateways' },
   ];
 
   return (
