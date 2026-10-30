@@ -350,3 +350,47 @@
     padding: 3px 8px;
   }
 }
+
+.generated-image-watermark {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: rgba(10, 15, 29, 0.78);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  pointer-events: none;
+  user-select: none;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.watermark-logo-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  border-radius: 3px;
+  display: block;
+}
+
+.watermark-brand-text {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #ffffff;
+  line-height: 1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.lightbox-image-container {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  max-height: 78vh;
+  line-height: 0;
+}

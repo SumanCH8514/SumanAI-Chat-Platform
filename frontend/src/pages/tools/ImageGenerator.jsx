@@ -5,6 +5,7 @@ import {
   Maximize2, X, ExternalLink, Sparkles, SlidersHorizontal
 } from 'lucide-react';
 import { chatService } from '../../services/ChatService';
+import { downloadImage } from '../../utils/downloadUtils';
 import './ToolAppShared.css';
 import './ImageGenerator.css';
 
@@ -35,7 +36,7 @@ const RESOLUTIONS = [
 export const ImageGenerator = () => {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState('An isometric smart home robotic assistant hub hovering above a wooden desk');
-  const [negativePrompt, setNegativePrompt] = useState('blurry, photorealistic skin, low resolution, watermark, bad anatomy');
+  const [negativePrompt, setNegativePrompt] = useState('blurry, photorealistic skin, low resolution, bad anatomy');
   const [selectedStyle, setSelectedStyle] = useState('vector');
   const [selectedPalette, setSelectedPalette] = useState('tech');
   const [resolution, setResolution] = useState('1024x1024');
@@ -84,7 +85,7 @@ export const ImageGenerator = () => {
     const styleObj = STYLES.find((s) => s.id === selectedStyle);
     const paletteObj = PALETTES.find((p) => p.id === selectedPalette);
 
-    const fullPrompt = `${prompt.trim()}${styleObj?.suffix || ''}${paletteObj?.suffix || ''}`;
+    const fullPrompt = `${prompt.trim()}${styleObj?.suffix || ''}${paletteObj?.suffix || ''}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge`;
     const encoded = encodeURIComponent(fullPrompt);
     const url = `https://image.pollinations.ai/prompt/${encoded}?width=${resObj.width}&height=${resObj.height}&seed=${seed}&nologo=true`;
 
@@ -119,22 +120,9 @@ export const ImageGenerator = () => {
     };
   };
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     if (!generatedImageUrl) return;
-    try {
-      const response = await fetch(generatedImageUrl);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = `SumanAI_Artwork_${seed}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      window.open(generatedImageUrl, '_blank');
-    }
+    downloadImage(generatedImageUrl, `SumanAI_Artwork_${seed}`, 'jpg');
   };
 
   const handleCopyPrompt = () => {
@@ -364,11 +352,17 @@ export const ImageGenerator = () => {
               </div>
             ) : generatedImageUrl ? (
               <div className="tool-image-display-frame">
-                <img
-                  src={generatedImageUrl}
-                  alt={prompt}
-                  className="tool-rendered-artwork"
-                />
+                <div className="tool-artwork-wrapper">
+                  <img
+                    src={generatedImageUrl}
+                    alt={prompt}
+                    className="tool-rendered-artwork"
+                  />
+                  <div className="generated-image-watermark" aria-hidden="true">
+                    <img src="/sumanAI-logo1.png" alt="" className="watermark-logo-icon" />
+                    <span className="watermark-brand-text">SumanAI</span>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="tool-empty-display">
@@ -395,11 +389,17 @@ export const ImageGenerator = () => {
             >
               <X size={20} />
             </button>
-            <img
-              src={generatedImageUrl}
-              alt={prompt}
-              className="tool-lightbox-img"
-            />
+            <div className="tool-artwork-wrapper">
+              <img
+                src={generatedImageUrl}
+                alt={prompt}
+                className="tool-lightbox-img"
+              />
+              <div className="generated-image-watermark" aria-hidden="true">
+                <img src="/sumanAI-logo1.png" alt="" className="watermark-logo-icon" />
+                <span className="watermark-brand-text">SumanAI</span>
+              </div>
+            </div>
             <div className="tool-lightbox-bar">
               <span className="tool-lightbox-prompt">{prompt}</span>
               <button

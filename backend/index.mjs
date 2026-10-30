@@ -888,8 +888,13 @@ export default {
             }
           }
 
+          let modelPrompt = promptText;
+          if (!/watermark/i.test(modelPrompt)) {
+            modelPrompt = `${modelPrompt}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge`;
+          }
+
           const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
-            prompt: promptText,
+            prompt: modelPrompt,
             steps: 4
           });
 
@@ -912,7 +917,7 @@ export default {
                 bytes[i] = binaryString.charCodeAt(i);
               }
 
-              const imageFileName = `img_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
+              const imageFileName = `SumanAI_img_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
               const r2Key = `generated-images/${imageFileName}`;
               let finalImageUrl = `https://cdn.sumanai.r2.sumanonline.com/${r2Key}`;
 

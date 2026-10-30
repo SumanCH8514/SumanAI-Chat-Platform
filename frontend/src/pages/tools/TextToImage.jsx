@@ -5,6 +5,7 @@ import {
   Sliders, Image as ImageIcon, ExternalLink, Maximize2, X
 } from 'lucide-react';
 import { chatService } from '../../services/ChatService';
+import { downloadImage } from '../../utils/downloadUtils';
 import './ToolAppShared.css';
 import './TextToImage.css';
 
@@ -27,7 +28,7 @@ const ASPECT_RATIOS = [
 export const TextToImage = () => {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState('A sleek architectural modern villa in the mountains at twilight with floor-to-ceiling glass windows and warm interior lighting');
-  const [negativePrompt, setNegativePrompt] = useState('blurry, low quality, distorted, extra limbs, watermark, text');
+  const [negativePrompt, setNegativePrompt] = useState('blurry, low quality, distorted, extra limbs');
   const [selectedStyle, setSelectedStyle] = useState('photorealistic');
   const [aspectRatio, setAspectRatio] = useState('16:9');
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 999999));
@@ -73,7 +74,7 @@ export const TextToImage = () => {
 
     const ratio = ASPECT_RATIOS.find((r) => r.id === aspectRatio) || ASPECT_RATIOS[0];
     const styleObj = STYLES.find((s) => s.id === selectedStyle);
-    const fullPrompt = `${prompt.trim()}${styleObj?.promptSuffix || ''}`;
+    const fullPrompt = `${prompt.trim()}${styleObj?.promptSuffix || ''}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge`;
     const encoded = encodeURIComponent(fullPrompt);
     const url = `https://image.pollinations.ai/prompt/${encoded}?width=${ratio.width}&height=${ratio.height}&seed=${seed}&nologo=true`;
 
@@ -108,20 +109,9 @@ export const TextToImage = () => {
     };
   };
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     if (!generatedImageUrl) return;
-    try {
-      const response = await fetch(generatedImageUrl);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = blobUrl;
-      anchor.download = `SumanAI_Diffusion_${seed}.jpg`;
-      anchor.click();
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      window.open(generatedImageUrl, '_blank');
-    }
+    downloadImage(generatedImageUrl, `SumanAI_Diffusion_${seed}`, 'jpg');
   };
 
   const handleCopyPrompt = () => {
@@ -312,12 +302,17 @@ export const TextToImage = () => {
                 </div>
               ) : generatedImageUrl ? (
                 <div className="tool-image-display-frame">
-                  <img
-                    src={generatedImageUrl}
-                    alt={prompt}
-                    className="tool-rendered-image"
-                    onClick={() => setLightboxOpen(true)}
-                  />
+                  <div className="tool-artwork-wrapper" onClick={() => setLightboxOpen(true)}>
+                    <img
+                      src={generatedImageUrl}
+                      alt={prompt}
+                      className="tool-rendered-image"
+                    />
+                    <div className="generated-image-watermark" aria-hidden="true">
+                      <img src="/sumanAI-logo1.png" alt="" className="watermark-logo-icon" />
+                      <span className="watermark-brand-text">SumanAI</span>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="tool-empty-placeholder">
@@ -355,12 +350,17 @@ export const TextToImage = () => {
           >
             <X size={18} />
           </button>
-          <img
-            src={generatedImageUrl}
-            alt={prompt}
-            className="tool-lightbox-image"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="tool-artwork-wrapper" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={generatedImageUrl}
+              alt={prompt}
+              className="tool-lightbox-image"
+            />
+            <div className="generated-image-watermark" aria-hidden="true">
+              <img src="/sumanAI-logo1.png" alt="" className="watermark-logo-icon" />
+              <span className="watermark-brand-text">SumanAI</span>
+            </div>
+          </div>
         </div>
       )}
     </div>
