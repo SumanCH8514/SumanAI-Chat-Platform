@@ -890,7 +890,7 @@ export default {
 
           let modelPrompt = promptText;
           if (!/watermark/i.test(modelPrompt)) {
-            modelPrompt = `${modelPrompt}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge`;
+            modelPrompt = `${modelPrompt}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge, strictly no other text`;
           }
 
           const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {

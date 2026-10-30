@@ -74,7 +74,7 @@ export const TextToImage = () => {
 
     const ratio = ASPECT_RATIOS.find((r) => r.id === aspectRatio) || ASPECT_RATIOS[0];
     const styleObj = STYLES.find((s) => s.id === selectedStyle);
-    const fullPrompt = `${prompt.trim()}${styleObj?.promptSuffix || ''}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge`;
+    const fullPrompt = `${prompt.trim()}${styleObj?.promptSuffix || ''}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge, strictly no other text`;
     const encoded = encodeURIComponent(fullPrompt);
     const url = `https://image.pollinations.ai/prompt/${encoded}?width=${ratio.width}&height=${ratio.height}&seed=${seed}&nologo=true`;
 
@@ -302,17 +302,12 @@ export const TextToImage = () => {
                 </div>
               ) : generatedImageUrl ? (
                 <div className="tool-image-display-frame">
-                  <div className="tool-artwork-wrapper" onClick={() => setLightboxOpen(true)}>
-                    <img
-                      src={generatedImageUrl}
-                      alt={prompt}
-                      className="tool-rendered-image"
-                    />
-                    <div className="generated-image-watermark" aria-hidden="true">
-                      <img src="/sumanAI-logo1.png" alt="" className="watermark-logo-icon" />
-                      <span className="watermark-brand-text">SumanAI</span>
-                    </div>
-                  </div>
+                  <img
+                    src={generatedImageUrl}
+                    alt={prompt}
+                    className="tool-rendered-image"
+                    onClick={() => setLightboxOpen(true)}
+                  />
                 </div>
               ) : (
                 <div className="tool-empty-placeholder">
@@ -350,17 +345,12 @@ export const TextToImage = () => {
           >
             <X size={18} />
           </button>
-          <div className="tool-artwork-wrapper" onClick={(e) => e.stopPropagation()}>
-            <img
-              src={generatedImageUrl}
-              alt={prompt}
-              className="tool-lightbox-image"
-            />
-            <div className="generated-image-watermark" aria-hidden="true">
-              <img src="/sumanAI-logo1.png" alt="" className="watermark-logo-icon" />
-              <span className="watermark-brand-text">SumanAI</span>
-            </div>
-          </div>
+          <img
+            src={generatedImageUrl}
+            alt={prompt}
+            className="tool-lightbox-image"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>

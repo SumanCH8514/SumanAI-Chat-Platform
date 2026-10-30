@@ -121,10 +121,6 @@ const GeneratedImageCard = ({ src, alt, promptText }) => {
             className="generated-image-display"
             loading="lazy"
           />
-          <div className="generated-image-watermark" aria-hidden="true">
-            <img src="/sumanAI-logo1.png" alt="" className="watermark-logo-icon" />
-            <span className="watermark-brand-text">SumanAI</span>
-          </div>
           <div className="image-zoom-overlay">
             <ZoomIn size={16} />
             <span>Click to expand</span>
@@ -221,13 +217,7 @@ const GeneratedImageCard = ({ src, alt, promptText }) => {
             >
               <X size={20} />
             </button>
-            <div className="lightbox-image-container">
-              <img src={src} alt={cleanPrompt} className="lightbox-image-preview" />
-              <div className="generated-image-watermark" aria-hidden="true">
-                <img src="/sumanAI-logo1.png" alt="" className="watermark-logo-icon" />
-                <span className="watermark-brand-text">SumanAI</span>
-              </div>
-            </div>
+            <img src={src} alt={cleanPrompt} className="lightbox-image-preview" />
             <div className="lightbox-footer">
               <span className="lightbox-caption">{cleanPrompt}</span>
               <button type="button" className="lightbox-download-btn" onClick={handleDownload}>

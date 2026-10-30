@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const formatImagePromptWithWatermark = (promptText) => {
   let modelPrompt = (promptText || '').trim();
   if (!/watermark/i.test(modelPrompt)) {
-    modelPrompt = `${modelPrompt}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge`;
+    modelPrompt = `${modelPrompt}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge, strictly no other text`;
   }
   return modelPrompt;
 };

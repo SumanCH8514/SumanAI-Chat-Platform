@@ -85,7 +85,7 @@ export const ImageGenerator = () => {
     const styleObj = STYLES.find((s) => s.id === selectedStyle);
     const paletteObj = PALETTES.find((p) => p.id === selectedPalette);
 
-    const fullPrompt = `${prompt.trim()}${styleObj?.suffix || ''}${paletteObj?.suffix || ''}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge`;
+    const fullPrompt = `${prompt.trim()}${styleObj?.suffix || ''}${paletteObj?.suffix || ''}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge, strictly no other text`;
     const encoded = encodeURIComponent(fullPrompt);
     const url = `https://image.pollinations.ai/prompt/${encoded}?width=${resObj.width}&height=${resObj.height}&seed=${seed}&nologo=true`;
 
@@ -352,17 +352,11 @@ export const ImageGenerator = () => {
               </div>
             ) : generatedImageUrl ? (
               <div className="tool-image-display-frame">
-                <div className="tool-artwork-wrapper">
-                  <img
-                    src={generatedImageUrl}
-                    alt={prompt}
-                    className="tool-rendered-artwork"
-                  />
-                  <div className="generated-image-watermark" aria-hidden="true">
-                    <img src="/sumanAI-logo1.png" alt="" className="watermark-logo-icon" />
-                    <span className="watermark-brand-text">SumanAI</span>
-                  </div>
-                </div>
+                <img
+                  src={generatedImageUrl}
+                  alt={prompt}
+                  className="tool-rendered-artwork"
+                />
               </div>
             ) : (
               <div className="tool-empty-display">
@@ -389,17 +383,11 @@ export const ImageGenerator = () => {
             >
               <X size={20} />
             </button>
-            <div className="tool-artwork-wrapper">
-              <img
-                src={generatedImageUrl}
-                alt={prompt}
-                className="tool-lightbox-img"
-              />
-              <div className="generated-image-watermark" aria-hidden="true">
-                <img src="/sumanAI-logo1.png" alt="" className="watermark-logo-icon" />
-                <span className="watermark-brand-text">SumanAI</span>
-              </div>
-            </div>
+            <img
+              src={generatedImageUrl}
+              alt={prompt}
+              className="tool-lightbox-img"
+            />
             <div className="tool-lightbox-bar">
               <span className="tool-lightbox-prompt">{prompt}</span>
               <button
