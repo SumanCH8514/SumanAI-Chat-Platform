@@ -11,7 +11,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { chatService } from '../services/ChatService';
 import { usageService } from '../services/usageService';
 import { DEFAULT_VISION_MODEL, DEFAULT_IMAGE_GEN_MODEL } from '../constants/models';
-import { compressImage } from '../utils/imageUtils';
+import { compressImage, isImageGenerationIntent } from '../utils/imageUtils';
 import { parseArtifact } from '../utils/artifactUtils';
 
 const mergeSpeechTranscripts = (results) => {
@@ -304,13 +304,21 @@ const InputBar = () => {
     if (isGenerating) return;
     if (!promptValue && attachments.length === 0) return;
 
+    const autoDetectedImageGen = isImageGenerationIntent(promptValue);
     const isImageGen = Boolean(
       selectedModel?.supportsImageGen || 
       hasImageGenActive || 
       overrideOptions?.isImageGen || 
       overrideOptions?.modelId === DEFAULT_IMAGE_GEN_MODEL?.id ||
-      overrideOptions?.modelId?.includes('flux')
+      overrideOptions?.modelId?.includes('flux') ||
+      autoDetectedImageGen
     );
+
+    if (autoDetectedImageGen && !hasImageGenActive && !selectedModel?.supportsImageGen) {
+      setVisionToast('Auto-detected Image Request: Flux 1 Schnell');
+      setTimeout(() => setVisionToast(null), 3200);
+    }
+
     if (isImageGen) {
       const quota = usageService.checkImageGenAllowed(user, governance);
       if (!quota.allowed) {
@@ -365,7 +373,7 @@ const InputBar = () => {
 
       const modelToUse = overrideOptions?.modelId 
         || (isImageGen && DEFAULT_IMAGE_GEN_MODEL ? DEFAULT_IMAGE_GEN_MODEL.id : selectedModel.id);
-      const modelDisplayName = selectedModel?.name || (isImageGen ? 'Flux 1 Schnell' : 'Llama 3.3 70b Instruct Fp8 Fast');
+      const modelDisplayName = (isImageGen && DEFAULT_IMAGE_GEN_MODEL) ? DEFAULT_IMAGE_GEN_MODEL.name : (selectedModel?.name || 'SumanAI');
 
       addMessage(chatId, { role: 'assistant', content: '', model: modelDisplayName });
 

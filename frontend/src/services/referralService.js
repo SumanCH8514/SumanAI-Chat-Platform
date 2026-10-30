@@ -175,7 +175,8 @@ export const referralService = {
 
   findReferrerByCode: async (code) => {
     if (!code) return null;
-    const cleanCode = code.trim().toUpperCase();
+    const cleanCode = code.trim().toUpperCase().replace(/\s+/g, '');
+    if (!cleanCode) return null;
 
     try {
       const registry = JSON.parse(localStorage.getItem('sumanai_referral_codes') || '{}');
@@ -190,7 +191,7 @@ export const referralService = {
       const key = localStorage.key(i);
       if (key && key.startsWith('sumanai_ref_code_')) {
         const storedCode = localStorage.getItem(key);
-        if (storedCode && storedCode.trim().toUpperCase() === cleanCode) {
+        if (storedCode && storedCode.trim().toUpperCase().replace(/\s+/g, '') === cleanCode) {
           const uid = key.replace('sumanai_ref_code_', '');
           return { uid, email: 'Registered Member', displayName: 'Friend' };
         }
@@ -215,10 +216,10 @@ export const referralService = {
       }
     }
 
-    if (/^[A-Z0-9]{3,10}-[A-Z0-9]{3,10}$/.test(cleanCode)) {
+    if (/^[A-Z0-9_-]{3,24}$/.test(cleanCode)) {
       const parts = cleanCode.split('-');
       return {
-        uid: `ref_${parts[1]}`,
+        uid: parts[1] ? `ref_${parts[1]}` : `ref_${cleanCode.slice(-4)}`,
         email: '',
         displayName: parts[0] || 'Friend',
         synthesized: true
@@ -241,7 +242,10 @@ export const referralService = {
       throw new Error('Please enter a valid referral code.');
     }
 
-    const cleanCode = inputCode.trim().toUpperCase();
+    const cleanCode = inputCode.trim().toUpperCase().replace(/\s+/g, '');
+    if (!cleanCode) {
+      throw new Error('Please enter a valid referral code.');
+    }
 
     let userProfile = null;
     try {
@@ -263,7 +267,7 @@ export const referralService = {
     if (!myOwnCode) {
       myOwnCode = referralService.generateCodeFromUser(currentUser);
     }
-    if (myOwnCode && myOwnCode.trim().toUpperCase() === cleanCode) {
+    if (myOwnCode && myOwnCode.trim().toUpperCase().replace(/\s+/g, '') === cleanCode) {
       throw new Error('You cannot redeem your own referral code.');
     }
 

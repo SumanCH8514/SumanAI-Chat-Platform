@@ -237,6 +237,38 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3, initialDelay = 
   }
 }
 
+function isImageGenerationIntent(text) {
+  if (!text || typeof text !== 'string') return false;
+  const clean = text.trim().replace(/\s+/g, ' ');
+  if (clean.length < 3) return false;
+
+  const codeOrExplanationRegex = /^(?:how\s+(?:to|do|can)|why\s+(?:does|is|are)|what\s+(?:is|are)|explain|describe\s+how|write\s+(?:a\s+)?(?:code|script|program|function|shader|algorithm|test)|implement\s+(?:a|an)?|in\s+(?:python|javascript|typescript|c\+\+|java|rust|html|css|php))\b/i;
+  if (codeOrExplanationRegex.test(clean)) return false;
+
+  const programmingContextRegex = /\b(?:python|javascript|typescript|code\s+snippet|npm\s+install|pip\s+install|github|stack\s*overflow|api\s+endpoint|ffmpeg|opencv|canvas\s+api|three\.js|webgl)\b/i;
+  if (programmingContextRegex.test(clean)) return false;
+
+  const nonVisualFigureOfSpeech = /\b(?:draw\s+(?:a\s+)?(?:comparison|conclusion|parallel|distinction)|paint\s+(?:a\s+)?picture\s+of\s+how|make\s+(?:a\s+)?(?:point|list|table|plan|schedule|summary|call|decision))\b/i;
+  if (nonVisualFigureOfSpeech.test(clean)) return false;
+
+  const explicitGenVerbRegex = /^(?:please\s+)?(?:can\s+you\s+)?(?:could\s+you\s+)?(?:please\s+)?(?:i\s+(?:want|need|would\s+like)\s+)?(?:give\s+me\s+)?(?:generate|create|draw|make|render|produce|paint|design|illustrate|synthesize)\s+(?:a|an|the|me\s+a|me\s+an|some)?\s*(?:[a-zA-Z0-9_,-]+\s+){0,8}?(?:image|picture|photo|photograph|portrait|illustration|artwork|drawing|painting|render|visual|graphic|wallpaper|avatar|sketch|poster|banner|concept\s+art|digital\s+art)\b/i;
+  if (explicitGenVerbRegex.test(clean)) return true;
+
+  const directNounPrefixRegex = /^(?:a|an|the)?\s*(?:[a-zA-Z0-9_-]+\s+){0,4}?(?:image|picture|photo|photograph|portrait|wallpaper|artwork|illustration|drawing|painting|render|concept\s+art)\s+(?:of|showing|depicting|with|featuring|in)\b/i;
+  if (directNounPrefixRegex.test(clean)) return true;
+
+  const wantImageRegex = /\b(?:i\s+want|i\s+need|give\s+me|show\s+me)\s+(?:a|an)?\s*(?:[a-zA-Z0-9_,-]+\s+){0,4}?(?:image|picture|photo|portrait|illustration|drawing|painting|artwork|render|wallpaper)\s+(?:of|with|for)\b/i;
+  if (wantImageRegex.test(clean)) return true;
+
+  const shortCommandRegex = /^(?:draw|paint|illustrate|sketch)\s+(?:a|an|the|me)?\s+/i;
+  if (shortCommandRegex.test(clean) && !/\b(?:code|diagram|flowchart|chart|graph|wireframe|architecture|conclusion|summary|table)\b/i.test(clean)) return true;
+
+  const styleConversionRegex = /\b(?:convert|remix|transform|change|turn)\s+this\s+image\s+(?:in|into|to)\b/i;
+  if (styleConversionRegex.test(clean)) return true;
+
+  return false;
+}
+
 export default {
   async fetch(request, env) {
     const corsHeaders = getCorsHeaders(request);
@@ -745,6 +777,24 @@ export default {
       const isGoogle = await isGoogleAuthenticated(request, env);
       let targetModel = typeof modelId === 'string' ? modelId : (isGoogle ? 'openai/gpt-oss-120b' : 'qwen/qwen3.8-27b');
 
+      const lastUserMsg = messages.filter(m => m.role === 'user').pop();
+      const lastUserText = lastUserMsg?.content || '';
+
+      const detectedImageIntent = isImageGenerationIntent(lastUserText);
+      if (detectedImageIntent && targetModel !== '@cf/black-forest-labs/flux-1-schnell') {
+        if (!isGoogle) {
+          return new Response(JSON.stringify({
+            error: "Image generation requires a signed-in Google account. Please sign in to create images."
+          }), {
+            status: 403,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+        if (env.AI) {
+          targetModel = '@cf/black-forest-labs/flux-1-schnell';
+        }
+      }
+
       if (!isGoogle && targetModel !== 'qwen/qwen3.8-27b') {
         return new Response(JSON.stringify({
           error: "This model is locked. Please sign in with Google to unlock all models."
@@ -795,7 +845,7 @@ export default {
       }
 
       const modelDisplayName = targetModel.split('/').pop().replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      const systemInstruction = `You are SumanAI - Model: ${modelDisplayName}. You are an intelligent, high-performance AI assistant. Always provide clear, beautifully structured responses. Format answers with clean Markdown headings (###), paragraphs, lists, and horizontal dividers (---) where appropriate. When presenting poems, creative compositions, summaries, or structured analyses, divide sections clearly with headers and dividers, and provide an insightful closing reflection or key takeaway in a Markdown blockquote (> **Key Reflection:** ...). When providing code, always format inside fenced code blocks with the exact language identifier.${personalizationPrompt}`;
+      const systemInstruction = `You are SumanAI - Model: ${modelDisplayName}. You are an intelligent, high-performance AI assistant. Always provide clear, beautifully structured responses. Format answers with clean Markdown headings (###), paragraphs, lists, and horizontal dividers (---) where appropriate. When presenting poems, creative compositions, summaries, or structured analyses, divide sections clearly with headers and dividers, and provide an insightful closing reflection or key takeaway in a Markdown blockquote (> **Key Reflection:** ...). When providing code, always format inside fenced code blocks with the exact language identifier. Strictly never fabricate, invent, or output fake markdown image links or fake CDN URLs (such as ![...](https://cdn.sumanai...)). You cannot generate image files directly in text mode; if asked to generate an image, describe the visual composition in text.${personalizationPrompt}`;
 
       if (provider === 'cloudflare') {
         if (!env.AI) {

@@ -22,6 +22,7 @@ const GeneratedImageCard = ({ src, alt, promptText }) => {
   const [isZoomed, setIsZoomed] = useState(false);
   const [quotaState, setQuotaState] = useState(null);
   const [quotaToast, setQuotaToast] = useState(null);
+  const [loadError, setLoadError] = useState(false);
 
   const cleanPrompt = promptText || alt || 'Generated AI Image';
 
@@ -114,30 +115,51 @@ const GeneratedImageCard = ({ src, alt, promptText }) => {
   return (
     <>
       <div className="generated-image-card" role="region" aria-label="Generated AI Image Card">
-        <div className="generated-image-container" onClick={() => setIsZoomed(true)}>
-          <img
-            src={src}
-            alt={cleanPrompt}
-            className="generated-image-display"
-            loading="lazy"
-          />
-          <div className="image-zoom-overlay">
-            <ZoomIn size={16} />
-            <span>Click to expand</span>
-          </div>
+        <div className="generated-image-container">
+          {loadError ? (
+            <div className="image-load-error-state">
+              <AlertCircle size={24} className="image-error-icon" />
+              <p className="image-error-title">Unable to preview image</p>
+              <p className="image-error-subtitle">The image link may be invalid or expired</p>
+              <button
+                type="button"
+                className="image-error-retry-btn"
+                onClick={handleRegenerate}
+              >
+                <RotateCw size={13} />
+                <span>Regenerate with Flux</span>
+              </button>
+            </div>
+          ) : (
+            <div className="image-zoom-trigger" onClick={() => setIsZoomed(true)}>
+              <img
+                src={src}
+                alt={cleanPrompt}
+                className="generated-image-display"
+                loading="lazy"
+                onError={() => setLoadError(true)}
+              />
+              <div className="image-zoom-overlay">
+                <ZoomIn size={16} />
+                <span>Click to expand</span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="image-card-primary-actions">
           <div className="img-card-actions-left">
-            <button
-              type="button"
-              className="img-card-action-btn primary"
-              onClick={handleDownload}
-              title="Download full resolution image"
-            >
-              <Download size={14} />
-              <span>Download</span>
-            </button>
+            {!loadError && (
+              <button
+                type="button"
+                className="img-card-action-btn primary"
+                onClick={handleDownload}
+                title="Download full resolution image"
+              >
+                <Download size={14} />
+                <span>Download</span>
+              </button>
+            )}
           </div>
 
           <div className="img-card-actions-right">

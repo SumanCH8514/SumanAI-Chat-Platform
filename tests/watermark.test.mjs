@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { isImageGenerationIntent } from '../frontend/src/utils/imageUtils.js';
 
 const formatImagePromptWithWatermark = (promptText) => {
   let modelPrompt = (promptText || '').trim();
@@ -50,6 +51,41 @@ describe('AI Image Generation Watermark Architecture', () => {
     assert.equal(imageFileName, 'SumanAI_img_1793364078335_1356c2bb.jpg');
     assert.equal(r2Key, 'generated-images/SumanAI_img_1793364078335_1356c2bb.jpg');
     assert.ok(/^SumanAI_img_\d+_[a-z0-9]+\.jpg$/.test(imageFileName));
+  });
+
+  it('accurately identifies image generation intent from user prompts', () => {
+    const positiveCases = [
+      'Generate a breathtaking, ultra-photorealistic fantasy fashion portrait in cinematic background blur.',
+      'Create an image of a red cat on a bicycle',
+      'Draw a futuristic cyberpunk city at sunset',
+      'Make a wallpaper of snowy mountains 4k',
+      'Paint a portrait of an astronaut drinking tea',
+      'Can you create a picture of a cute puppy?',
+      'Please generate an artwork showing a magical forest',
+      'A photo of a serene lake in autumn',
+      'An ultra-realistic 3d render of an Apple iPhone concept',
+      'Cinematic portrait of an ancient warrior',
+      'Turn this image into watercolor style'
+    ];
+
+    for (const prompt of positiveCases) {
+      assert.equal(isImageGenerationIntent(prompt), true, `Failed positive intent detection for: ${prompt}`);
+    }
+
+    const negativeCases = [
+      'How to generate an image using Python and PIL?',
+      'Write a JavaScript function to create an image element',
+      'Explain how diffusion models generate images',
+      'Can you draw a comparison between React and Vue?',
+      'Draw a flowchart of user authentication',
+      'Make a table comparing python and rust',
+      'Create a plan for my vacation',
+      'Why is the sky blue?'
+    ];
+
+    for (const prompt of negativeCases) {
+      assert.equal(isImageGenerationIntent(prompt), false, `False positive detected for: ${prompt}`);
+    }
   });
 });
 
