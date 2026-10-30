@@ -1,8 +1,64 @@
 import { env } from '../../config/env';
 import { getFirebaseAuth } from '../firebase';
 
+let cachedLimits = null;
+let lastLimitsFetch = 0;
+
+const fetchEnvPanelLimits = async () => {
+  const now = Date.now();
+  if (cachedLimits && now - lastLimitsFetch < 300000) {
+    return cachedLimits;
+  }
+
+  try {
+    const local = localStorage.getItem('sumanai_system_limits');
+    if (local) {
+      cachedLimits = JSON.parse(local);
+    }
+  } catch {
+    void 0;
+  }
+
+  try {
+    const localGov = localStorage.getItem('sumanai_governance_config');
+    if (localGov) {
+      const parsedGov = JSON.parse(localGov);
+      if (parsedGov?.systemLimits) {
+        cachedLimits = { ...cachedLimits, ...parsedGov.systemLimits };
+      }
+    }
+  } catch {
+    void 0;
+  }
+
+  try {
+    const baseUrl = (env.WORKER_URL || '').replace(/\/+$/, '');
+    const res = await fetch(`${baseUrl}/api/config`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.limits) {
+        cachedLimits = { ...cachedLimits, ...data.limits };
+        lastLimitsFetch = now;
+        try {
+          localStorage.setItem('sumanai_system_limits', JSON.stringify(cachedLimits));
+        } catch {
+          void 0;
+        }
+        return cachedLimits;
+      }
+    }
+  } catch {
+    void 0;
+  }
+
+  return cachedLimits || { maxConversationMessages: 100, slidingContextWindow: 50 };
+};
+
 export const SumanProvider = async (modelId, messages, onChunk, options = {}) => {
   const WORKER_URL = env.WORKER_URL;
+
+  const limits = await fetchEnvPanelLimits();
+  const slidingWindow = limits?.slidingContextWindow || 50;
 
   const validMessages = messages.filter((m, idx) => {
     if (m.role === 'assistant' && !m.content?.trim() && idx === messages.length - 1) {
@@ -18,6 +74,10 @@ export const SumanProvider = async (modelId, messages, onChunk, options = {}) =>
     }
     return msg;
   });
+
+  const contextMessages = trimmedMessages.length > slidingWindow
+    ? trimmedMessages.slice(-slidingWindow)
+    : trimmedMessages;
 
   const headers = { 'Content-Type': 'application/json' };
   let isGoogleUser = false;
@@ -40,7 +100,8 @@ export const SumanProvider = async (modelId, messages, onChunk, options = {}) =>
   const enrichedOptions = {
     ...options,
     customAbout,
-    customStyle
+    customStyle,
+    systemLimits: limits
   };
 
   const effectiveModelId = isGoogleUser ? modelId : 'qwen/qwen3.8-27b';
@@ -49,7 +110,7 @@ export const SumanProvider = async (modelId, messages, onChunk, options = {}) =>
     const response = await fetch(WORKER_URL, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ modelId: effectiveModelId, messages: trimmedMessages, options: enrichedOptions }),
+      body: JSON.stringify({ modelId: effectiveModelId, messages: contextMessages, options: enrichedOptions }),
       signal: options.signal
     });
 

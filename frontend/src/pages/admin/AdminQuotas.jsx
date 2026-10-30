@@ -11,7 +11,8 @@ import {
   Zap,
   Clock,
   ShieldAlert,
-  Image as ImageIcon
+  Image as ImageIcon,
+  MessageSquare
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import './AdminQuotas.css';
@@ -62,6 +63,18 @@ export const AdminQuotas = () => {
     setDraftConfig((prev) => {
       const next = JSON.parse(JSON.stringify(prev));
       next.tiers[tier].imageGenLimit = isNaN(num) ? 0 : num;
+      return next;
+    });
+  };
+
+  const handleSystemLimitChange = (field, value) => {
+    const num = Math.max(10, parseInt(value, 10) || 10);
+    setDraftConfig((prev) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      if (!next.systemLimits) {
+        next.systemLimits = { maxConversationMessages: 100, slidingContextWindow: 50 };
+      }
+      next.systemLimits[field] = num;
       return next;
     });
   };
@@ -442,6 +455,75 @@ export const AdminQuotas = () => {
           <div className="admin-quota-card-foot">
             <Crown size={14} color="#F59E0B" />
             <span>High-frequency allowance for power users and coding workflows</span>
+          </div>
+        </div>
+
+        <div className="admin-quota-tier-card quota-system-limits">
+          <div className="admin-quota-card-head">
+            <div className="admin-tier-badge-icon free-icon-box">
+              <MessageSquare size={20} color="#3B82F6" />
+            </div>
+            <div>
+              <h3 className="admin-quota-tier-title">Conversation Context Limits</h3>
+              <p className="admin-quota-tier-sub">Dynamic sliding window configuration for long chat threads</p>
+            </div>
+          </div>
+
+          <div className="admin-quota-sliders-group">
+            <div className="admin-slider-row">
+              <div className="admin-slider-label-row">
+                <span className="admin-slider-title">
+                  <Clock size={14} /> Max History Threshold
+                </span>
+                <span className="admin-slider-val-badge badge-free">
+                  {draftConfig.systemLimits?.maxConversationMessages || 100} msgs
+                </span>
+              </div>
+              <input
+                type="range"
+                min="50"
+                max="500"
+                step="10"
+                className="admin-range-slider free-slider"
+                value={draftConfig.systemLimits?.maxConversationMessages || 100}
+                onChange={(e) => handleSystemLimitChange('maxConversationMessages', e.target.value)}
+              />
+              <div className="admin-slider-scale">
+                <span>50 msgs</span>
+                <span>250 msgs</span>
+                <span>500 msgs</span>
+              </div>
+            </div>
+
+            <div className="admin-slider-row">
+              <div className="admin-slider-label-row">
+                <span className="admin-slider-title">
+                  <Zap size={14} /> Sliding Context Window
+                </span>
+                <span className="admin-slider-val-badge badge-free">
+                  {draftConfig.systemLimits?.slidingContextWindow || 50} msgs
+                </span>
+              </div>
+              <input
+                type="range"
+                min="20"
+                max="150"
+                step="5"
+                className="admin-range-slider free-slider"
+                value={draftConfig.systemLimits?.slidingContextWindow || 50}
+                onChange={(e) => handleSystemLimitChange('slidingContextWindow', e.target.value)}
+              />
+              <div className="admin-slider-scale">
+                <span>20 msgs</span>
+                <span>80 msgs</span>
+                <span>150 msgs</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="admin-quota-card-foot">
+            <ShieldAlert size={14} color="#3B82F6" />
+            <span>Prevents token overflow and keeps long conversations seamless</span>
           </div>
         </div>
       </div>

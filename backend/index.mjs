@@ -409,7 +409,12 @@ export default {
           appId: env.FIREBASE_APP_ID || "1:105425138849:web:c4d525230ab81f45ef2ce0"
         };
 
-        return new Response(JSON.stringify({ firebase: firebaseConfig }), {
+        const limits = {
+          maxConversationMessages: parseInt(env.MAX_CONVERSATION_MESSAGES || env.MAX_MESSAGES_LIMIT || env.CONVERSATION_HISTORY_LIMIT || "100", 10) || 100,
+          slidingContextWindow: parseInt(env.SLIDING_CONTEXT_WINDOW || env.CONTEXT_WINDOW_SIZE || "50", 10) || 50
+        };
+
+        return new Response(JSON.stringify({ firebase: firebaseConfig, limits }), {
           status: 200,
           headers: {
             "Content-Type": "application/json",
@@ -729,22 +734,36 @@ export default {
         });
       }
 
-      const { modelId, messages, options = {} } = body;
+      const { modelId, messages: rawMessages, options = {} } = body;
       const { smartSearch } = options;
 
-      if (!Array.isArray(messages) || messages.length === 0) {
+      if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
         return new Response(JSON.stringify({ error: "Invalid request: messages array is required and must not be empty" }), {
           status: 400,
           headers: { "Content-Type": "application/json", ...corsHeaders }
         });
       }
 
-      if (messages.length > 100) {
-        return new Response(JSON.stringify({ error: "Conversation history exceeds maximum allowed limit (100 messages)" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json", ...corsHeaders }
-        });
-      }
+      const configuredMaxLimit = parseInt(
+        env.MAX_CONVERSATION_MESSAGES || 
+        env.MAX_MESSAGES_LIMIT || 
+        env.CONVERSATION_HISTORY_LIMIT || 
+        options?.systemLimits?.maxConversationMessages || 
+        '100', 
+        10
+      ) || 100;
+
+      const slidingWindowSize = parseInt(
+        env.SLIDING_CONTEXT_WINDOW || 
+        env.CONTEXT_WINDOW_SIZE || 
+        options?.systemLimits?.slidingContextWindow || 
+        '50', 
+        10
+      ) || 50;
+
+      const messages = rawMessages.length > configuredMaxLimit
+        ? rawMessages.slice(-slidingWindowSize)
+        : rawMessages;
 
       const groqSupportedModels = new Set([
         'openai/gpt-oss-120b',

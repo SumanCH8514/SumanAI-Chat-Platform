@@ -87,5 +87,48 @@ describe('AI Image Generation Watermark Architecture', () => {
       assert.equal(isImageGenerationIntent(prompt), false, `False positive detected for: ${prompt}`);
     }
   });
+
+  it('slices conversation messages to sliding context window dynamically from env limits', () => {
+    const applySlidingWindow = (rawMessages, envConfig = {}, options = {}) => {
+      const configuredLimit = parseInt(
+        envConfig.MAX_CONVERSATION_MESSAGES || 
+        envConfig.MAX_MESSAGES_LIMIT || 
+        envConfig.CONVERSATION_HISTORY_LIMIT || 
+        options?.systemLimits?.maxConversationMessages || 
+        '100', 
+        10
+      ) || 100;
+
+      const slidingWindow = parseInt(
+        envConfig.SLIDING_CONTEXT_WINDOW || 
+        envConfig.CONTEXT_WINDOW_SIZE || 
+        options?.systemLimits?.slidingContextWindow || 
+        '50', 
+        10
+      ) || 50;
+
+      return rawMessages.length > configuredLimit 
+        ? rawMessages.slice(-slidingWindow) 
+        : rawMessages;
+    };
+
+    const shortHistory = Array.from({ length: 40 }, (_, i) => ({ role: i % 2 === 0 ? 'user' : 'assistant', content: `Message ${i}` }));
+    const resultShort = applySlidingWindow(shortHistory);
+    assert.equal(resultShort.length, 40);
+
+    const longHistory = Array.from({ length: 120 }, (_, i) => ({ role: i % 2 === 0 ? 'user' : 'assistant', content: `Message ${i}` }));
+    const resultLongDefault = applySlidingWindow(longHistory);
+    assert.equal(resultLongDefault.length, 50);
+    assert.equal(resultLongDefault[resultLongDefault.length - 1].content, 'Message 119');
+
+    const customEnv = { MAX_CONVERSATION_MESSAGES: '150', SLIDING_CONTEXT_WINDOW: '80' };
+    const resultCustomEnv = applySlidingWindow(longHistory, customEnv);
+    assert.equal(resultCustomEnv.length, 120);
+
+    const extraLongHistory = Array.from({ length: 200 }, (_, i) => ({ role: i % 2 === 0 ? 'user' : 'assistant', content: `Message ${i}` }));
+    const resultExtraLong = applySlidingWindow(extraLongHistory, customEnv);
+    assert.equal(resultExtraLong.length, 80);
+    assert.equal(resultExtraLong[resultExtraLong.length - 1].content, 'Message 199');
+  });
 });
 

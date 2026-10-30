@@ -92,6 +92,10 @@ const DEFAULT_GOVERNANCE = {
       }
     }
   },
+  systemLimits: {
+    maxConversationMessages: 100,
+    slidingContextWindow: 50
+  },
   maintenance: {
     enabled: false,
     message: ''
@@ -101,9 +105,14 @@ const DEFAULT_GOVERNANCE = {
 const deepMergeGovernance = (data) => {
   if (!data || typeof data !== 'object') return DEFAULT_GOVERNANCE;
   const tiers = data.tiers || {};
+  const systemLimits = data.systemLimits || {};
   return {
     ...DEFAULT_GOVERNANCE,
     ...data,
+    systemLimits: {
+      maxConversationMessages: systemLimits.maxConversationMessages ?? DEFAULT_GOVERNANCE.systemLimits.maxConversationMessages,
+      slidingContextWindow: systemLimits.slidingContextWindow ?? DEFAULT_GOVERNANCE.systemLimits.slidingContextWindow
+    },
     tiers: {
       guest: {
         ...DEFAULT_GOVERNANCE.tiers.guest,
