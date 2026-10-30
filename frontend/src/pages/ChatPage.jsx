@@ -8,7 +8,6 @@ import InputBar from '../components/InputBar';
 import { useChatStore } from '../store/useChatStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { getUserDisplayName } from '../utils/formatters';
-import { parseArtifact } from '../utils/artifactUtils';
 
 export const ChatPage = ({ onSettingsClick, onLoginClick }) => {
   const { chatId } = useParams();
@@ -22,33 +21,10 @@ export const ChatPage = ({ onSettingsClick, onLoginClick }) => {
     } else {
       setActiveChat(null);
     }
+    useChatStore.getState().setCanvasState({ isOpen: false });
   }, [chatId, setActiveChat]);
 
   const activeChat = chats.find((c) => c.id === chatId);
-
-  useEffect(() => {
-    if (!activeChat || !activeChat.messages || activeChat.messages.length === 0) return;
-    const assistantMessages = activeChat.messages.filter(m => m.role === 'assistant' && m.content);
-    if (assistantMessages.length === 0) return;
-    const latestAssistantMsg = assistantMessages[assistantMessages.length - 1];
-    const artifact = parseArtifact(latestAssistantMsg.content);
-    if (artifact && artifact.isWeb) {
-      const currentCanvas = useChatStore.getState().canvas;
-      const isContentDifferent = currentCanvas.content !== artifact.content || currentCanvas.previewHtml !== artifact.previewHtml;
-      const isMissingCss = !currentCanvas.previewHtml || (!currentCanvas.previewHtml.includes('<style>') && artifact.previewHtml.includes('<style>'));
-      const hasDifferentFiles = !currentCanvas.files || (artifact.files && currentCanvas.files.length !== artifact.files.length);
-      if (!currentCanvas.isOpen || isContentDifferent || isMissingCss || hasDifferentFiles) {
-        useChatStore.getState().setCanvasState({
-          isOpen: true,
-          content: artifact.content,
-          previewHtml: artifact.previewHtml,
-          files: artifact.files,
-          language: 'html',
-          title: "Generated Artifact"
-        });
-      }
-    }
-  }, [activeChat]);
   const hasMessages = activeChat && activeChat.messages.length > 0;
   const pageTitle = hasMessages
     ? `${activeChat.title} | SumanAI`

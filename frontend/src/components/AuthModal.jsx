@@ -67,6 +67,7 @@ const AuthModal = ({ onClose }) => {
   return createPortal(
     <div className="auth-overlay" onClick={onClose} role="dialog" aria-modal="true">
       <div className="auth-card" onClick={e => e.stopPropagation()}>
+        <div className="auth-sheet-handle" aria-hidden="true" />
         <button 
           className="auth-close-btn" 
           onClick={onClose}

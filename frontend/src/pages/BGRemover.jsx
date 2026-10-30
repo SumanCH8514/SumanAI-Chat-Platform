@@ -1,12 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Upload, Image as ImageIcon, Download, Trash2, Loader2, Eraser, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Upload, Image as ImageIcon, Download, Trash2, Loader2, Eraser, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { removeBackground } from '@imgly/background-removal';
 import { isValidImageUrl } from '../utils/imageUtils';
 import { downloadImage as triggerImageDownload } from '../utils/downloadUtils';
+import { env } from '../config/env';
+import './tools/ToolAppShared.css';
 import './BGRemover.css';
 
 const BGRemover = () => {
+  const navigate = useNavigate();
   const [originalImage, setOriginalImage] = useState(null);
   const [processedImage, setProcessedImage] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
@@ -78,11 +82,21 @@ const BGRemover = () => {
 
       let fetchUrl = originalImage;
       if (originalImage.startsWith('http://') || originalImage.startsWith('https://')) {
-        fetchUrl = `https://corsproxy.io/?${encodeURIComponent(originalImage)}`;
+        const workerUrl = env.WORKER_URL ? env.WORKER_URL.replace(/\/+$/, '') : '';
+        fetchUrl = `${workerUrl}/api/proxy-image?url=${encodeURIComponent(originalImage)}`;
       }
 
-      const response = await fetch(fetchUrl);
-      if (!response.ok) throw new Error("Failed to download image. The URL might be restricted.");
+      let response;
+      try {
+        response = await fetch(fetchUrl);
+      } catch (proxyErr) {
+        void proxyErr;
+        if (originalImage.startsWith('http://') || originalImage.startsWith('https://')) {
+          response = await fetch(originalImage).catch(() => null);
+        }
+      }
+
+      if (!response || !response.ok) throw new Error("Failed to download image. The URL might be restricted.");
       const blob = await response.blob();
 
       setProgress(24);
@@ -159,15 +173,30 @@ const BGRemover = () => {
   return (
     <div className="bg-remover-page-wrapper">
       <div className="bg-remover-container">
-        <div className="bg-remover-header">
-          <div className="header-icon-wrapper">
-            <Eraser size={24} />
+        <header className="tool-app-header" style={{ margin: 0, paddingBottom: 16 }}>
+          <nav className="tool-nav-breadcrumb">
+            <button
+              type="button"
+              className="tool-nav-back-btn"
+              onClick={() => navigate('/tools/view')}
+            >
+              <ArrowLeft size={13} />
+              <span>Utilities</span>
+            </button>
+            <span className="tool-nav-sep">/</span>
+            <span className="tool-nav-current">BG Remover</span>
+          </nav>
+
+          <div className="tool-header-content">
+            <div className="tool-title-row">
+              <h1 className="tool-app-heading">AI Background Remover</h1>
+              <span className="tool-tag-pill">Precision Edge Matting</span>
+            </div>
+            <p className="tool-app-subheading">
+              Remove backgrounds from portrait and product photography with precision neural matting.
+            </p>
           </div>
-          <div>
-            <h1>AI Background Remover</h1>
-            <p>Remove backgrounds from images instantly with high precision.</p>
-          </div>
-        </div>
+        </header>
 
         {!originalImage ? (
           <div className="upload-section">

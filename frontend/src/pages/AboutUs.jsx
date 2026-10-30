@@ -31,19 +31,21 @@ const AboutUs = () => {
       </Helmet>
 
       <div className="legal-header">
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="legal-back-btn"
-          aria-label="Back to workspace"
-        >
-          <ArrowLeft size={16} />
-          <span>Back to Workspace</span>
-        </button>
+        <div className="legal-header-top">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="legal-back-btn"
+            aria-label="Back to workspace"
+          >
+            <ArrowLeft size={16} />
+            <span>Back to Workspace</span>
+          </button>
 
-        <div className="legal-badge">
-          <Sparkles size={13} />
-          <span>Vision & Engineering</span>
+          <div className="legal-badge">
+            <Sparkles size={13} />
+            <span>Vision & Engineering</span>
+          </div>
         </div>
 
         <h1 className="legal-title">About SumanAI</h1>

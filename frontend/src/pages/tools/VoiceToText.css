@@ -1,0 +1,151 @@
+.voice-mic-box {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.voice-mic-idle {
+  display: flex;
+  gap: 8px;
+}
+
+.voice-record-btn {
+  flex: 1;
+}
+
+.voice-recording-active {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.voice-pulse-circle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--danger, #EF4444);
+  animation: voicePulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes voicePulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+}
+
+.voice-recording-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.voice-rec-status {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--danger, #EF4444);
+}
+
+.voice-rec-time {
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text-secondary);
+}
+
+.voice-stop-btn {
+  color: var(--danger, #EF4444);
+}
+
+.voice-sample-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.voice-sample-pill {
+  padding: 5px 10px;
+  border-radius: 6px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.voice-sample-pill:hover {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.voice-textarea {
+  min-height: 130px;
+}
+
+.voice-result-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 22px;
+  min-height: 440px;
+  overflow-y: auto;
+}
+
+.voice-loading-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.voice-loading-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.voice-loading-desc {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.voice-rendered-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.voice-paragraph {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 640px) {
+  .voice-mic-idle {
+    flex-direction: column;
+  }
+}
+

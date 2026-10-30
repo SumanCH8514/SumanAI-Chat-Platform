@@ -109,19 +109,21 @@ const ContactPage = () => {
 
       <div className="contact-container">
         <div className="contact-header">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="legal-back-btn"
-            aria-label="Back to workspace"
-          >
-            <ArrowLeft size={16} />
-            <span>Back to Workspace</span>
-          </button>
+          <div className="legal-header-top">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="legal-back-btn"
+              aria-label="Back to workspace"
+            >
+              <ArrowLeft size={16} />
+              <span>Back to Workspace</span>
+            </button>
 
-          <div className="legal-badge">
-            <Headphones size={13} />
-            <span>Assistance & Feedback</span>
+            <div className="legal-badge">
+              <Headphones size={13} />
+              <span>Assistance & Feedback</span>
+            </div>
           </div>
 
           <h1 className="legal-title">Support & Contact Portal</h1>

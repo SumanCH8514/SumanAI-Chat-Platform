@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Search, Compass, BookOpen, FolderHeart, Clock,
-  MessageSquare, Wrench, Plus, Zap, Sparkles, User,
+  MessageSquare, Wrench, Plus, Zap, Sliders, User,
   Settings, HelpCircle, LogOut, ChevronRight, X, PlusCircle,
-  MoreHorizontal, Share, Edit2, Pin, Trash2
+  MoreHorizontal, Share, Edit2, Pin, Trash2, ShieldCheck
 } from 'lucide-react';
 import Skeleton from './Skeleton';
 import RenameModal from './RenameModal';
@@ -15,15 +15,26 @@ import { getUserDisplayName, generateChatTranscript } from '../utils/formatters'
 import { getFirebaseAuth } from '../services/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { firestoreService } from '../services/firestoreService';
+import { adminService } from '../services/adminService';
 import './Sidebar.css';
 
 const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
   const { user, logout } = useAuthStore();
   const isGuest = Boolean(user?.isAnonymous);
-  const USER_DATA = { 
-    name: isGuest ? 'Guest User' : getUserDisplayName(user), 
-    sub: isGuest ? 'Guest (Qwen 3.8 27B)' : 'Google Account', 
-    email: user?.email || (isGuest ? 'Guest Session' : 'No email') 
+  const isAdmin = adminService.checkIsAdmin(user);
+  const isPro = Boolean(user?.role === 'pro' || isAdmin);
+  const userSubtitle = isGuest
+    ? 'Guest (Qwen 3.8 27B)'
+    : isAdmin
+      ? 'Super Admin (Pro Access)'
+      : isPro
+        ? 'Pro Member'
+        : 'Google Account';
+
+  const USER_DATA = {
+    name: isGuest ? 'Guest User' : getUserDisplayName(user),
+    sub: userSubtitle,
+    email: user?.email || (isGuest ? 'Guest Session' : 'No email')
   };
 
   const UserAvatar = ({ className }) => {
@@ -33,12 +44,12 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
 
     if (photoURL && !imgError) {
       return (
-        <img 
-          src={photoURL} 
-          alt={USER_DATA.name} 
-          className={className} 
+        <img
+          src={photoURL}
+          alt={USER_DATA.name}
+          className={className}
           referrerPolicy="no-referrer"
-          onError={() => setImgError(true)} 
+          onError={() => setImgError(true)}
         />
       );
     }
@@ -107,11 +118,11 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
   }, [openMenuId]);
 
   const { chats, activeChatId, renameChat, togglePinChat, deleteChat, isSyncing } = useChatStore();
-  
-  const filteredChats = chats.filter(chat => 
+
+  const filteredChats = chats.filter(chat =>
     !searchQuery.trim() || chat.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
+
   const sortedChats = [...filteredChats].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
 
   const showToast = (msg) => {
@@ -134,11 +145,11 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
 
   const handleShare = (chat) => {
     const transcript = generateChatTranscript(chat.title, chat.messages);
-    
+
     navigator.clipboard.writeText(transcript)
       .then(() => showToast("Transcript copied to clipboard"))
       .catch(() => showToast("Failed to copy transcript"));
-      
+
     setOpenMenuId(null);
   };
 
@@ -150,11 +161,16 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
     setOpenMenuId(null);
   };
 
+  const handleLoginTrigger = () => {
+    if (onClose) onClose();
+    if (onLoginClick) onLoginClick();
+  };
+
   const handleAddAnotherAccount = async () => {
     setShowUserMenu(false);
     const auth = getFirebaseAuth();
     if (!auth) {
-      onLoginClick();
+      handleLoginTrigger();
       return;
     }
     try {
@@ -184,7 +200,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
       action: () => { setShowUserMenu(false); onSettingsClick('upgrade'); }
     },
     {
-      icon: <Sparkles size={16} />,
+      icon: <Sliders size={16} />,
       label: 'Personalization',
       dividerBefore: false,
       action: () => { setShowUserMenu(false); onSettingsClick('personalization'); }
@@ -201,6 +217,12 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
       dividerBefore: false,
       action: () => { setShowUserMenu(false); onSettingsClick('general'); }
     },
+    ...(adminService.checkIsAdmin(user) ? [{
+      icon: <ShieldCheck size={16} color="#8B5CF6" />,
+      label: 'Admin Console',
+      dividerBefore: true,
+      action: () => { setShowUserMenu(false); navigate('/admin'); }
+    }] : []),
     {
       icon: <HelpCircle size={16} />,
       label: 'Help',
@@ -229,17 +251,17 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
 
       <div className="search-bar">
         <Search size={15} className="search-bar-icon" />
-        <input 
-          type="text" 
-          placeholder="Search conversations..." 
+        <input
+          type="text"
+          placeholder="Search conversations..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           aria-label="Search conversations"
         />
         {searchQuery && (
-          <button 
-            type="button" 
-            className="search-clear-btn" 
+          <button
+            type="button"
+            className="search-clear-btn"
             onClick={() => setSearchQuery('')}
             aria-label="Clear search"
           >
@@ -250,45 +272,55 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
 
       <nav className="nav-links" aria-label="Main Navigation">
         <Link
-          to="/"
-          className={`nav-item ${location.pathname === '/' ? 'active' : ''}`}
+          to="/explore"
+          className={`nav-item ${location.pathname === '/explore' ? 'active' : ''}`}
           onClick={() => { if (window.innerWidth <= 640) onClose(); }}
         >
-          <Compass size={17} /> 
+          <Compass size={17} />
           <span>Explore</span>
         </Link>
-        <Link 
-          to="/" 
-          className="nav-item"
+        <Link
+          to="/library"
+          className={`nav-item ${location.pathname === '/library' ? 'active' : ''}`}
           onClick={() => { if (window.innerWidth <= 640) onClose(); }}
         >
-          <BookOpen size={17} /> 
+          <BookOpen size={17} />
           <span>Library</span>
         </Link>
-        <Link 
-          to="/" 
-          className="nav-item"
+        <Link
+          to="/files"
+          className={`nav-item ${location.pathname === '/files' ? 'active' : ''}`}
           onClick={() => { if (window.innerWidth <= 640) onClose(); }}
         >
-          <FolderHeart size={17} /> 
+          <FolderHeart size={17} />
           <span>Files</span>
         </Link>
-        <Link 
-          to="/" 
-          className="nav-item"
+        <Link
+          to="/history"
+          className={`nav-item ${location.pathname === '/history' ? 'active' : ''}`}
           onClick={() => { if (window.innerWidth <= 640) onClose(); }}
         >
-          <Clock size={17} /> 
+          <Clock size={17} />
           <span>History</span>
         </Link>
-        <Link 
-          to="/tools/view" 
+        <Link
+          to="/tools/view"
           className={`nav-item ${location.pathname.startsWith('/tools') ? 'active' : ''}`}
           onClick={() => { if (window.innerWidth <= 640) onClose(); }}
         >
-          <Wrench size={17} /> 
+          <Wrench size={17} />
           <span>Tools</span>
         </Link>
+        {adminService.checkIsAdmin(user) && (
+          <Link
+            to="/admin"
+            className={`nav-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`}
+            onClick={() => { if (window.innerWidth <= 640) onClose(); }}
+          >
+            <ShieldCheck size={17} color="#8B5CF6" />
+            <span>Admin</span>
+          </Link>
+        )}
       </nav>
 
       <div className="recent-chats-header">
@@ -331,8 +363,8 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
                 <span className="chat-title-text">{chat.title}</span>
               </div>
 
-              <div 
-                className="chat-options-container" 
+              <div
+                className="chat-options-container"
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
@@ -360,7 +392,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
               <UserAvatar className="sb-menu-avatar" />
               <div className="sb-menu-user-info">
                 <div className="sb-menu-name">{USER_DATA.name}</div>
-                <div className="sb-menu-sub">{USER_DATA.email}</div>
+                <div className="sb-menu-sub">{isAdmin ? 'Super Admin (Pro Access)' : USER_DATA.email}</div>
               </div>
             </div>
 
@@ -394,17 +426,17 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
             </div>
           </button>
         ) : (
-          <div 
-            className="sb-login-card" 
-            onClick={onLoginClick}
+          <div
+            className="sb-login-card"
+            onClick={handleLoginTrigger}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') onLoginClick(); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleLoginTrigger(); }}
           >
             <div className="sb-login-card-badge">PRO</div>
             <div className="sb-login-card-header">
               <div className="sb-login-card-icon">
-                <Sparkles size={15} />
+                <Zap size={15} />
               </div>
               <span className="sb-login-card-title">Login / Sign up</span>
             </div>
@@ -435,12 +467,12 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
       )}
 
       {openMenuId && menuPosition && activeMenuChat && createPortal(
-        <div 
+        <div
           className="chat-options-portal-backdrop"
           onClick={handleCloseMenu}
           aria-hidden="true"
         >
-          <div 
+          <div
             ref={chatOptionsRef}
             className="chat-options-dropdown chat-options-portal"
             style={{

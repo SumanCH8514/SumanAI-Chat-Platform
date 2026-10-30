@@ -112,6 +112,10 @@ html.dark body, html.dark {
   position: relative;
 }
 
+#root:has(.admin-root) {
+  background-color: #0B0E14;
+}
+
 .glass {
   background: var(--bg-card);
   border: 1px solid var(--border-light);

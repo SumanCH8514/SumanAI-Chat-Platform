@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   X, Settings, Database, Sun, Moon, Monitor, Info,
-  User, Sparkles, Zap, HelpCircle, Check, Copy, ShieldCheck,
+  User, Sliders, Zap, HelpCircle, Check, Copy, ShieldCheck,
   CheckCircle2, ArrowRight
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
@@ -13,6 +13,7 @@ import { firestoreService } from '../services/firestoreService';
 import { getFirebaseAuth } from '../services/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getUserDisplayName } from '../utils/formatters';
+import { adminService } from '../services/adminService';
 import './SettingsModal.css';
 import './SettingsModal.responsive.css';
 
@@ -23,6 +24,8 @@ const SettingsModal = ({ onClose, initialTab = 'general' }) => {
   const { chats } = useChatStore();
 
   const isGuest = Boolean(user?.isAnonymous);
+  const isAdmin = adminService.checkIsAdmin(user);
+  const isPro = adminService.checkHasProAccess(user);
   const userName = isGuest ? 'Guest User' : getUserDisplayName(user);
   const userEmail = user?.email || (isGuest ? 'Guest Session' : 'No email');
 
@@ -108,7 +111,7 @@ const SettingsModal = ({ onClose, initialTab = 'general' }) => {
   const tabs = [
     { id: 'general',         label: 'General',         icon: <Settings size={16} /> },
     { id: 'profile',         label: 'Profile',         icon: <User size={16} /> },
-    { id: 'personalization', label: 'Personalization', icon: <Sparkles size={16} /> },
+    { id: 'personalization', label: 'Personalization', icon: <Sliders size={16} /> },
     { id: 'upgrade',         label: 'Upgrade plan',    icon: <Zap size={16} /> },
     { id: 'data',            label: 'Data controls',   icon: <Database size={16} /> },
     { id: 'help',            label: 'Help & FAQ',      icon: <HelpCircle size={16} /> },
@@ -256,7 +259,17 @@ const SettingsModal = ({ onClose, initialTab = 'general' }) => {
                         <ShieldCheck size={12} /> Guest Session
                       </span>
                     )}
-                    <span className="settings-badge settings-badge--plan">Free Tier</span>
+                    {isAdmin ? (
+                      <span className="settings-badge settings-badge--admin" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#A78BFA', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
+                        <ShieldCheck size={12} /> Super Admin (Pro Access)
+                      </span>
+                    ) : isPro ? (
+                      <span className="settings-badge settings-badge--pro" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#FBBF24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                        <Zap size={12} /> Pro Member
+                      </span>
+                    ) : (
+                      <span className="settings-badge settings-badge--plan">Free Tier</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -369,11 +382,18 @@ const SettingsModal = ({ onClose, initialTab = 'general' }) => {
               <h2 className="settings-title">Upgrade Plan</h2>
               <div className="settings-divider" />
 
+              {isAdmin && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.25)', borderRadius: '8px', marginBottom: '20px', fontSize: '13px', color: 'var(--text-primary)' }}>
+                  <ShieldCheck size={18} color="#8B5CF6" style={{ flexShrink: 0 }} />
+                  <span>Super Admin privileges include full unrestricted access to all Pro flagship models, unlimited daily image generations, and platform controls.</span>
+                </div>
+              )}
+
               <div className="settings-plan-grid">
-                <div className="settings-plan-card settings-plan-card--active">
+                <div className={`settings-plan-card ${!isPro && !isAdmin ? 'settings-plan-card--active' : ''}`}>
                   <div className="settings-plan-header">
                     <span className="settings-plan-title">Free Plan</span>
-                    <span className="settings-plan-current-tag">Current Plan</span>
+                    {!isPro && !isAdmin && <span className="settings-plan-current-tag">Current Plan</span>}
                   </div>
                   <div className="settings-plan-price">$0 <span>/ month</span></div>
                   <ul className="settings-plan-features">
@@ -384,10 +404,16 @@ const SettingsModal = ({ onClose, initialTab = 'general' }) => {
                   </ul>
                 </div>
 
-                <div className="settings-plan-card settings-plan-card--pro">
+                <div className={`settings-plan-card settings-plan-card--pro ${(isPro || isAdmin) ? 'settings-plan-card--active' : ''}`}>
                   <div className="settings-plan-header">
                     <span className="settings-plan-title">Pro Plan</span>
-                    <span className="settings-plan-badge-pro">PRO</span>
+                    {isAdmin ? (
+                      <span className="settings-plan-current-tag" style={{ background: 'rgba(139, 92, 246, 0.18)', color: '#A78BFA', border: '1px solid rgba(139, 92, 246, 0.35)' }}>Included with Admin</span>
+                    ) : isPro ? (
+                      <span className="settings-plan-current-tag">Active Subscription</span>
+                    ) : (
+                      <span className="settings-plan-badge-pro">PRO</span>
+                    )}
                   </div>
                   <div className="settings-plan-price">$15 <span>/ month</span></div>
                   <ul className="settings-plan-features">
@@ -397,26 +423,38 @@ const SettingsModal = ({ onClose, initialTab = 'general' }) => {
                     <li><Check size={14} color="#10B981" /> Unlimited cross-device cloud sync</li>
                     <li><Check size={14} color="#10B981" /> Priority access during peak traffic</li>
                   </ul>
-                  <button
-                    type="button"
-                    className="settings-upgrade-btn"
-                    onClick={() => {
-                      setUpgradeSubmitted(true);
-                      setTimeout(() => setUpgradeSubmitted(false), 3000);
-                    }}
-                  >
-                    {upgradeSubmitted ? (
-                      <>
-                        <Check size={15} />
-                        <span>Plan Requested!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Zap size={15} />
-                        <span>Upgrade to Pro</span>
-                      </>
-                    )}
-                  </button>
+                  {isAdmin ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 14px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', color: '#10B981', fontSize: '13px', fontWeight: 600 }}>
+                      <Check size={15} />
+                      <span>Full Pro Privileges Active</span>
+                    </div>
+                  ) : isPro ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 14px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', color: '#10B981', fontSize: '13px', fontWeight: 600 }}>
+                      <Check size={15} />
+                      <span>Active Pro Plan</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="settings-upgrade-btn"
+                      onClick={() => {
+                        setUpgradeSubmitted(true);
+                        setTimeout(() => setUpgradeSubmitted(false), 3000);
+                      }}
+                    >
+                      {upgradeSubmitted ? (
+                        <>
+                          <Check size={15} />
+                          <span>Plan Requested!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={15} />
+                          <span>Upgrade to Pro</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             </>

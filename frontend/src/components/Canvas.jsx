@@ -153,7 +153,7 @@ const Canvas = () => {
                   key={`${canvas.lastUpdated || 0}-${(canvas.previewHtml || canvas.content || '').length}`}
                   ref={iframeRef}
                   title="SumanAI Canvas Preview"
-                  sandbox="allow-scripts allow-modals allow-forms allow-same-origin"
+                  sandbox="allow-scripts allow-modals allow-forms"
                   srcDoc={canvas.previewHtml || canvas.content}
                   className="preview-iframe"
                 />

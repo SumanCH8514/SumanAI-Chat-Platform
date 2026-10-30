@@ -122,9 +122,9 @@
 }
 
 .model-section-tab.tab-premium.active {
-  color: #F59E0B;
-  border-color: rgba(245, 158, 11, 0.25);
-  background: rgba(245, 158, 11, 0.08);
+  color: #D97706;
+  border-color: rgba(217, 119, 6, 0.25);
+  background: rgba(217, 119, 6, 0.08);
 }
 
 .section-tab-icon {
@@ -132,7 +132,7 @@
 }
 
 .section-tab-icon.crown-icon {
-  color: #F59E0B;
+  color: #D97706;
 }
 
 .section-count-pill {
@@ -149,29 +149,48 @@
   color: white;
 }
 
+.model-section-tab.tab-premium.active .section-count-pill {
+  background: #D97706;
+  color: #FFFFFF;
+}
+
 .section-pro-pill {
-  font-size: 9px;
-  font-weight: 800;
+  font-size: 9.5px;
+  font-weight: 700;
   letter-spacing: 0.5px;
   padding: 1px 5px;
   border-radius: 4px;
-  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
-  color: #111827;
+  background: #D97706;
+  color: #FFFFFF;
 }
 
 .trigger-premium {
-  border-color: rgba(245, 158, 11, 0.35);
+  border-color: rgba(217, 119, 6, 0.35);
 }
 
 .model-item-premium.selected {
-  border-color: rgba(245, 158, 11, 0.35);
-  background: rgba(245, 158, 11, 0.08);
-  color: #F59E0B;
+  border-color: rgba(217, 119, 6, 0.35);
+  background: rgba(217, 119, 6, 0.08);
+  color: var(--text-primary);
+}
+
+.model-item-premium.selected .model-item-icon {
+  color: #D97706;
 }
 
 .premium-model-badge {
-  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
-  color: #111827 !important;
+  background: #D97706 !important;
+  color: #FFFFFF !important;
+  border-radius: 4px;
+}
+
+.model-premium-toast {
+  border-left-color: #D97706;
+}
+
+.model-premium-toast .premium-toast-icon {
+  color: #D97706;
+  flex-shrink: 0;
 }
 
 .premium-placeholder-card {

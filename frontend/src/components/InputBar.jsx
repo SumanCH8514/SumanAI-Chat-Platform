@@ -2,12 +2,14 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowUp, Globe, Paperclip, X, Plus,
-  Camera, Image as ImageIcon, Lightbulb, PenTool, Layers, Square, Sparkles, Mic
+  Camera, Image as ImageIcon, Lightbulb, PenTool, Layers, Square, Eye, Mic
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useModel } from '../hooks/useModel';
 import { useChatStore } from '../store/useChatStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { chatService } from '../services/ChatService';
+import { usageService } from '../services/usageService';
 import { DEFAULT_VISION_MODEL, DEFAULT_IMAGE_GEN_MODEL } from '../constants/models';
 import { compressImage } from '../utils/imageUtils';
 import { parseArtifact } from '../utils/artifactUtils';
@@ -24,14 +26,16 @@ const InputBar = () => {
   const [micToast, setMicToast] = useState(null);
 
   const navigate = useNavigate();
-  const { selectedModel, setSelectedModel } = useModel();
+  const { selectedModel, setSelectedModel, governance } = useModel();
+  const { user, openAuthModal } = useAuthStore();
   const fileRef = useRef(null);
   const cameraRef = useRef(null);
   const inputRef = useRef(null);
   const actionMenuRef = useRef(null);
   const abortControllerRef = useRef(null);
   const recognitionRef = useRef(null);
-  const baseTextRef = useRef('');
+  const startingPrefixRef = useRef('');
+  const isStartingMicRef = useRef(false);
 
   const ensureActiveChat = useChatStore(state => state.ensureActiveChat);
   const addMessage = useChatStore(state => state.addMessage);
@@ -84,7 +88,7 @@ const InputBar = () => {
     e.target.value = '';
     setShowActionMenu(false);
 
-    if (!selectedModel.supportsVision && DEFAULT_VISION_MODEL) {
+    if (DEFAULT_VISION_MODEL && selectedModel?.id !== DEFAULT_VISION_MODEL.id) {
       const switched = setSelectedModel(DEFAULT_VISION_MODEL);
       if (switched !== false) {
         setVisionToast(DEFAULT_VISION_MODEL.name);
@@ -99,34 +103,54 @@ const InputBar = () => {
 
   const handleToggleImageGen = () => {
     const newState = !hasImageGenActive;
-    setHasImageGenActive(newState);
     setShowActionMenu(false);
 
-    if (newState && DEFAULT_IMAGE_GEN_MODEL) {
-      setSelectedModel(DEFAULT_IMAGE_GEN_MODEL);
-      setVisionToast(`Image Gen: ${DEFAULT_IMAGE_GEN_MODEL.name}`);
-      setTimeout(() => setVisionToast(null), 4000);
+    if (newState) {
+      const quota = usageService.checkImageGenAllowed(user, governance);
+      if (!quota.allowed) {
+        if (quota.reason === 'login_required') {
+          openAuthModal();
+          setVisionToast("Please sign in with Google to create AI images.");
+          setTimeout(() => setVisionToast(null), 4000);
+        } else {
+          setVisionToast(quota.message);
+          setTimeout(() => setVisionToast(null), 4500);
+        }
+        return;
+      }
+
+      setHasImageGenActive(true);
+      if (DEFAULT_IMAGE_GEN_MODEL) {
+        setSelectedModel(DEFAULT_IMAGE_GEN_MODEL);
+        const remainingText = quota.unlimited ? 'Unlimited' : `${quota.remaining} left today`;
+        setVisionToast(`Image Gen: ${DEFAULT_IMAGE_GEN_MODEL.name} (${remainingText})`);
+        setTimeout(() => setVisionToast(null), 4000);
+      }
+    } else {
+      setHasImageGenActive(false);
     }
   };
 
   const stopListening = useCallback(() => {
+    isStartingMicRef.current = false;
+    startingPrefixRef.current = '';
     if (recognitionRef.current) {
+      const rec = recognitionRef.current;
+      recognitionRef.current = null;
+      rec.onresult = null;
+      rec.onerror = null;
+      rec.onend = null;
+      rec.onstart = null;
       try {
-        recognitionRef.current.stop();
+        rec.abort();
       } catch {
         void 0;
       }
-      recognitionRef.current = null;
     }
     setIsListening(false);
   }, []);
 
-  const handleToggleMic = () => {
-    if (isListening) {
-      stopListening();
-      return;
-    }
-
+  const startRecognition = useCallback((baseText = '') => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setMicToast("Voice input is not supported in this browser.");
@@ -134,24 +158,44 @@ const InputBar = () => {
       return;
     }
 
+    if (recognitionRef.current) {
+      const oldRec = recognitionRef.current;
+      recognitionRef.current = null;
+      oldRec.onresult = null;
+      oldRec.onerror = null;
+      oldRec.onend = null;
+      oldRec.onstart = null;
+      try {
+        oldRec.abort();
+      } catch {
+        void 0;
+      }
+    }
+
+    isStartingMicRef.current = true;
+    const cleanBase = typeof baseText === 'string' ? baseText.trim() : '';
+    startingPrefixRef.current = cleanBase ? cleanBase + ' ' : '';
+
     try {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = navigator.language || 'en-US';
 
-      baseTextRef.current = text ? (text.trim() + ' ') : '';
-
       recognition.onstart = () => {
+        isStartingMicRef.current = false;
         setIsListening(true);
       };
 
       recognition.onresult = (event) => {
-        let totalTranscript = '';
+        let sessionTranscript = '';
         for (let i = 0; i < event.results.length; ++i) {
-          totalTranscript += event.results[i][0].transcript;
+          const item = event.results[i][0]?.transcript?.trim();
+          if (item) {
+            sessionTranscript += (sessionTranscript ? ' ' : '') + item;
+          }
         }
-        const updated = (baseTextRef.current + totalTranscript).trimStart();
+        const updated = (startingPrefixRef.current + sessionTranscript).trimStart();
         setText(updated);
         if (inputRef.current) {
           inputRef.current.style.height = 'auto';
@@ -160,17 +204,20 @@ const InputBar = () => {
       };
 
       recognition.onerror = (event) => {
+        isStartingMicRef.current = false;
         if (event.error === 'not-allowed') {
           setMicToast("Microphone access denied. Please allow microphone permissions.");
           setTimeout(() => setMicToast(null), 4000);
-        } else if (event.error !== 'no-speech') {
+          stopListening();
+        } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
           setMicToast(`Voice input error: ${event.error}`);
           setTimeout(() => setMicToast(null), 3500);
+          stopListening();
         }
-        stopListening();
       };
 
       recognition.onend = () => {
+        isStartingMicRef.current = false;
         setIsListening(false);
         recognitionRef.current = null;
       };
@@ -178,9 +225,18 @@ const InputBar = () => {
       recognitionRef.current = recognition;
       recognition.start();
     } catch {
+      isStartingMicRef.current = false;
       setMicToast("Could not start microphone.");
       setTimeout(() => setMicToast(null), 3500);
       stopListening();
+    }
+  }, [stopListening]);
+
+  const handleToggleMic = () => {
+    if (isListening || isStartingMicRef.current) {
+      stopListening();
+    } else {
+      startRecognition(text);
     }
   };
 
@@ -204,6 +260,19 @@ const InputBar = () => {
 
     if (isGenerating) return;
     if (!promptValue && attachments.length === 0) return;
+
+    const isImageGen = Boolean(selectedModel?.supportsImageGen || hasImageGenActive);
+    if (isImageGen) {
+      const quota = usageService.checkImageGenAllowed(user, governance);
+      if (!quota.allowed) {
+        if (quota.reason === 'login_required') {
+          openAuthModal();
+        }
+        setVisionToast(quota.message);
+        setTimeout(() => setVisionToast(null), 4500);
+        return;
+      }
+    }
 
     const useDeepThinking = overrideOptions.deepThinking !== undefined ? overrideOptions.deepThinking : deepThinking;
     const useSmartSearch = overrideOptions.smartSearch !== undefined ? overrideOptions.smartSearch : smartSearch;
@@ -253,15 +322,16 @@ const InputBar = () => {
 
           const artifact = parseArtifact(chunk);
           if (artifact && artifact.isWeb) {
-            const { setCanvasState } = useChatStore.getState();
-            setCanvasState({
-              isOpen: true,
-              content: artifact.content,
-              previewHtml: artifact.previewHtml,
-              files: artifact.files,
-              language: artifact.language || 'html',
-              title: "Generated Artifact"
-            });
+            const { setCanvasState, canvas } = useChatStore.getState();
+            if (canvas.isOpen) {
+              setCanvasState({
+                content: artifact.content,
+                previewHtml: artifact.previewHtml,
+                files: artifact.files,
+                language: artifact.language || 'html',
+                title: "Generated Artifact"
+              });
+            }
           }
         },
         {
@@ -273,18 +343,22 @@ const InputBar = () => {
 
       const completedText = finalResult || '';
       if (completedText) {
+        if (isImageGen) {
+          usageService.incrementDailyImageCount(user?.uid || 'guest');
+        }
         updateLastMessage(chatId, completedText);
         const finalArtifact = parseArtifact(completedText);
         if (finalArtifact && finalArtifact.isWeb) {
-          const { setCanvasState } = useChatStore.getState();
-          setCanvasState({
-            isOpen: true,
-            content: finalArtifact.content,
-            previewHtml: finalArtifact.previewHtml,
-            files: finalArtifact.files,
-            language: finalArtifact.language || 'html',
-            title: "Generated Artifact"
-          });
+          const { setCanvasState, canvas } = useChatStore.getState();
+          if (canvas.isOpen) {
+            setCanvasState({
+              content: finalArtifact.content,
+              previewHtml: finalArtifact.previewHtml,
+              files: finalArtifact.files,
+              language: finalArtifact.language || 'html',
+              title: "Generated Artifact"
+            });
+          }
         }
       } else {
         updateLastMessage(chatId, "⚠️ No response received from the model. Please try re-sending or use a different model.");
@@ -312,7 +386,7 @@ const InputBar = () => {
       setIsGenerating(false);
       abortControllerRef.current = null;
     }
-  }, [text, isGenerating, attachments, deepThinking, smartSearch, ensureActiveChat, navigate, addMessage, selectedModel, updateLastMessage, setHasImageGenActive, stopListening]);
+  }, [text, isGenerating, attachments, deepThinking, smartSearch, ensureActiveChat, navigate, addMessage, selectedModel, updateLastMessage, setHasImageGenActive, stopListening, governance, hasImageGenActive, openAuthModal, user]);
 
   useEffect(() => {
     if (isPendingGeneration) {
@@ -344,6 +418,10 @@ const InputBar = () => {
     const val = e.target.value;
     setText(val);
 
+    if (isListening || recognitionRef.current) {
+      startRecognition(val);
+    }
+
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
       inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 180)}px`;
@@ -355,9 +433,9 @@ const InputBar = () => {
       {visionToast && typeof document !== 'undefined' && createPortal(
         <div className={`vision-toast ${hasImageGenActive ? 'image-gen' : ''}`} role="status" aria-live="polite">
           <div className="vision-toast-content">
-            <Sparkles size={14} className="vision-toast-icon" />
+            <Eye size={14} className="vision-toast-icon" />
             <span>
-              Switched to <strong>{visionToast.replace('Image Gen: ', '')}</strong> — {hasImageGenActive ? 'tailored for creative image generation.' : 'ready for visual input analysis.'}
+              Switched to <strong>{visionToast.replace('Image Gen: ', '')}</strong>: {hasImageGenActive ? 'tailored for creative image generation.' : 'ready for visual input analysis.'}
             </span>
           </div>
         </div>,

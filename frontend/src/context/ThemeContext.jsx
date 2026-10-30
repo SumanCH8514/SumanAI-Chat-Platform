@@ -22,20 +22,35 @@ export const ThemeProvider = ({ children }) => {
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      root.classList.add(systemTheme);
-    } else {
-      root.classList.add(theme);
-    }
+    const applyTheme = () => {
+      root.classList.remove('light', 'dark');
+      if (theme === 'system') {
+        root.classList.add(mediaQuery.matches ? 'dark' : 'light');
+      } else {
+        root.classList.add(theme);
+      }
+    };
 
+    applyTheme();
+
+    const handleMediaChange = () => {
+      if (theme === 'system') {
+        applyTheme();
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleMediaChange);
     localStorage.setItem('suman_theme', theme);
-    
+
     if (user?.uid) {
       firestoreService.updatePreferences(user.uid, { theme });
     }
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleMediaChange);
+    };
   }, [theme, user?.uid]);
 
   useEffect(() => {

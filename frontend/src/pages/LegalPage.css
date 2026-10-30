@@ -50,6 +50,26 @@
   margin-bottom: 32px;
 }
 
+.legal-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.legal-header-top .legal-back-btn {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.legal-header-top .legal-badge {
+  margin-bottom: 0;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .legal-back-btn {
   display: inline-flex;
   align-items: center;
@@ -392,6 +412,11 @@
 @media (max-width: 768px) {
   .legal-page-container {
     padding: 20px 16px 90px;
+  }
+
+  .legal-header-top {
+    flex-wrap: wrap;
+    gap: 12px;
   }
 
   .legal-title {

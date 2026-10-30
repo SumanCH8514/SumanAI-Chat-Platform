@@ -87,12 +87,17 @@ export const SumanProvider = async (modelId, messages, onChunk, options = {}) =>
 
         try {
           const chunkData = JSON.parse(jsonStr);
-          if (chunkData.candidates && chunkData.candidates[0].content) {
-            const piece = chunkData.candidates[0].content.parts[0].text;
-            if (piece) {
-              fullText += piece;
-              if (onChunk) onChunk(fullText);
-            }
+          let piece = "";
+          if (chunkData.candidates?.[0]?.content?.parts?.[0]?.text) {
+            piece = chunkData.candidates[0].content.parts[0].text;
+          } else if (typeof chunkData.response === 'string') {
+            piece = chunkData.response;
+          } else if (typeof chunkData.choices?.[0]?.delta?.content === 'string') {
+            piece = chunkData.choices[0].delta.content;
+          }
+          if (piece) {
+            fullText += piece;
+            if (onChunk) onChunk(fullText);
           }
         } catch (e) {
           void e;

@@ -5,18 +5,26 @@ import ModelSelector from '../components/ModelSelector';
 import ThemeToggle from '../components/ThemeToggle';
 import Canvas from '../components/Canvas';
 import { useChatStore } from '../store/useChatStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 export const MainLayout = ({ children, onSettingsClick, onLoginClick }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const canvas = useChatStore((state) => state.canvas);
+  const authModalOpen = useAuthStore((state) => state.authModalOpen);
 
+  const handleLoginClick = () => {
+    setSidebarOpen(false);
+    if (onLoginClick) onLoginClick();
+  };
+
+  const isSidebarVisible = sidebarOpen && !authModalOpen;
   const isHome = location.pathname === '/';
   const showCanvas = canvas.isOpen && !isHome;
 
   return (
     <div className="app-container">
-      {sidebarOpen && (
+      {isSidebarVisible && (
         <div
           className="sidebar-backdrop"
           onClick={() => setSidebarOpen(false)}
@@ -26,8 +34,8 @@ export const MainLayout = ({ children, onSettingsClick, onLoginClick }) => {
 
       <Sidebar
         onSettingsClick={onSettingsClick}
-        onLoginClick={onLoginClick}
-        isOpen={sidebarOpen}
+        onLoginClick={handleLoginClick}
+        isOpen={isSidebarVisible}
         onClose={() => setSidebarOpen(false)}
       />
 

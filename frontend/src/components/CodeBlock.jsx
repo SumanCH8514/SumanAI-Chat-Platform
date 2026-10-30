@@ -118,8 +118,8 @@ const renderToken = (token, key) => {
   const content = Array.isArray(token.content)
     ? token.content.map((item, idx) => renderToken(item, `${key}-${idx}`))
     : typeof token.content === 'object' && token.content !== null
-    ? renderToken(token.content, `${key}-sub`)
-    : token.content;
+      ? renderToken(token.content, `${key}-sub`)
+      : token.content;
 
   return (
     <span key={key} className={className}>
@@ -175,7 +175,7 @@ const CodeBlock = ({ language = '', code = '', fullMessageContent = '' }) => {
           {['html', 'htm', 'xml', 'svg', 'css', 'javascript', 'js'].includes(cleanLang) && (
             <button
               type="button"
-              className="code-block-action-btn"
+              className="code-block-preview-btn"
               onClick={() => {
                 const textToParse = fullMessageContent || `\`\`\`${cleanLang}\n${code}\n\`\`\``;
                 const artifact = parseArtifact(textToParse);
@@ -193,7 +193,7 @@ const CodeBlock = ({ language = '', code = '', fullMessageContent = '' }) => {
               title="Preview in Artifact"
               aria-label="Preview in Artifact"
             >
-              <Eye size={15} />
+              <Eye size={13} />
             </button>
           )}
           <button

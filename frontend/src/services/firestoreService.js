@@ -122,5 +122,19 @@ export const firestoreService = {
     } catch (err) {
       void err;
     }
+  },
+
+  incrementUsage: async (userId, metric, dateKey) => {
+    if (!userId) return;
+    const db = getDb();
+    if (!db) return;
+    try {
+      const usageRef = doc(db, 'users', userId, 'usage', dateKey);
+      const snap = await getDoc(usageRef);
+      const current = snap.exists() ? (snap.data()[metric] || 0) : 0;
+      await setDoc(usageRef, { [metric]: current + 1, updatedAt: Date.now() }, { merge: true });
+    } catch (err) {
+      void err;
+    }
   }
 };

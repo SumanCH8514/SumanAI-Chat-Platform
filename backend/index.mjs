@@ -29,32 +29,179 @@ const SECURITY_HEADERS = {
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 };
 
+const ALLOWED_ORIGINS = new Set([
+  "https://sumanai.sumanonline.com",
+  "https://chat.sumanonline.com",
+  "https://suman-ai.pages.dev",
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173"
+]);
+
+function isAllowedOrigin(origin) {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  try {
+    const parsed = new URL(origin);
+    if (parsed.protocol === "https:" && parsed.hostname.endsWith(".suman-ai.pages.dev")) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 function getCorsHeaders(request) {
-  const origin = request.headers.get("Origin") || "*";
+  const origin = request.headers.get("Origin") || "";
+  const allowed = isAllowedOrigin(origin);
   return {
-    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Origin": allowed ? origin : "https://sumanai.sumanonline.com",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
     "Access-Control-Max-Age": "86400",
+    "Vary": "Origin",
     ...SECURITY_HEADERS,
   };
 }
 
-function isGoogleAuthenticated(request) {
+let cachedJwks = null;
+let cachedJwksExpiry = 0;
+const importedCryptoKeys = new Map();
+
+async function getGooglePublicKeys() {
+  const now = Date.now();
+  if (cachedJwks && now < cachedJwksExpiry) {
+    return cachedJwks;
+  }
+  try {
+    const res = await fetch("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com");
+    if (!res.ok) return [];
+    const cacheControl = res.headers.get("cache-control") || "";
+    const maxAgeMatch = cacheControl.match(/max-age=(\d+)/i);
+    const maxAge = maxAgeMatch ? parseInt(maxAgeMatch[1], 10) : 3600;
+    const data = await res.json();
+    cachedJwks = data.keys || [];
+    cachedJwksExpiry = now + (maxAge * 1000);
+    importedCryptoKeys.clear();
+    return cachedJwks;
+  } catch {
+    return [];
+  }
+}
+
+function base64UrlToUint8Array(base64Url) {
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const padLen = (4 - (base64.length % 4)) % 4;
+  const padded = base64 + '='.repeat(padLen);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function parseJwt(token) {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const headerStr = atob(parts[0].replace(/-/g, '+').replace(/_/g, '/'));
+    const payloadStr = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+    return {
+      header: JSON.parse(headerStr),
+      payload: JSON.parse(payloadStr),
+      signedData: new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
+      signature: base64UrlToUint8Array(parts[2])
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function verifyFirebaseToken(token, expectedProjectId) {
+  const jwt = parseJwt(token);
+  if (!jwt) return null;
+
+  const { header, payload, signedData, signature } = jwt;
+  if (header.alg !== "RS256" || !header.kid) return null;
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!payload.exp || payload.exp < nowSec) return null;
+  if (!payload.iat || payload.iat > nowSec + 300) return null;
+  if (expectedProjectId) {
+    if (payload.aud !== expectedProjectId) return null;
+    if (payload.iss !== `https://securetoken.google.com/${expectedProjectId}`) return null;
+  }
+  if (!payload.sub || typeof payload.sub !== 'string') return null;
+
+  let cryptoKey = importedCryptoKeys.get(header.kid);
+  if (!cryptoKey) {
+    const keys = await getGooglePublicKeys();
+    const jwk = keys.find(k => k.kid === header.kid);
+    if (!jwk) return null;
+
+    try {
+      cryptoKey = await crypto.subtle.importKey(
+        "jwk",
+        jwk,
+        { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+        false,
+        ["verify"]
+      );
+      importedCryptoKeys.set(header.kid, cryptoKey);
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    const isValid = await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5",
+      cryptoKey,
+      signature,
+      signedData
+    );
+    return isValid ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+async function isGoogleAuthenticated(request, env) {
   const authHeader = request.headers.get("Authorization") || "";
   if (!authHeader.startsWith("Bearer ")) return false;
   const token = authHeader.slice(7).trim();
-  try {
-    const parts = token.split('.');
-    if (parts.length < 2) return false;
-    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    const json = atob(base64);
-    const payload = JSON.parse(json);
-    const provider = payload?.firebase?.sign_in_provider;
-    return provider === 'google.com';
-  } catch {
-    return false;
+  if (!token) return false;
+
+  const projectId = env?.FIREBASE_PROJECT_ID || "sumanai-sumanonline";
+  const verifiedPayload = await verifyFirebaseToken(token, projectId);
+  if (!verifiedPayload) return false;
+
+  const provider = verifiedPayload?.firebase?.sign_in_provider;
+  return provider === 'google.com';
+}
+
+function isPrivateIp(hostname) {
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname === '::1') {
+    return true;
   }
+  if (hostname.endsWith('.local') || hostname.endsWith('.internal')) {
+    return true;
+  }
+  const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4Match) {
+    const octets = ipv4Match.slice(1).map(Number);
+    if (octets.some(o => o < 0 || o > 255)) return true;
+    if (octets[0] === 10) return true;
+    if (octets[0] === 127) return true;
+    if (octets[0] === 0) return true;
+    if (octets[0] === 169 && octets[1] === 254) return true;
+    if (octets[0] === 192 && octets[1] === 168) return true;
+    if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return true;
+    if (octets[0] >= 224) return true;
+  }
+  return false;
 }
 
 async function fetchWithRetry(url, options = {}, maxRetries = 3, initialDelay = 1000) {
@@ -113,6 +260,113 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "GET") {
+      if (url.pathname === "/api/proxy-image") {
+        const targetUrlStr = url.searchParams.get("url");
+        if (!targetUrlStr) {
+          return new Response(JSON.stringify({ error: "Missing 'url' query parameter" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+
+        let parsedTarget;
+        try {
+          parsedTarget = new URL(targetUrlStr);
+        } catch {
+          return new Response(JSON.stringify({ error: "Invalid image URL" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+
+        if (parsedTarget.protocol !== "http:" && parsedTarget.protocol !== "https:") {
+          return new Response(JSON.stringify({ error: "Only HTTP and HTTPS protocols are permitted" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+
+        if (isPrivateIp(parsedTarget.hostname)) {
+          return new Response(JSON.stringify({ error: "Access to private or local network hosts is prohibited" }), {
+            status: 403,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000);
+          const imageRes = await fetch(parsedTarget.toString(), {
+            method: "GET",
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+            },
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (!imageRes.ok) {
+            return new Response(JSON.stringify({ error: `Upstream server responded with status ${imageRes.status}` }), {
+              status: imageRes.status === 404 ? 404 : 502,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          const rawContentType = imageRes.headers.get("content-type") || "";
+          const contentType = rawContentType.split(';')[0].trim().toLowerCase();
+          const validImageTypes = new Set([
+            "image/jpeg",
+            "image/jpg",
+            "image/png",
+            "image/webp",
+            "image/gif",
+            "image/svg+xml",
+            "image/avif",
+            "image/bmp",
+            "image/x-icon"
+          ]);
+
+          if (!validImageTypes.has(contentType) && !contentType.startsWith("image/")) {
+            return new Response(JSON.stringify({ error: "Remote resource is not a recognized image format" }), {
+              status: 415,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          const contentLength = parseInt(imageRes.headers.get("content-length") || "0", 10);
+          if (contentLength > 15 * 1024 * 1024) {
+            return new Response(JSON.stringify({ error: "Remote image exceeds the 15MB limit" }), {
+              status: 413,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          const imageBlob = await imageRes.blob();
+          if (imageBlob.size > 15 * 1024 * 1024) {
+            return new Response(JSON.stringify({ error: "Remote image exceeds the 15MB limit" }), {
+              status: 413,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          return new Response(imageBlob, {
+            status: 200,
+            headers: {
+              "Content-Type": contentType || "image/png",
+              "Cache-Control": "public, max-age=86400, s-maxage=86400",
+              ...corsHeaders
+            }
+          });
+        } catch (fetchErr) {
+          const isTimeout = fetchErr.name === 'AbortError' || fetchErr.message?.includes('aborted');
+          return new Response(JSON.stringify({ error: isTimeout ? "Remote image request timed out" : "Failed to retrieve remote image" }), {
+            status: 504,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+      }
+
       if (url.pathname === "/api/config" || url.pathname === "/config") {
         const firebaseConfig = {
           apiKey: env.FIREBASE_API_KEY || "",
@@ -130,6 +384,42 @@ export default {
             "Cache-Control": "public, max-age=3600",
             ...corsHeaders
           }
+        });
+      }
+
+      if (url.pathname === "/api/admin/verify") {
+        const authHeader = request.headers.get("Authorization") || "";
+        if (!authHeader.startsWith("Bearer ")) {
+          return new Response(JSON.stringify({ error: "Missing Bearer token", isAdmin: false }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+        const token = authHeader.slice(7).trim();
+        const projectId = env?.FIREBASE_PROJECT_ID || "sumanai-sumanonline";
+        const verified = await verifyFirebaseToken(token, projectId);
+        if (!verified) {
+          return new Response(JSON.stringify({ error: "Invalid or expired token", isAdmin: false }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+
+        const adminEmails = (env?.ADMIN_EMAILS || "")
+          .split(",")
+          .map(e => e.trim().toLowerCase())
+          .filter(Boolean);
+
+        const email = (verified.email || "").toLowerCase();
+        const isAdmin = (adminEmails.length > 0 && adminEmails.includes(email)) || verified.role === "admin";
+
+        return new Response(JSON.stringify({
+          isAdmin,
+          email: verified.email,
+          uid: verified.sub
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders }
         });
       }
 
@@ -212,12 +502,21 @@ export default {
         'meta/muse-glimmer-30b'
       ]);
 
-      const isGoogle = isGoogleAuthenticated(request);
+      const cloudflareSupportedModels = new Set([
+        '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+        '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
+        '@cf/qwen/qwen2.5-72b-instruct',
+        '@cf/meta/llama-3.1-8b-instruct',
+        '@cf/meta/llama-3.2-11b-vision-instruct',
+        '@cf/black-forest-labs/flux-1-schnell'
+      ]);
+
+      const isGoogle = await isGoogleAuthenticated(request, env);
       let targetModel = typeof modelId === 'string' ? modelId : (isGoogle ? 'openai/gpt-oss-120b' : 'qwen/qwen3.8-27b');
 
       if (!isGoogle && targetModel !== 'qwen/qwen3.8-27b') {
-        return new Response(JSON.stringify({ 
-          error: "This model is locked. Please sign in with Google to unlock all models." 
+        return new Response(JSON.stringify({
+          error: "This model is locked. Please sign in with Google to unlock all models."
         }), {
           status: 403,
           headers: { "Content-Type": "application/json", ...corsHeaders }
@@ -226,7 +525,9 @@ export default {
 
       let provider = 'groq';
 
-      if (targetModel === 'meta/llama-3.2-11b-vision-instruct' || targetModel.includes('vision')) {
+      if (targetModel.startsWith('@cf/') || cloudflareSupportedModels.has(targetModel)) {
+        provider = 'cloudflare';
+      } else if (targetModel === 'meta/llama-3.2-11b-vision-instruct' || targetModel.includes('vision')) {
         targetModel = 'llama-3.2-11b-vision-preview';
         provider = 'groq';
       } else if (targetModel.startsWith('gemini')) {
@@ -248,7 +549,7 @@ export default {
         API_KEY = env.NVIDIA_API_KEY;
       }
 
-      if (!API_KEY) {
+      if (provider !== 'cloudflare' && !API_KEY) {
         const keyName = provider === 'nvidia' ? 'NVIDIA_API_KEY' : (provider === 'google' ? 'GEMINI_API_KEY' : 'GROQ_API_KEY');
         throw new Error(`${keyName} not configured. Please add it to your Cloudflare Worker Runtime variables and secrets.`);
       }
@@ -265,14 +566,226 @@ export default {
       const modelDisplayName = targetModel.split('/').pop().replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       const systemInstruction = `You are SumanAI - Model: ${modelDisplayName}. You are a helpful, minimalist AI assistant. Always get straight to the point. When asked who you are, introduce yourself as "SumanAI - Model: ${modelDisplayName}". When providing code or scripts, always format them inside fenced Markdown code blocks with the appropriate programming language identifier (for example: \`\`\`python ... \`\`\` or \`\`\`javascript ... \`\`\`).${personalizationPrompt}`;
 
-      if (provider === 'groq' || provider === 'nvidia') {
+      if (provider === 'cloudflare') {
+        if (!env.AI) {
+          throw new Error("Cloudflare Workers AI binding is not available in the worker runtime.");
+        }
+
+        if (targetModel === '@cf/black-forest-labs/flux-1-schnell') {
+          if (!isGoogle) {
+            return new Response(JSON.stringify({
+              error: "Image generation requires a signed-in Google account. Please sign in to create images."
+            }), {
+              status: 403,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          const filteredMessages = messages.filter((m, idx) => {
+            if (m.role === 'assistant' && !m.content?.trim() && idx === messages.length - 1) {
+              return false;
+            }
+            return true;
+          });
+
+          const promptMsg = filteredMessages.filter(m => m.role === 'user' || !m.role).pop();
+          const promptText = (promptMsg?.content || 'A vibrant artistic composition').trim();
+
+          const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
+            prompt: promptText,
+            num_steps: 4
+          });
+
+          if (!result || !result.image) {
+            throw new Error("Cloudflare did not return image data. Please try again.");
+          }
+
+          const { readable, writable } = new TransformStream();
+          const writer = writable.getWriter();
+          const encoder = new TextEncoder();
+
+          (async () => {
+            try {
+              const cleanTitle = promptText.replace(/[\[\]\n\r]/g, ' ').slice(0, 70);
+              const markdown = `![${cleanTitle}](data:image/jpeg;base64,${result.image})\n\n*Generated with Flux 1 Schnell on Cloudflare Workers AI*`;
+              const chunk = {
+                candidates: [{
+                  content: {
+                    parts: [{ text: markdown }]
+                  }
+                }]
+              };
+              await writer.write(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+              await writer.write(encoder.encode('data: [DONE]\n\n'));
+            } catch (err) {
+              void err;
+            } finally {
+              writer.close();
+            }
+          })();
+
+          return new Response(readable, {
+            headers: {
+              "Content-Type": "text/event-stream",
+              "Cache-Control": "no-cache",
+              ...corsHeaders
+            },
+          });
+        }
+
+        const filteredMessages = messages.filter((m, idx) => {
+          if (m.role === 'assistant' && !m.content?.trim() && idx === messages.length - 1) {
+            return false;
+          }
+          return true;
+        });
+
+        let visionImageBytes = null;
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const atts = messages[i].attachments;
+          if (atts && atts.length > 0 && atts[0].data) {
+            try {
+              const binaryString = atob(atts[0].data);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let b = 0; b < binaryString.length; b++) {
+                bytes[b] = binaryString.charCodeAt(b);
+              }
+              visionImageBytes = [...bytes];
+              break;
+            } catch {
+              void 0;
+            }
+          }
+        }
+
+        const isVisionModel = targetModel === '@cf/meta/llama-3.2-11b-vision-instruct';
+
+        const cfMessages = filteredMessages.map((m, index) => {
+          let textContent = (m.content || '').trim();
+          if (index === 0 && (m.role === 'user' || !m.role)) {
+            textContent = `${systemInstruction}\n\n${textContent}`;
+          }
+          if (m.attachments && m.attachments.length > 0 && !isVisionModel) {
+            const omitted = m.attachments.map(a => a.name || 'image').join(', ');
+            textContent = `${textContent}\n[Attachments: ${omitted}]`.trim();
+          }
+          return {
+            role: m.role === 'assistant' ? 'assistant' : (m.role === 'system' ? 'system' : 'user'),
+            content: textContent || " "
+          };
+        });
+
+        const aiPayload = {
+          messages: cfMessages,
+          stream: true,
+          max_tokens: 4096
+        };
+
+        if (isVisionModel && visionImageBytes) {
+          aiPayload.image = visionImageBytes;
+        }
+
+        const aiStream = await env.AI.run(targetModel, aiPayload);
+
+        const { readable, writable } = new TransformStream();
+        const writer = writable.getWriter();
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+
+        (async () => {
+          const reader = aiStream.getReader();
+          let buffer = "";
+          let hasWrittenTokens = false;
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || "";
+
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || !trimmed.startsWith('data:')) continue;
+                if (trimmed === 'data: [DONE]') {
+                  await writer.write(encoder.encode('data: [DONE]\n\n'));
+                  continue;
+                }
+
+                try {
+                  const data = JSON.parse(trimmed.slice(5).trim());
+                  if (data.error) {
+                    const errMsg = data.error.message || JSON.stringify(data.error);
+                    const errorChunk = {
+                      candidates: [{
+                        content: {
+                          parts: [{ text: `⚠️ Error: ${errMsg}` }]
+                        }
+                      }]
+                    };
+                    hasWrittenTokens = true;
+                    await writer.write(encoder.encode(`data: ${JSON.stringify(errorChunk)}\n\n`));
+                    break;
+                  }
+
+                  const delta = typeof data.response === 'string'
+                    ? data.response
+                    : (typeof data.text === 'string'
+                      ? data.text
+                      : (data.choices?.[0]?.delta?.content || ""));
+
+                  if (delta) {
+                    hasWrittenTokens = true;
+                    const chunk = {
+                      candidates: [{
+                        content: {
+                          parts: [{ text: delta }]
+                        }
+                      }]
+                    };
+                    await writer.write(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+                  }
+                } catch (parseErr) {
+                  void parseErr;
+                }
+              }
+            }
+
+            if (!hasWrittenTokens) {
+              const fallbackChunk = {
+                candidates: [{
+                  content: {
+                    parts: [{ text: "⚠️ The model was unable to generate a response. Please try re-sending or use another model." }]
+                  }
+                }]
+              };
+              await writer.write(encoder.encode(`data: ${JSON.stringify(fallbackChunk)}\n\n`));
+            }
+          } catch (streamErr) {
+            void streamErr;
+          } finally {
+            writer.close();
+          }
+        })();
+
+        return new Response(readable, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            ...corsHeaders
+          },
+        });
+
+      } else if (provider === 'groq' || provider === 'nvidia') {
         const isNvidia = provider === 'nvidia';
         const apiUrl = isNvidia
           ? "https://integrate.api.nvidia.com/v1/chat/completions"
           : "https://api.groq.com/openai/v1/chat/completions";
 
-        const supportsVision = targetModel === 'meta/llama-3.2-11b-vision-instruct' || 
-          targetModel.includes('vision') || 
+        const supportsVision = targetModel === 'meta/llama-3.2-11b-vision-instruct' ||
+          targetModel.includes('vision') ||
           targetModel === 'llama-3.2-11b-vision-preview';
 
         const filteredMessages = messages.filter((m, idx) => {

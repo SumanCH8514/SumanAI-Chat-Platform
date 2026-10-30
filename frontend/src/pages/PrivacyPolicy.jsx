@@ -29,19 +29,21 @@ const PrivacyPolicy = () => {
       </Helmet>
 
       <div className="legal-header">
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="legal-back-btn"
-          aria-label="Back to workspace"
-        >
-          <ArrowLeft size={16} />
-          <span>Back to Workspace</span>
-        </button>
+        <div className="legal-header-top">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="legal-back-btn"
+            aria-label="Back to workspace"
+          >
+            <ArrowLeft size={16} />
+            <span>Back to Workspace</span>
+          </button>
 
-        <div className="legal-badge">
-          <Shield size={13} />
-          <span>Privacy & Data Protection</span>
+          <div className="legal-badge">
+            <Shield size={13} />
+            <span>Privacy & Data Protection</span>
+          </div>
         </div>
 
         <h1 className="legal-title">Privacy Policy</h1>

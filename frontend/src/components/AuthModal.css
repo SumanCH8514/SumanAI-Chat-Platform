@@ -532,18 +532,49 @@ html.dark .auth-btn-loader--dark {
   color: var(--brand-primary);
 }
 
-@media (max-width: 480px) {
+.auth-sheet-handle {
+  display: none;
+}
+
+@keyframes authCardSlideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
   .auth-overlay {
-    padding: 12px;
+    padding: 0;
     align-items: flex-end;
+    justify-content: center;
   }
 
   .auth-card {
+    width: 100%;
     max-width: 100%;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    padding: 24px 20px 20px;
-    max-height: 92dvh;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    padding: 16px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    max-height: 90dvh;
     overflow-y: auto;
+    animation: authCardSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .auth-sheet-handle {
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border-light);
+    margin: 0 auto 12px;
   }
 
   .auth-title {
