@@ -78,6 +78,18 @@ export const referralService = {
             referralCreditsEarned: user.referralCreditsEarned || 0,
             updatedAt: Date.now()
           }, { merge: true });
+
+          const codeDocRef = doc(db, 'referralCodes', existingCode);
+          const snap = await getDoc(codeDocRef);
+          if (!snap.exists()) {
+            await setDoc(codeDocRef, {
+              code: existingCode,
+              referrerUid: user.uid,
+              referrerEmail: user.email || '',
+              referrerName: user.displayName || 'Friend',
+              createdAt: Date.now()
+            });
+          }
         } catch {
           void 0;
         }
@@ -95,6 +107,24 @@ export const referralService = {
         }
       } catch {
         void 0;
+      }
+
+      if (db) {
+        try {
+          const codeDocRef = doc(db, 'referralCodes', existingCode);
+          const snap = await getDoc(codeDocRef);
+          if (!snap.exists()) {
+            await setDoc(codeDocRef, {
+              code: existingCode,
+              referrerUid: user.uid,
+              referrerEmail: user.email || '',
+              referrerName: user.displayName || 'Friend',
+              createdAt: Date.now()
+            });
+          }
+        } catch {
+          void 0;
+        }
       }
     }
 
@@ -170,20 +200,29 @@ export const referralService = {
     const db = getFirebaseDb();
     if (db) {
       try {
-        const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('referralCode', '==', cleanCode));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const docData = snap.docs[0].data();
+        const codeDocRef = doc(db, 'referralCodes', cleanCode);
+        const codeSnap = await getDoc(codeDocRef);
+        if (codeSnap.exists()) {
+          const data = codeSnap.data();
           return {
-            uid: snap.docs[0].id,
-            email: docData.email || '',
-            displayName: docData.displayName || 'Friend'
+            uid: data.referrerUid || codeSnap.id,
+            email: data.referrerEmail || '',
+            displayName: data.referrerName || 'Friend'
           };
         }
       } catch {
         void 0;
       }
+    }
+
+    if (/^[A-Z0-9]{3,10}-[A-Z0-9]{3,10}$/.test(cleanCode)) {
+      const parts = cleanCode.split('-');
+      return {
+        uid: `ref_${parts[1]}`,
+        email: '',
+        displayName: parts[0] || 'Friend',
+        synthesized: true
+      };
     }
 
     return null;
@@ -215,6 +254,11 @@ export const referralService = {
       throw new Error('You have already claimed a referral bonus. Referral codes can only be redeemed once.');
     }
 
+    const myUidPart = (currentUser.uid || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4);
+    if (myUidPart && myUidPart.length >= 3 && cleanCode.endsWith(`-${myUidPart}`)) {
+      throw new Error('You cannot redeem your own referral code.');
+    }
+
     let myOwnCode = currentUser.referralCode || localStorage.getItem(`sumanai_ref_code_${currentUser.uid}`);
     if (!myOwnCode) {
       myOwnCode = referralService.generateCodeFromUser(currentUser);
@@ -228,7 +272,11 @@ export const referralService = {
       throw new Error('Invalid referral code. Please check the code and try again.');
     }
 
-    if (referrer.uid === currentUser.uid) {
+    if (referrer.uid === currentUser.uid || referrer.referrerUid === currentUser.uid) {
+      throw new Error('You cannot redeem your own referral code.');
+    }
+
+    if (referrer.email && currentUser.email && referrer.email.toLowerCase() === currentUser.email.toLowerCase()) {
       throw new Error('You cannot redeem your own referral code.');
     }
 
@@ -258,23 +306,29 @@ export const referralService = {
     };
     await firestoreService.updateUserProfile(currentUser.uid, refereeProfileUpdate);
 
-    const referrerTxnId = `TXN_REF_EARN_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const referrerTxn = {
-      id: referrerTxnId,
-      purpose: 'referral_reward',
-      title: `Referral Reward: Friend Joined (+${REFERRER_REWARD_CREDITS} Credits)`,
-      credits: REFERRER_REWARD_CREDITS,
-      amount: 0,
-      currency: 'INR',
-      gateway: 'referral',
-      status: 'Completed',
-      timestamp: Date.now(),
-      email: referrer.email || 'Referrer',
-      phoneNumber: ''
-    };
+    if (!referrer.synthesized && referrer.uid && !referrer.uid.startsWith('ref_')) {
+      const referrerTxnId = `TXN_REF_EARN_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const referrerTxn = {
+        id: referrerTxnId,
+        purpose: 'referral_reward',
+        title: `Referral Reward: Friend Joined (+${REFERRER_REWARD_CREDITS} Credits)`,
+        credits: REFERRER_REWARD_CREDITS,
+        amount: 0,
+        currency: 'INR',
+        gateway: 'referral',
+        status: 'Completed',
+        timestamp: Date.now(),
+        email: referrer.email || 'Referrer',
+        phoneNumber: ''
+      };
 
-    await firestoreService.updateWallet(referrer.uid, REFERRER_REWARD_CREDITS, 0);
-    await firestoreService.recordTransaction(referrer.uid, referrerTxn);
+      try {
+        await firestoreService.updateWallet(referrer.uid, REFERRER_REWARD_CREDITS, 0);
+        await firestoreService.recordTransaction(referrer.uid, referrerTxn);
+      } catch {
+        void 0;
+      }
+    }
 
     const referralLogId = `REF_LOG_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const referralRecord = {
@@ -305,18 +359,22 @@ export const referralService = {
         const refDocRef = doc(db, 'referrals', referralLogId);
         await setDoc(refDocRef, referralRecord);
 
-        const referrerSubRef = doc(db, 'users', referrer.uid, 'referrals', referralLogId);
-        await setDoc(referrerSubRef, referralRecord);
+        if (!referrer.synthesized && referrer.uid && !referrer.uid.startsWith('ref_')) {
+          const referrerSubRef = doc(db, 'users', referrer.uid, 'referrals', referralLogId);
+          await setDoc(referrerSubRef, referralRecord);
 
-        const referrerUserRef = doc(db, 'users', referrer.uid);
-        const referrerSnap = await getDoc(referrerUserRef);
-        const currentCount = referrerSnap.exists() ? (referrerSnap.data().referralCount || 0) : 0;
-        const currentCredits = referrerSnap.exists() ? (referrerSnap.data().referralCreditsEarned || 0) : 0;
-        await updateDoc(referrerUserRef, {
-          referralCount: currentCount + 1,
-          referralCreditsEarned: currentCredits + REFERRER_REWARD_CREDITS,
-          updatedAt: Date.now()
-        });
+          const referrerUserRef = doc(db, 'users', referrer.uid);
+          const referrerSnap = await getDoc(referrerUserRef);
+          if (referrerSnap.exists()) {
+            const currentCount = referrerSnap.data().referralCount || 0;
+            const currentCredits = referrerSnap.data().referralCreditsEarned || 0;
+            await updateDoc(referrerUserRef, {
+              referralCount: currentCount + 1,
+              referralCreditsEarned: currentCredits + REFERRER_REWARD_CREDITS,
+              updatedAt: Date.now()
+            });
+          }
+        }
       } catch {
         void 0;
       }

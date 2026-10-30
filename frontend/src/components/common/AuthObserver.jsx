@@ -37,9 +37,9 @@ export const AuthObserver = ({ children }) => {
           }
         }
         let referralCode = profile?.referralCode;
-        if (!referralCode && !user.isAnonymous) {
+        if (!user.isAnonymous) {
           try {
-            referralCode = await referralService.getOrGenerateReferralCode(user);
+            referralCode = await referralService.getOrGenerateReferralCode({ ...user, ...profile, referralCode });
           } catch {
             void 0;
           }

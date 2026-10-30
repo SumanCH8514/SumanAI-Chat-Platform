@@ -122,9 +122,7 @@ service cloud.firestore {
       }
 
       match /referrals/{refId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow create: if isAuthenticated();
-        allow update, delete: if isAdmin();
+        allow read, write: if isOwner(userId) || isAdmin();
       }
     }
 
@@ -156,12 +154,24 @@ service cloud.firestore {
           || resource.data.refereeId == request.auth.uid
           || isAdmin()
         );
-      allow list: if isAdmin();
+      allow list: if isAuthenticated();
       allow create: if isAuthenticated()
         && (
           request.resource.data.refereeId == request.auth.uid
           || isAdmin()
         );
+      allow update, delete: if isAdmin();
+    }
+
+    match /referralCodes/{code} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasOnly(['code', 'referrerUid', 'referrerEmail', 'referrerName', 'createdAt'])
+        && request.resource.data.code == code
+        && request.resource.data.referrerUid == request.auth.uid
+        && request.resource.data.code is string
+        && request.resource.data.code.size() <= 50;
       allow update, delete: if isAdmin();
     }
 
