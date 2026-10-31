@@ -422,7 +422,12 @@ const InputBar = () => {
         {
           deepThinking: useDeepThinking,
           smartSearch: useSmartSearch,
-          signal: abortControllerRef.current.signal
+          signal: abortControllerRef.current.signal,
+          onModelResolved: (realModelId) => {
+            if (realModelId) {
+              useChatStore.getState().updateLastMessageModel(chatId, realModelId);
+            }
+          }
         }
       );
 

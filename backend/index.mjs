@@ -59,6 +59,7 @@ function getCorsHeaders(request) {
     "Access-Control-Allow-Origin": allowed ? origin : "https://sumanai.sumanonline.com",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+    "Access-Control-Expose-Headers": "X-Responding-Model, Content-Type",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
     ...SECURITY_HEADERS,
@@ -1053,6 +1054,7 @@ export default {
           }
 
           let imageBase64 = null;
+          let respondingImageModel = '@cf/black-forest-labs/flux-1-schnell';
           try {
             const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
               prompt: optimizedPrompt,
@@ -1063,6 +1065,7 @@ export default {
             const errStr = String(cfErr?.message || cfErr || '');
             if (errStr.includes('4006') || errStr.includes('neurons') || errStr.includes('allocation') || errStr.includes('quota')) {
               try {
+                respondingImageModel = 'pollinations/flux';
                 const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(optimizedPrompt)}?width=1024&height=1024&nologo=true&model=flux`;
                 const pollRes = await fetch(pollUrl);
                 if (pollRes.ok) {
@@ -1094,6 +1097,7 @@ export default {
 
           (async () => {
             try {
+              await writer.write(encoder.encode(`data: ${JSON.stringify({ meta: { model: respondingImageModel } })}\n\n`));
               const cleanTitle = (promptMsg?.content || promptText).replace(/[\[\]\(\)\n\r]/g, ' ').trim().slice(0, 70) || 'Generated Image';
               const cleanBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
               const rawDataUrl = `data:image/jpeg;base64,${cleanBase64}`;
@@ -1118,6 +1122,7 @@ export default {
             headers: {
               "Content-Type": "text/event-stream",
               "Cache-Control": "no-cache",
+              "X-Responding-Model": respondingImageModel,
               ...corsHeaders
             },
           });
@@ -1221,6 +1226,7 @@ export default {
             let hasWrittenTokens = false;
 
             try {
+              await writer.write(encoder.encode(`data: ${JSON.stringify({ meta: { model: targetModel } })}\n\n`));
               while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
@@ -1297,6 +1303,7 @@ export default {
             headers: {
               "Content-Type": "text/event-stream",
               "Cache-Control": "no-cache",
+              "X-Responding-Model": targetModel,
               ...corsHeaders
             },
           });
@@ -1418,6 +1425,7 @@ export default {
           let hasWrittenTokens = false;
 
           try {
+            await writer.write(encoder.encode(`data: ${JSON.stringify({ meta: { model: targetModel } })}\n\n`));
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
@@ -1490,6 +1498,7 @@ export default {
           headers: {
             "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",
+            "X-Responding-Model": targetModel,
             ...corsHeaders
           },
         });
@@ -1534,6 +1543,7 @@ export default {
           headers: {
             "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",
+            "X-Responding-Model": targetModel || 'gemini-1.5-flash',
             ...corsHeaders
           },
         });

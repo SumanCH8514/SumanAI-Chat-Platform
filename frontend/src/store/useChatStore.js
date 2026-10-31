@@ -166,6 +166,141 @@ export const useChatStore = create(
         });
       },
       
+      updateLastMessageModel: (chatId, model) => {
+        if (!model) return;
+        set((state) => {
+          const updatedChats = state.chats.map((chat) => {
+            if (chat.id === chatId && chat.messages.length > 0) {
+              const messages = [...chat.messages];
+              const lastIdx = messages.length - 1;
+              messages[lastIdx] = {
+                ...messages[lastIdx],
+                model,
+              };
+              const updatedChat = { ...chat, messages };
+              const userId = getUserId();
+              if (userId) firestoreService.saveChat(userId, updatedChat);
+              return updatedChat;
+            }
+            return chat;
+          });
+          return { chats: updatedChats };
+        });
+      },
+
+      editUserMessage: (chatId, messageIdOrIndex, newContent) => {
+        const cleanContent = typeof newContent === 'string' ? newContent.trim() : '';
+        if (!cleanContent) return false;
+
+        let didUpdate = false;
+        set((s) => {
+          const updatedChats = s.chats.map((chat) => {
+            if (chat.id !== chatId) return chat;
+
+            let targetIdx = -1;
+            if (typeof messageIdOrIndex === 'string') {
+              targetIdx = chat.messages.findIndex((m) => m.id === messageIdOrIndex);
+            }
+            if (targetIdx === -1 && typeof messageIdOrIndex === 'number') {
+              targetIdx = messageIdOrIndex;
+            } else if (targetIdx === -1 && typeof messageIdOrIndex === 'string' && messageIdOrIndex.startsWith('msg-')) {
+              const parsed = parseInt(messageIdOrIndex.replace('msg-', ''), 10);
+              if (!isNaN(parsed) && parsed >= 0 && parsed < chat.messages.length) {
+                targetIdx = parsed;
+              }
+            }
+
+            if (targetIdx === -1 || targetIdx >= chat.messages.length) return chat;
+            if (chat.messages[targetIdx].role !== 'user') return chat;
+
+            const existingMsg = chat.messages[targetIdx];
+            const updatedUserMsg = {
+              ...existingMsg,
+              content: cleanContent
+            };
+
+            const newMessages = [...chat.messages.slice(0, targetIdx), updatedUserMsg];
+            const updatedTitle = targetIdx === 0
+              ? cleanContent.slice(0, 30) + (cleanContent.length > 30 ? '...' : '')
+              : chat.title;
+
+            didUpdate = true;
+            const updatedChat = {
+              ...chat,
+              title: updatedTitle,
+              messages: newMessages
+            };
+            const userId = getUserId();
+            if (userId) firestoreService.saveChat(userId, updatedChat);
+            return updatedChat;
+          });
+
+          return {
+            chats: updatedChats,
+            isPendingGeneration: didUpdate ? true : s.isPendingGeneration,
+            pendingOptions: didUpdate ? {} : s.pendingOptions
+          };
+        });
+
+        return didUpdate;
+      },
+
+      regenerateFromMessage: (chatId, messageIdOrIndex) => {
+        let didUpdate = false;
+        set((s) => {
+          const updatedChats = s.chats.map((chat) => {
+            if (chat.id !== chatId) return chat;
+
+            let targetIdx = -1;
+            if (typeof messageIdOrIndex === 'string') {
+              targetIdx = chat.messages.findIndex((m) => m.id === messageIdOrIndex);
+            }
+            if (targetIdx === -1 && typeof messageIdOrIndex === 'number') {
+              targetIdx = messageIdOrIndex;
+            } else if (targetIdx === -1 && typeof messageIdOrIndex === 'string' && messageIdOrIndex.startsWith('msg-')) {
+              const parsed = parseInt(messageIdOrIndex.replace('msg-', ''), 10);
+              if (!isNaN(parsed) && parsed >= 0 && parsed < chat.messages.length) {
+                targetIdx = parsed;
+              }
+            }
+
+            if (targetIdx === -1 || targetIdx >= chat.messages.length) return chat;
+
+            let userMsgIdx = -1;
+            if (chat.messages[targetIdx].role === 'user') {
+              userMsgIdx = targetIdx;
+            } else {
+              for (let i = targetIdx - 1; i >= 0; i--) {
+                if (chat.messages[i].role === 'user') {
+                  userMsgIdx = i;
+                  break;
+                }
+              }
+            }
+
+            if (userMsgIdx === -1) return chat;
+
+            const newMessages = chat.messages.slice(0, userMsgIdx + 1);
+            didUpdate = true;
+            const updatedChat = {
+              ...chat,
+              messages: newMessages
+            };
+            const userId = getUserId();
+            if (userId) firestoreService.saveChat(userId, updatedChat);
+            return updatedChat;
+          });
+
+          return {
+            chats: updatedChats,
+            isPendingGeneration: didUpdate ? true : s.isPendingGeneration,
+            pendingOptions: didUpdate ? {} : s.pendingOptions
+          };
+        });
+
+        return didUpdate;
+      },
+
       renameChat: (id, newTitle) => {
         const cleanTitle = typeof newTitle === 'string' ? newTitle.trim() : '';
         if (!cleanTitle) return;

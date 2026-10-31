@@ -28,3 +28,5 @@ export const MODEL_LIST = [
 
 export const DEFAULT_VISION_MODEL = MODEL_LIST.find(m => m.id === '@cf/meta/llama-3.2-11b-vision-instruct') || MODEL_LIST.find(m => m.supportsVision);
 export const DEFAULT_IMAGE_GEN_MODEL = MODEL_LIST.find(m => m.id === '@cf/black-forest-labs/flux-1-schnell') || MODEL_LIST.find(m => m.supportsImageGen);
+
+export { formatModelTitle, resolveModelBadge } from '../utils/modelUtils.js';

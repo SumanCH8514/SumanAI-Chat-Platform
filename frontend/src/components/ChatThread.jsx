@@ -19,6 +19,8 @@ import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useChatStore } from '../store/useChatStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { useModel } from '../hooks/useModel';
+import { MODEL_LIST, formatModelTitle, resolveModelBadge } from '../constants/models';
 import { downloadImage } from '../utils/downloadUtils';
 import { ttsService } from '../services/ttsService';
 import { getVoiceById, DEFAULT_VOICE_ID } from '../constants/voices';
@@ -77,6 +79,7 @@ const copyToClipboard = async (textToCopy) => {
 const ChatThread = () => {
   const { chats, activeChatId } = useChatStore();
   const { user } = useAuthStore();
+  const { selectedModel } = useModel();
 
   const activeChat = chats.find(c => c.id === activeChatId);
   const messagesEndRef = useRef(null);
@@ -330,42 +333,38 @@ const ChatThread = () => {
         const messageId = msg.id || `msg-${idx}`;
         const isEditingThis = isUser && editingMsgId === messageId && editingChatId === activeChatId;
 
-        return (
-          <div key={messageId} className={`message-wrapper ${isUser ? 'user' : 'ai'} ${isEditingThis ? 'is-editing' : ''}`}>
-            <div className="message-avatar">
-              {isUser ? (
+        if (isUser) {
+          return (
+            <div key={messageId} className={`message-wrapper user ${isEditingThis ? 'is-editing' : ''}`}>
+              <div className="message-avatar">
                 <UserAvatar user={user} />
-              ) : (
-                <Bot size={18} />
-              )}
-            </div>
+              </div>
 
-            <div className="message-content">
-              <div className={`message-bubble ${isPureImage ? 'pure-image-bubble' : ''}`}>
-                {msg.attachments && msg.attachments.length > 0 && (
-                  <div className="message-attachments">
-                    {msg.attachments.map((file, fIdx) => (
-                      <div key={fIdx} className="message-attachment-wrapper">
-                        <img
-                          src={`data:${file.type};base64,${file.data}`}
-                          alt="attachment"
-                          className="message-attachment-img"
-                          onClick={() => handleDownloadImage(`data:${file.type};base64,${file.data}`)}
-                        />
-                        <button
-                          className="img-download-btn"
-                          onClick={() => handleDownloadImage(`data:${file.type};base64,${file.data}`)}
-                          title="Save image"
-                        >
-                          <Download size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div className="message-content">
+                <div className="message-bubble">
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <div className="message-attachments">
+                      {msg.attachments.map((file, fIdx) => (
+                        <div key={fIdx} className="message-attachment-wrapper">
+                          <img
+                            src={`data:${file.type};base64,${file.data}`}
+                            alt="attachment"
+                            className="message-attachment-img"
+                            onClick={() => handleDownloadImage(`data:${file.type};base64,${file.data}`)}
+                          />
+                          <button
+                            className="img-download-btn"
+                            onClick={() => handleDownloadImage(`data:${file.type};base64,${file.data}`)}
+                            title="Save image"
+                          >
+                            <Download size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                {isUser ? (
-                  isEditingThis ? (
+                  {isEditingThis ? (
                     <div className="user-message-edit-container">
                       <textarea
                         ref={editTextareaRef}
@@ -408,9 +407,80 @@ const ChatThread = () => {
                     </div>
                   ) : (
                     <div className="user-message-text">{msg.content}</div>
-                  )
-                ) : (
-                  msg.content ? (
+                  )}
+                </div>
+
+                {!isEditingThis && (
+                  <div className="user-message-actions-toolbar" role="toolbar" aria-label="User message options">
+                    <button
+                      type="button"
+                      className={`msg-action-btn ${copiedUserIdx === idx ? 'active' : ''}`}
+                      onClick={() => handleCopyUserMessage(idx, msg.content)}
+                      title={copiedUserIdx === idx ? 'Copied to clipboard' : 'Copy message'}
+                      aria-label="Copy message"
+                    >
+                      {copiedUserIdx === idx ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
+                    </button>
+                    <button
+                      type="button"
+                      className="msg-action-btn"
+                      onClick={() => handleStartEdit(messageId, msg.content)}
+                      title="Edit message"
+                      aria-label="Edit message"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        const rawModel = msg.model || selectedModel?.name || selectedModel?.id || 'SumanAI';
+        const displayModelName = formatModelTitle(rawModel, msg.content);
+        const modelBadge = resolveModelBadge(displayModelName);
+
+        return (
+          <div key={messageId} className="message-wrapper ai">
+            <div className="ai-response-card">
+              <div className="ai-response-header">
+                <div className="message-avatar">
+                  <Bot size={17} />
+                </div>
+                <div className="ai-model-info">
+                  <span className="ai-model-name">{displayModelName}</span>
+                  {modelBadge && <span className="ai-model-badge">{modelBadge}</span>}
+                </div>
+              </div>
+
+              <div className="ai-response-divider" />
+
+              <div className="ai-response-body">
+                <div className={`message-bubble ${isPureImage ? 'pure-image-bubble' : ''}`}>
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <div className="message-attachments">
+                      {msg.attachments.map((file, fIdx) => (
+                        <div key={fIdx} className="message-attachment-wrapper">
+                          <img
+                            src={`data:${file.type};base64,${file.data}`}
+                            alt="attachment"
+                            className="message-attachment-img"
+                            onClick={() => handleDownloadImage(`data:${file.type};base64,${file.data}`)}
+                          />
+                          <button
+                            className="img-download-btn"
+                            onClick={() => handleDownloadImage(`data:${file.type};base64,${file.data}`)}
+                            title="Save image"
+                          >
+                            <Download size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {msg.content ? (
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       urlTransform={(url) => (url.startsWith('data:image/') || url.startsWith('http://') || url.startsWith('https://') ? url : defaultUrlTransform(url))}
@@ -478,112 +548,89 @@ const ChatThread = () => {
                         isImageGen={false}
                       />
                     )
-                  )
+                  )}
+                </div>
+
+                {!isPureImage && (
+                  <div className="message-actions-toolbar" role="toolbar" aria-label="Message options">
+                    <button
+                      type="button"
+                      className={`msg-action-btn ${copiedIdx === idx ? 'active' : ''}`}
+                      onClick={() => handleCopyMessage(idx, msg.content)}
+                      title={copiedIdx === idx ? 'Copied to clipboard' : 'Copy'}
+                      aria-label="Copy message"
+                    >
+                      {copiedIdx === idx ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`msg-action-btn ${speakingIdx === idx ? 'active speaking' : ''} ${loadingTTSIdx === idx ? 'active loading-audio' : ''}`}
+                      onClick={() => handleToggleSpeakMessage(idx, msg.content)}
+                      title={speakingIdx === idx ? 'Stop listening' : loadingTTSIdx === idx ? 'Synthesizing voice...' : 'Read aloud'}
+                      aria-label="Read aloud"
+                    >
+                      {speakingIdx === idx ? (
+                        <VolumeX size={14} />
+                      ) : loadingTTSIdx === idx ? (
+                        <Loader2 size={14} className="tts-spinner" />
+                      ) : (
+                        <Volume2 size={14} />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="msg-action-btn"
+                      onClick={() => setIsVoiceModalOpen(true)}
+                      title={`Voice model (${currentVoice.name})`}
+                      aria-label={`Select AI voice model. Currently using ${currentVoice.name}`}
+                    >
+                      <Speech size={14} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`msg-action-btn ${sharedIdx === idx ? 'active' : ''}`}
+                      onClick={() => handleShareMessage(idx, msg.content)}
+                      title={sharedIdx === idx ? 'Link Copied!' : 'Share message'}
+                      aria-label="Share message"
+                    >
+                      <Share2 size={14} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`msg-action-btn ${feedbackMap[idx] === 'like' ? 'active liked' : ''}`}
+                      onClick={() => handleToggleFeedback(idx, 'like')}
+                      title="Good response"
+                      aria-label="Thumbs up"
+                    >
+                      <ThumbsUp size={14} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`msg-action-btn ${feedbackMap[idx] === 'dislike' ? 'active disliked' : ''}`}
+                      onClick={() => handleToggleFeedback(idx, 'dislike')}
+                      title="Bad response"
+                      aria-label="Thumbs down"
+                    >
+                      <ThumbsDown size={14} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="msg-action-btn"
+                      onClick={() => handleRegenerateMessage(idx)}
+                      title="Regenerate response"
+                      aria-label="Regenerate response"
+                    >
+                      <RotateCw size={14} />
+                    </button>
+                  </div>
                 )}
               </div>
-
-              {isUser && !isEditingThis && (
-                <div className="user-message-actions-toolbar" role="toolbar" aria-label="User message options">
-                  <button
-                    type="button"
-                    className={`msg-action-btn ${copiedUserIdx === idx ? 'active' : ''}`}
-                    onClick={() => handleCopyUserMessage(idx, msg.content)}
-                    title={copiedUserIdx === idx ? 'Copied to clipboard' : 'Copy message'}
-                    aria-label="Copy message"
-                  >
-                    {copiedUserIdx === idx ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
-                  </button>
-                  <button
-                    type="button"
-                    className="msg-action-btn"
-                    onClick={() => handleStartEdit(messageId, msg.content)}
-                    title="Edit message"
-                    aria-label="Edit message"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                </div>
-              )}
-
-              {!isUser && msg.content && !isPureImage && (
-                <div className="message-actions-toolbar" role="toolbar" aria-label="Message options">
-                  <button
-                    type="button"
-                    className={`msg-action-btn ${copiedIdx === idx ? 'active' : ''}`}
-                    onClick={() => handleCopyMessage(idx, msg.content)}
-                    title={copiedIdx === idx ? 'Copied to clipboard' : 'Copy'}
-                    aria-label="Copy message"
-                  >
-                    {copiedIdx === idx ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`msg-action-btn ${speakingIdx === idx ? 'active speaking' : ''} ${loadingTTSIdx === idx ? 'active loading-audio' : ''}`}
-                    onClick={() => handleToggleSpeakMessage(idx, msg.content)}
-                    title={speakingIdx === idx ? 'Stop listening' : loadingTTSIdx === idx ? 'Synthesizing voice...' : 'Read aloud'}
-                    aria-label="Read aloud"
-                  >
-                    {speakingIdx === idx ? (
-                      <VolumeX size={14} />
-                    ) : loadingTTSIdx === idx ? (
-                      <Loader2 size={14} className="tts-spinner" />
-                    ) : (
-                      <Volume2 size={14} />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="msg-action-btn"
-                    onClick={() => setIsVoiceModalOpen(true)}
-                    title={`Voice model (${currentVoice.name})`}
-                    aria-label={`Select AI voice model. Currently using ${currentVoice.name}`}
-                  >
-                    <Speech size={14} />
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`msg-action-btn ${sharedIdx === idx ? 'active' : ''}`}
-                    onClick={() => handleShareMessage(idx, msg.content)}
-                    title={sharedIdx === idx ? 'Link Copied!' : 'Share message'}
-                    aria-label="Share message"
-                  >
-                    <Share2 size={14} />
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`msg-action-btn ${feedbackMap[idx] === 'like' ? 'active liked' : ''}`}
-                    onClick={() => handleToggleFeedback(idx, 'like')}
-                    title="Good response"
-                    aria-label="Thumbs up"
-                  >
-                    <ThumbsUp size={14} />
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`msg-action-btn ${feedbackMap[idx] === 'dislike' ? 'active disliked' : ''}`}
-                    onClick={() => handleToggleFeedback(idx, 'dislike')}
-                    title="Bad response"
-                    aria-label="Thumbs down"
-                  >
-                    <ThumbsDown size={14} />
-                  </button>
-
-                  <button
-                    type="button"
-                    className="msg-action-btn"
-                    onClick={() => handleRegenerateMessage(idx)}
-                    title="Regenerate response"
-                    aria-label="Regenerate response"
-                  >
-                    <RotateCw size={14} />
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         );

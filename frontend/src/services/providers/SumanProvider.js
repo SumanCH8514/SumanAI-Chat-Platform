@@ -132,6 +132,11 @@ export const SumanProvider = async (modelId, messages, onChunk, options = {}) =>
       throw new Error(errorMessage);
     }
 
+    const respondingHeader = response.headers.get('X-Responding-Model') || response.headers.get('x-responding-model');
+    if (respondingHeader && typeof options.onModelResolved === 'function') {
+      options.onModelResolved(respondingHeader);
+    }
+
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let fullText = "";
@@ -153,6 +158,9 @@ export const SumanProvider = async (modelId, messages, onChunk, options = {}) =>
 
         try {
           const chunkData = JSON.parse(jsonStr);
+          if (chunkData.meta?.model && typeof options.onModelResolved === 'function') {
+            options.onModelResolved(chunkData.meta.model);
+          }
           let piece = "";
           if (chunkData.candidates?.[0]?.content?.parts?.[0]?.text) {
             piece = chunkData.candidates[0].content.parts[0].text;
