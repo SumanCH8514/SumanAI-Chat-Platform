@@ -68,11 +68,16 @@ export const SumanProvider = async (modelId, messages, onChunk, options = {}) =>
   });
 
   const trimmedMessages = validMessages.map((msg, idx) => {
-    if (idx < validMessages.length - 2 && msg.attachments) {
-      const { attachments: _attachments, ...rest } = msg;
-      return { ...rest, content: msg.content + " (Image omitted from history to save space)" };
+    const isLatestUserMsg = idx === validMessages.length - 1;
+    let content = typeof msg.content === 'string' ? msg.content : '';
+    if (content.includes('data:image/')) {
+      content = content.replace(/data:image\/[a-zA-Z0-9.+_-]+;base64,[A-Za-z0-9+/=]{100,}/g, '[Embedded image omitted from context]');
     }
-    return msg;
+    if (!isLatestUserMsg && msg.attachments && msg.attachments.length > 0) {
+      const { attachments: _attachments, ...rest } = msg;
+      return { ...rest, content: content + " [Attachment omitted from history to save space]" };
+    }
+    return { ...msg, content };
   });
 
   const contextMessages = trimmedMessages.length > slidingWindow

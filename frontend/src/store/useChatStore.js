@@ -110,6 +110,40 @@ export const useChatStore = create(
         });
       },
 
+      replaceImageUrl: (oldUrl, newUrl) => {
+        if (!oldUrl || !newUrl || oldUrl === newUrl) return;
+        set((state) => {
+          let hasGlobalChange = false;
+          const updatedChats = state.chats.map((chat) => {
+            let chatChanged = false;
+            const updatedMessages = (chat.messages || []).map((msg) => {
+              if (typeof msg.content === 'string' && msg.content.includes(oldUrl)) {
+                chatChanged = true;
+                return {
+                  ...msg,
+                  content: msg.content.split(oldUrl).join(newUrl)
+                };
+              }
+              return msg;
+            });
+
+            if (chatChanged) {
+              hasGlobalChange = true;
+              const updatedChat = {
+                ...chat,
+                messages: updatedMessages
+              };
+              const userId = getUserId();
+              if (userId) firestoreService.saveChat(userId, updatedChat);
+              return updatedChat;
+            }
+            return chat;
+          });
+
+          return hasGlobalChange ? { chats: updatedChats } : state;
+        });
+      },
+
       updateLastMessage: (chatId, content) => {
         set((state) => {
           const updatedChats = state.chats.map((chat) => {
@@ -229,6 +263,7 @@ export const useChatStore = create(
           return { chats: updatedChats };
         });
       },
+
 
       syncChats: async () => {
         const userId = getUserId();

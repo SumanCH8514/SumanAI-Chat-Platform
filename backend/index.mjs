@@ -251,7 +251,7 @@ function isImageGenerationIntent(text) {
   const nonVisualFigureOfSpeech = /\b(?:draw\s+(?:a\s+)?(?:comparison|conclusion|parallel|distinction)|paint\s+(?:a\s+)?picture\s+of\s+how|make\s+(?:a\s+)?(?:point|list|table|plan|schedule|summary|call|decision))\b/i;
   if (nonVisualFigureOfSpeech.test(clean)) return false;
 
-  const explicitGenVerbRegex = /^(?:please\s+)?(?:can\s+you\s+)?(?:could\s+you\s+)?(?:please\s+)?(?:i\s+(?:want|need|would\s+like)\s+)?(?:give\s+me\s+)?(?:generate|create|draw|make|render|produce|paint|design|illustrate|synthesize)\s+(?:a|an|the|me\s+a|me\s+an|some)?\s*(?:[a-zA-Z0-9_,-]+\s+){0,8}?(?:image|picture|photo|photograph|portrait|illustration|artwork|drawing|painting|render|visual|graphic|wallpaper|avatar|sketch|poster|banner|concept\s+art|digital\s+art)\b/i;
+  const explicitGenVerbRegex = /^(?:please\s+)?(?:can\s+you\s+)?(?:could\s+you\s+)?(?:please\s+)?(?:i\s+(?:want|need|would\s+like)\s+)?(?:give\s+me\s+)?(?:generate|create|draw|make|render|produce|paint|design|illustrate|synthesize)\s+(?:a|an|the|me\s+a|me\s+an|some)?\s*(?:[a-zA-Z0-9_,-]+\s+){0,16}?(?:image|picture|photo|photograph|portrait|illustration|artwork|drawing|painting|render|visual|graphic|wallpaper|avatar|sketch|poster|banner|concept\s+art|digital\s+art)\b/i;
   if (explicitGenVerbRegex.test(clean)) return true;
 
   const directNounPrefixRegex = /^(?:a|an|the)?\s*(?:[a-zA-Z0-9_-]+\s+){0,4}?(?:image|picture|photo|photograph|portrait|wallpaper|artwork|illustration|drawing|painting|render|concept\s+art)\s+(?:of|showing|depicting|with|featuring|in)\b/i;
@@ -551,6 +551,53 @@ export default {
         }
       }
 
+      if (url.pathname === "/api/upload-watermarked-image") {
+        try {
+          let key = typeof body?.key === "string" ? body.key.trim() : "";
+          const imageBase64 = typeof body?.imageBase64 === "string" ? body.imageBase64.trim() : "";
+
+          if (!imageBase64) {
+            return new Response(JSON.stringify({ error: "Missing image data" }), {
+              status: 400,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          if (!key || !key.startsWith("generated-images/")) {
+            key = `generated-images/SumanAI_img_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
+          }
+
+          if (env.R2_BUCKET) {
+            const cleanBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+            const binaryString = atob(cleanBase64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            await env.R2_BUCKET.put(key, bytes, {
+              httpMetadata: {
+                contentType: 'image/jpeg',
+                cacheControl: 'public, max-age=31536000'
+              }
+            });
+          }
+
+          return new Response(JSON.stringify({
+            success: true,
+            key,
+            url: `https://cdn.sumanai.r2.sumanonline.com/${key}`
+          }), {
+            status: 200,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        } catch (err) {
+          return new Response(JSON.stringify({ error: err.message || "Failed to save watermarked image" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+      }
+
       if (url.pathname === "/api/tts") {
         try {
           const text = typeof body?.text === "string" ? body.text.trim() : "";
@@ -569,7 +616,7 @@ export default {
             });
           }
 
-          const referenceId = body?.reference_id || env.FISH_AUDIO_REFERENCE_ID || "9a9cf47702da476aa4629e2506d4a857";
+          const referenceId = body?.reference_id || env.FISH_AUDIO_REFERENCE_ID || "f3436e1952784a9d9e348fedb15adde9";
           const model = body?.model || env.FISH_AUDIO_MODEL || "s2.1-pro-free";
           const format = body?.format || "mp3";
           const latency = body?.latency || "balanced";
@@ -625,7 +672,7 @@ export default {
 
       if (url.pathname === "/api/payment/create-order") {
         const { amount, currency = "INR", gateway = "razorpay", purpose = "subscription", planId, credits = 0, userId, userEmail, billingAddress } = body;
-        
+
         const numericAmount = parseFloat(amount);
         if (!numericAmount || numericAmount <= 0) {
           return new Response(JSON.stringify({ error: "Invalid payment amount" }), {
@@ -745,40 +792,49 @@ export default {
       }
 
       const configuredMaxLimit = parseInt(
-        env.MAX_CONVERSATION_MESSAGES || 
-        env.MAX_MESSAGES_LIMIT || 
-        env.CONVERSATION_HISTORY_LIMIT || 
-        options?.systemLimits?.maxConversationMessages || 
-        '100', 
+        env.MAX_CONVERSATION_MESSAGES ||
+        env.MAX_MESSAGES_LIMIT ||
+        env.CONVERSATION_HISTORY_LIMIT ||
+        options?.systemLimits?.maxConversationMessages ||
+        '100',
         10
       ) || 100;
 
       const slidingWindowSize = parseInt(
-        env.SLIDING_CONTEXT_WINDOW || 
-        env.CONTEXT_WINDOW_SIZE || 
-        options?.systemLimits?.slidingContextWindow || 
-        '50', 
+        env.SLIDING_CONTEXT_WINDOW ||
+        env.CONTEXT_WINDOW_SIZE ||
+        options?.systemLimits?.slidingContextWindow ||
+        '50',
         10
       ) || 50;
 
-      const messages = rawMessages.length > configuredMaxLimit
+      const messages = (rawMessages.length > configuredMaxLimit
         ? rawMessages.slice(-slidingWindowSize)
-        : rawMessages;
+        : rawMessages).map((m, idx, arr) => {
+          let content = typeof m.content === 'string' ? m.content : '';
+          if (content.includes('data:image/')) {
+            content = content.replace(/data:image\/[a-zA-Z0-9.+_-]+;base64,[A-Za-z0-9+/=]{100,}/g, '[Embedded image omitted from context]');
+          }
+          if (idx < arr.length - 1 && content.length > 20000) {
+            content = content.slice(0, 20000) + '... [Long context truncated]';
+          }
+          return {
+            ...m,
+            content
+          };
+        });
 
       const groqSupportedModels = new Set([
         'openai/gpt-oss-120b',
         'openai/gpt-oss-20b',
         'qwen/qwen3.8-27b',
         'canopylabs/orpheus-v1-english',
-        'canopylabs/orpheus-arabic-saudi',
-        'llama-3.2-11b-vision-preview',
-        'llama-3.2-90b-vision-preview'
+        'canopylabs/orpheus-arabic-saudi'
       ]);
 
       const nvidiaSupportedModels = new Set([
-        'z-ai/glm-5.3',
-        'z-ai/glm-5.3-flash',
-        'moonshotai/kimi-k3',
+        'nvidia/llama-3.1-nemotron-70b-instruct',
+        'meta/llama-3.3-70b-instruct',
         'google/gemma-4-31b-it',
         'google/diffusiongemma-26b-a4b-it',
         'meta/muse-glimmer-30b'
@@ -789,12 +845,27 @@ export default {
         '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
         '@cf/qwen/qwen2.5-72b-instruct',
         '@cf/meta/llama-3.1-8b-instruct',
+        '@cf/meta/llama-3.1-8b-instruct-fp8',
         '@cf/meta/llama-3.2-11b-vision-instruct',
         '@cf/black-forest-labs/flux-1-schnell'
       ]);
 
+      const DEPRECATED_MODEL_ALIASES = {
+        'z-ai/glm-5.3': 'nvidia/llama-3.1-nemotron-70b-instruct',
+        'z-ai/glm-5.3-flash': 'nvidia/llama-3.1-nemotron-70b-instruct',
+        'moonshotai/kimi-k3': 'meta/llama-3.3-70b-instruct',
+        '@cf/meta/llama-3.1-8b-instruct': '@cf/meta/llama-3.1-8b-instruct-fp8',
+        '@cf/qwen/qwen2.5-72b-instruct': 'qwen/qwen3.8-27b',
+        'meta/llama-3.2-11b-vision-instruct': '@cf/meta/llama-3.2-11b-vision-instruct',
+        'llama-3.2-11b-vision-preview': '@cf/meta/llama-3.2-11b-vision-instruct',
+        'llama-3.2-90b-vision-preview': '@cf/meta/llama-3.2-11b-vision-instruct'
+      };
+
       const isGoogle = await isGoogleAuthenticated(request, env);
       let targetModel = typeof modelId === 'string' ? modelId : (isGoogle ? 'openai/gpt-oss-120b' : 'qwen/qwen3.8-27b');
+      if (DEPRECATED_MODEL_ALIASES[targetModel]) {
+        targetModel = DEPRECATED_MODEL_ALIASES[targetModel];
+      }
 
       const lastUserMsg = messages.filter(m => m.role === 'user').pop();
       const lastUserText = lastUserMsg?.content || '';
@@ -827,9 +898,6 @@ export default {
 
       if (targetModel.startsWith('@cf/') || cloudflareSupportedModels.has(targetModel)) {
         provider = 'cloudflare';
-      } else if (targetModel === 'meta/llama-3.2-11b-vision-instruct' || targetModel.includes('vision')) {
-        targetModel = 'llama-3.2-11b-vision-preview';
-        provider = 'groq';
       } else if (targetModel.startsWith('gemini')) {
         targetModel = 'gemini-1.5-flash';
         provider = 'google';
@@ -864,7 +932,7 @@ export default {
       }
 
       const modelDisplayName = targetModel.split('/').pop().replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      const systemInstruction = `You are SumanAI - Model: ${modelDisplayName}. You are an intelligent, high-performance AI assistant. Always provide clear, beautifully structured responses. Format answers with clean Markdown headings (###), paragraphs, lists, and horizontal dividers (---) where appropriate. When presenting poems, creative compositions, summaries, or structured analyses, divide sections clearly with headers and dividers, and provide an insightful closing reflection or key takeaway in a Markdown blockquote (> **Key Reflection:** ...). When providing code, always format inside fenced code blocks with the exact language identifier. Strictly never fabricate, invent, or output fake markdown image links or fake CDN URLs (such as ![...](https://cdn.sumanai...)). You cannot generate image files directly in text mode; if asked to generate an image, describe the visual composition in text.${personalizationPrompt}`;
+      const systemInstruction = `You are SumanAI - Model: ${modelDisplayName}. You are an intelligent, high-performance AI assistant. Always provide clear, beautifully structured responses. Format answers with clean Markdown headings (###), paragraphs, lists, and horizontal dividers (---) where appropriate. When presenting poems, creative compositions, summaries, or structured analyses, divide sections clearly with headers and dividers, and provide an insightful closing reflection or key takeaway in a Markdown blockquote (> **Key Reflection:** ...). When providing code, always format inside fenced code blocks with the exact language identifier. You are a text-based AI assistant and do not generate direct image files, external URLs, or markdown image tags (![...]). If the user asks for image creation or visual scenes, provide detailed creative scene descriptions in text.${personalizationPrompt}`;
 
       if (provider === 'cloudflare') {
         if (!env.AI) {
@@ -890,9 +958,16 @@ export default {
 
           const userMessages = filteredMessages.filter(m => m.role === 'user' || !m.role);
           const promptMsg = userMessages.pop();
-          let promptText = (promptMsg?.content || 'A vibrant artistic composition').trim();
+          let rawPrompt = (promptMsg?.content || 'A vibrant artistic composition').trim();
 
-          const lowerPrompt = promptText.toLowerCase();
+          let cleanPrompt = rawPrompt
+            .replace(/!\[.*?\]\(.*?\)/g, '')
+            .replace(/https?:\/\/[^\s]+/g, '')
+            .replace(/data:image\/[a-zA-Z0-9.+_-]+;base64,[A-Za-z0-9+/=]+/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          const lowerPrompt = cleanPrompt.toLowerCase();
           const STYLE_PROFILES = {
             'oil painting': 'rich classical oil painting on canvas, visible textured impasto brushstrokes, rich oil pigments, gallery fine art',
             'watercolor': 'delicate translucent watercolor painting on cold-press paper, fluid wet-on-wet paint washes, soft bleeding edges, authentic watercolor pigments',
@@ -910,19 +985,24 @@ export default {
             }
           }
 
-          const isStyleConversion = lowerPrompt.includes('convert this image') || 
-                                    lowerPrompt.includes('in this style') || 
-                                    lowerPrompt.includes('change style to') ||
-                                    lowerPrompt.startsWith('convert to');
+          const isStyleConversion = lowerPrompt.includes('convert this image') ||
+            lowerPrompt.includes('in this style') ||
+            lowerPrompt.includes('change style to') ||
+            lowerPrompt.startsWith('convert to');
+
+          let promptText = cleanPrompt;
 
           if (matchedStyleKey) {
             let baseSubject = '';
             for (let i = userMessages.length - 1; i >= 0; i--) {
-              const c = (userMessages[i]?.content || '').trim();
+              const c = (userMessages[i]?.content || '')
+                .replace(/!\[.*?\]\(.*?\)/g, '')
+                .replace(/https?:\/\/[^\s]+/g, '')
+                .trim();
               const cLower = c.toLowerCase();
-              const isAnotherConversion = cLower.includes('convert this image') || 
-                                          cLower.includes('in this style') || 
-                                          cLower.startsWith('convert to');
+              const isAnotherConversion = cLower.includes('convert this image') ||
+                cLower.includes('in this style') ||
+                cLower.startsWith('convert to');
               if (c && !isAnotherConversion) {
                 baseSubject = c;
                 break;
@@ -943,13 +1023,16 @@ export default {
             if (baseSubject) {
               promptText = `${baseSubject}, ${STYLE_PROFILES[matchedStyleKey]}`;
             } else {
-              promptText = `${promptText}, ${STYLE_PROFILES[matchedStyleKey]}`;
+              promptText = `${cleanPrompt}, ${STYLE_PROFILES[matchedStyleKey]}`;
             }
           } else if (isStyleConversion && userMessages.length > 0) {
             const previousPromptMsg = userMessages.pop();
-            const previousText = (previousPromptMsg?.content || '').trim();
+            const previousText = (previousPromptMsg?.content || '')
+              .replace(/!\[.*?\]\(.*?\)/g, '')
+              .replace(/https?:\/\/[^\s]+/g, '')
+              .trim();
             if (previousText) {
-              const cleanedStyle = promptText
+              const cleanedStyle = cleanPrompt
                 .replace(/^(convert this image into|convert this image to|convert to|make this|change style to)\s+/i, '')
                 .replace(/\s+style$/i, '')
                 .trim();
@@ -957,19 +1040,52 @@ export default {
             }
           }
 
-          let modelPrompt = promptText;
-          if (!/watermark/i.test(modelPrompt)) {
-            modelPrompt = `${modelPrompt}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge, strictly no other text`;
+          let optimizedPrompt = promptText
+            .replace(/^(?:please\s+)?(?:can\s+you\s+)?(?:could\s+you\s+)?(?:i\s+(?:want|need|would\s+like)\s+)?(?:give\s+me\s+)?(?:generate|create|draw|make|render|produce|paint|design|illustrate|synthesize)\s+(?:a|an|the|me\s+a|me\s+an|some)?\s*/i, '')
+            .trim();
+
+          if (!optimizedPrompt) {
+            optimizedPrompt = 'A majestic scenic composition, cinematic lighting, 8k resolution, highly detailed fine art';
           }
 
-          const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
-            prompt: modelPrompt,
-            steps: 4
-          });
+          if (optimizedPrompt.length > 1800) {
+            optimizedPrompt = optimizedPrompt.slice(0, 1800).trim();
+          }
 
-          const imageBase64 = result?.image || result?.result?.image;
+          let imageBase64 = null;
+          try {
+            const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
+              prompt: optimizedPrompt,
+              steps: 4
+            });
+            imageBase64 = result?.image || result?.result?.image;
+          } catch (cfErr) {
+            const errStr = String(cfErr?.message || cfErr || '');
+            if (errStr.includes('4006') || errStr.includes('neurons') || errStr.includes('allocation') || errStr.includes('quota')) {
+              try {
+                const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(optimizedPrompt)}?width=1024&height=1024&nologo=true&model=flux`;
+                const pollRes = await fetch(pollUrl);
+                if (pollRes.ok) {
+                  const arrayBuf = await pollRes.arrayBuffer();
+                  const bytes = new Uint8Array(arrayBuf);
+                  let binary = '';
+                  for (let i = 0; i < bytes.length; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                  }
+                  imageBase64 = btoa(binary);
+                } else {
+                  throw cfErr;
+                }
+              } catch {
+                throw cfErr;
+              }
+            } else {
+              throw cfErr;
+            }
+          }
+
           if (!imageBase64) {
-            throw new Error("Cloudflare did not return image data. Please try again.");
+            throw new Error("Unable to generate image. Please try again or rephrase your prompt.");
           }
 
           const { readable, writable } = new TransformStream();
@@ -980,37 +1096,8 @@ export default {
             try {
               const cleanTitle = (promptMsg?.content || promptText).replace(/[\[\]\(\)\n\r]/g, ' ').trim().slice(0, 70) || 'Generated Image';
               const cleanBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-              const binaryString = atob(cleanBase64);
-              const bytes = new Uint8Array(binaryString.length);
-              for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-              }
-
-              const imageFileName = `SumanAI_img_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
-              const r2Key = `generated-images/${imageFileName}`;
-              let finalImageUrl = `https://cdn.sumanai.r2.sumanonline.com/${r2Key}`;
-
-              if (env.R2_BUCKET) {
-                try {
-                  await env.R2_BUCKET.put(r2Key, bytes, {
-                    httpMetadata: {
-                      contentType: 'image/jpeg',
-                      contentDisposition: `inline; filename="${imageFileName}"`,
-                      cacheControl: 'public, max-age=31536000'
-                    }
-                  });
-                } catch {
-                  finalImageUrl = imageBase64.startsWith('data:image/')
-                    ? imageBase64
-                    : `data:image/jpeg;base64,${imageBase64}`;
-                }
-              } else {
-                finalImageUrl = imageBase64.startsWith('data:image/')
-                  ? imageBase64
-                  : `data:image/jpeg;base64,${imageBase64}`;
-              }
-
-              const markdown = `![${cleanTitle}](${finalImageUrl})`;
+              const rawDataUrl = `data:image/jpeg;base64,${cleanBase64}`;
+              const markdown = `![${cleanTitle}](${rawDataUrl})`;
               const chunk = {
                 candidates: [{
                   content: {
@@ -1043,35 +1130,38 @@ export default {
           return true;
         });
 
-        let visionImageBytes = null;
-        for (let i = messages.length - 1; i >= 0; i--) {
-          const atts = messages[i].attachments;
-          if (atts && atts.length > 0 && atts[0].data) {
-            try {
-              const binaryString = atob(atts[0].data);
-              const bytes = new Uint8Array(binaryString.length);
-              for (let b = 0; b < binaryString.length; b++) {
-                bytes[b] = binaryString.charCodeAt(b);
-              }
-              visionImageBytes = [...bytes];
-              break;
-            } catch {
-              void 0;
-            }
-          }
-        }
-
         const isVisionModel = targetModel === '@cf/meta/llama-3.2-11b-vision-instruct';
+        const latestAttachmentIdx = filteredMessages.map(m => Boolean(m.attachments && m.attachments.length > 0)).lastIndexOf(true);
 
         const cfMessages = filteredMessages.map((m, index) => {
           let textContent = (m.content || '').trim();
           if (index === 0 && (m.role === 'user' || !m.role)) {
             textContent = `${systemInstruction}\n\n${textContent}`;
           }
-          if (m.attachments && m.attachments.length > 0 && !isVisionModel) {
-            const omitted = m.attachments.map(a => a.name || 'image').join(', ');
-            textContent = `${textContent}\n[Attachments: ${omitted}]`.trim();
+
+          if (m.attachments && m.attachments.length > 0) {
+            const isLatestAttachment = index === latestAttachmentIdx && index >= filteredMessages.length - 2;
+            if (isVisionModel && isLatestAttachment) {
+              const contentParts = [];
+              if (textContent) {
+                contentParts.push({ type: "text", text: textContent });
+              }
+              m.attachments.forEach(att => {
+                contentParts.push({
+                  type: "image_url",
+                  image_url: { url: `data:${att.type || 'image/jpeg'};base64,${att.data}` }
+                });
+              });
+              return {
+                role: m.role === 'assistant' ? 'assistant' : (m.role === 'system' ? 'system' : 'user'),
+                content: contentParts
+              };
+            } else {
+              const omitted = m.attachments.map(a => a.name || 'image').join(', ');
+              textContent = `${textContent}\n[Attachments: ${omitted}]`.trim();
+            }
           }
+
           return {
             role: m.role === 'assistant' ? 'assistant' : (m.role === 'system' ? 'system' : 'user'),
             content: textContent || " "
@@ -1081,12 +1171,8 @@ export default {
         const aiPayload = {
           messages: cfMessages,
           stream: true,
-          max_tokens: 4096
+          max_tokens: 2048
         };
-
-        if (isVisionModel && visionImageBytes) {
-          aiPayload.image = visionImageBytes;
-        }
 
         let aiStream = null;
         try {
@@ -1100,12 +1186,24 @@ export default {
             } catch (agreeErr) {
               if (env.GROQ_API_KEY && (isVisionModel || targetModel.includes('vision'))) {
                 provider = 'groq';
-                targetModel = 'llama-3.2-11b-vision-preview';
+                targetModel = 'qwen/qwen3.8-27b';
                 API_KEY = env.GROQ_API_KEY;
               } else {
                 throw agreeErr;
               }
             }
+          } else if (errMsg.includes('4006') || errMsg.includes('5007') || errMsg.includes('5028') || errMsg.includes('neurons') || errMsg.includes('allocation') || errMsg.includes('quota') || errMsg.includes('deprecated') || errMsg.includes('No such model')) {
+            if (env.GROQ_API_KEY) {
+              provider = 'groq';
+              targetModel = targetModel.includes('70b') ? 'openai/gpt-oss-120b' : 'qwen/qwen3.8-27b';
+              API_KEY = env.GROQ_API_KEY;
+            } else {
+              throw runErr;
+            }
+          } else if (env.GROQ_API_KEY && (isVisionModel || targetModel.includes('vision'))) {
+            provider = 'groq';
+            targetModel = 'qwen/qwen3.8-27b';
+            API_KEY = env.GROQ_API_KEY;
           } else {
             throw runErr;
           }
@@ -1207,14 +1305,14 @@ export default {
       }
 
       if (provider === 'groq' || provider === 'nvidia') {
-        const isNvidia = provider === 'nvidia';
-        const apiUrl = isNvidia
+        let isNvidia = provider === 'nvidia';
+        let apiUrl = isNvidia
           ? "https://integrate.api.nvidia.com/v1/chat/completions"
           : "https://api.groq.com/openai/v1/chat/completions";
 
-        const supportsVision = targetModel === 'meta/llama-3.2-11b-vision-instruct' ||
-          targetModel.includes('vision') ||
-          targetModel === 'llama-3.2-11b-vision-preview';
+        const supportsVision = targetModel === 'qwen/qwen3.8-27b' ||
+          targetModel === '@cf/meta/llama-3.2-11b-vision-instruct' ||
+          targetModel.includes('vision');
 
         const filteredMessages = messages.filter((m, idx) => {
           if (m.role === 'assistant' && !m.content?.trim() && idx === messages.length - 1) {
@@ -1222,6 +1320,8 @@ export default {
           }
           return true;
         });
+
+        const latestOpenAiAttachmentIdx = filteredMessages.map(m => Boolean(m.attachments && m.attachments.length > 0)).lastIndexOf(true);
 
         const openAiMessages = filteredMessages.map((m, index) => {
           let textContent = (m.content || '').trim();
@@ -1231,7 +1331,8 @@ export default {
           }
 
           if (m.attachments && m.attachments.length > 0) {
-            if (supportsVision) {
+            const isLatestAttachment = index === latestOpenAiAttachmentIdx && index >= filteredMessages.length - 2;
+            if (supportsVision && isLatestAttachment) {
               const contentParts = [];
               if (textContent) {
                 contentParts.push({ type: "text", text: textContent });
@@ -1265,7 +1366,7 @@ export default {
           requestPayload.max_completion_tokens = targetModel.includes('70b') ? 32768 : 8192;
         }
 
-        const response = await fetchWithRetry(apiUrl, {
+        let response = await fetchWithRetry(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1275,6 +1376,30 @@ export default {
           body: JSON.stringify(requestPayload),
           signal: request.signal
         });
+
+        if (!response.ok && isNvidia && (response.status === 410 || response.status === 404) && env.GROQ_API_KEY) {
+          const fallbackModel = isGoogle ? 'openai/gpt-oss-120b' : 'qwen/qwen3.8-27b';
+          const fallbackPayload = {
+            model: fallbackModel,
+            messages: openAiMessages,
+            temperature: options.deepThinking ? 0.6 : 0.7,
+            stream: true,
+            max_completion_tokens: 8192
+          };
+          response = await fetchWithRetry("https://api.groq.com/openai/v1/chat/completions", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${env.GROQ_API_KEY}`,
+              'Accept': 'text/event-stream'
+            },
+            body: JSON.stringify(fallbackPayload),
+            signal: request.signal
+          });
+          if (response.ok) {
+            isNvidia = false;
+          }
+        }
 
         if (!response.ok) {
           const errTxt = await response.text();

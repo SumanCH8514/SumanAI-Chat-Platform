@@ -1,5 +1,6 @@
 import { chunkTextForStreamingTTS } from '../utils/textChunker.js';
 import { ttsPlaybackEngine } from './ttsPlaybackEngine.js';
+import { DEFAULT_VOICE_ID } from '../constants/voices.js';
 
 export const ttsService = {
   speak: (text, options = {}) => {
@@ -15,7 +16,19 @@ export const ttsService = {
 
     if (chunks.length === 0) return;
 
-    ttsPlaybackEngine.start(chunks, options);
+    let savedVoiceId = null;
+    try {
+      savedVoiceId = typeof window !== 'undefined' ? localStorage.getItem('sumanai_selected_voice_id') : null;
+    } catch {
+      savedVoiceId = null;
+    }
+
+    const mergedOptions = {
+      referenceId: options.referenceId || savedVoiceId || DEFAULT_VOICE_ID,
+      ...options
+    };
+
+    ttsPlaybackEngine.start(chunks, mergedOptions);
   },
 
   pause: () => {

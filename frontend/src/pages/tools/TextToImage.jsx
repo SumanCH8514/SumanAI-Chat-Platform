@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { chatService } from '../../services/ChatService';
 import { downloadImage } from '../../utils/downloadUtils';
+import { applySumanAIWatermark } from '../../utils/watermarkUtils';
 import './ToolAppShared.css';
 import './TextToImage.css';
 
@@ -74,7 +75,7 @@ export const TextToImage = () => {
 
     const ratio = ASPECT_RATIOS.find((r) => r.id === aspectRatio) || ASPECT_RATIOS[0];
     const styleObj = STYLES.find((s) => s.id === selectedStyle);
-    const fullPrompt = `${prompt.trim()}${styleObj?.promptSuffix || ''}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge, strictly no other text`;
+    const fullPrompt = `${prompt.trim()}${styleObj?.promptSuffix || ''}`;
     const encoded = encodeURIComponent(fullPrompt);
     const url = `https://image.pollinations.ai/prompt/${encoded}?width=${ratio.width}&height=${ratio.height}&seed=${seed}&nologo=true`;
 
@@ -82,26 +83,34 @@ export const TextToImage = () => {
     img.crossOrigin = 'anonymous';
     img.src = url;
     img.onload = () => {
-      setGeneratedImageUrl(url);
-      setIsGenerating(false);
-      try {
-        const raw = localStorage.getItem('sumanai_uploaded_files');
-        const list = raw ? JSON.parse(raw) : [];
-        const cleanPrompt = prompt.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_').slice(0, 32) || 'TextToImage';
-        const newFile = {
-          id: `gen-t2i-${Date.now()}`,
-          name: `${cleanPrompt}.jpg`,
-          type: 'image',
-          subtype: 'generated',
-          url,
-          size: '512 KB',
-          chatTitle: 'Text to Image Studio',
-          createdAt: Date.now()
-        };
-        localStorage.setItem('sumanai_uploaded_files', JSON.stringify([newFile, ...list.filter(item => item.url !== url)]));
-      } catch {
-        void 0;
-      }
+      applySumanAIWatermark(url)
+        .then((watermarked) => {
+          const finalUrl = watermarked || url;
+          setGeneratedImageUrl(finalUrl);
+          setIsGenerating(false);
+          try {
+            const raw = localStorage.getItem('sumanai_uploaded_files');
+            const list = raw ? JSON.parse(raw) : [];
+            const cleanPrompt = prompt.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_').slice(0, 32) || 'TextToImage';
+            const newFile = {
+              id: `gen-t2i-${Date.now()}`,
+              name: `${cleanPrompt}.jpg`,
+              type: 'image',
+              subtype: 'generated',
+              url: finalUrl,
+              size: '512 KB',
+              chatTitle: 'Text to Image Studio',
+              createdAt: Date.now()
+            };
+            localStorage.setItem('sumanai_uploaded_files', JSON.stringify([newFile, ...list.filter(item => item.url !== finalUrl)]));
+          } catch {
+            void 0;
+          }
+        })
+        .catch(() => {
+          setGeneratedImageUrl(url);
+          setIsGenerating(false);
+        });
     };
     img.onerror = () => {
       setGeneratedImageUrl(url);

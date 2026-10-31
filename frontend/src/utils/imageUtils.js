@@ -35,7 +35,7 @@ export const compressImage = (dataUrl, maxWidth = 1024, maxHeight = 1024, qualit
 export const isValidImageUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
   return Boolean(
-    url.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) || 
+    url.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) ||
     url.startsWith('data:image')
   );
 };
@@ -54,7 +54,7 @@ export const isImageGenerationIntent = (text) => {
   const nonVisualFigureOfSpeech = /\b(?:draw\s+(?:a\s+)?(?:comparison|conclusion|parallel|distinction)|paint\s+(?:a\s+)?picture\s+of\s+how|make\s+(?:a\s+)?(?:point|list|table|plan|schedule|summary|call|decision))\b/i;
   if (nonVisualFigureOfSpeech.test(clean)) return false;
 
-  const explicitGenVerbRegex = /^(?:please\s+)?(?:can\s+you\s+)?(?:could\s+you\s+)?(?:please\s+)?(?:i\s+(?:want|need|would\s+like)\s+)?(?:give\s+me\s+)?(?:generate|create|draw|make|render|produce|paint|design|illustrate|synthesize)\s+(?:a|an|the|me\s+a|me\s+an|some)?\s*(?:[a-zA-Z0-9_,-]+\s+){0,8}?(?:image|picture|photo|photograph|portrait|illustration|artwork|drawing|painting|render|visual|graphic|wallpaper|avatar|sketch|poster|banner|concept\s+art|digital\s+art)\b/i;
+  const explicitGenVerbRegex = /^(?:please\s+)?(?:can\s+you\s+)?(?:could\s+you\s+)?(?:please\s+)?(?:i\s+(?:want|need|would\s+like)\s+)?(?:give\s+me\s+)?(?:generate|create|draw|make|render|produce|paint|design|illustrate|synthesize)\s+(?:a|an|the|me\s+a|me\s+an|some)?\s*(?:[a-zA-Z0-9_,-]+\s+){0,16}?(?:image|picture|photo|photograph|portrait|illustration|artwork|drawing|painting|render|visual|graphic|wallpaper|avatar|sketch|poster|banner|concept\s+art|digital\s+art)\b/i;
   if (explicitGenVerbRegex.test(clean)) return true;
 
   const directNounPrefixRegex = /^(?:a|an|the)?\s*(?:[a-zA-Z0-9_-]+\s+){0,4}?(?:image|picture|photo|photograph|portrait|wallpaper|artwork|illustration|drawing|painting|render|concept\s+art)\s+(?:of|showing|depicting|with|featuring|in)\b/i;

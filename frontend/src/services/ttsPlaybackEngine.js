@@ -120,7 +120,14 @@ export class TTSPlaybackEngine {
     if (!chunk) return;
 
     this.activeFetchCount++;
-    const { referenceId = '9a9cf47702da476aa4629e2506d4a857', model = 's2.1-pro-free', format = 'mp3' } = this.options;
+    let storedVoice = null;
+    try {
+      storedVoice = typeof window !== 'undefined' ? localStorage.getItem('sumanai_selected_voice_id') : null;
+    } catch {
+      storedVoice = null;
+    }
+    const referenceId = this.options.referenceId || storedVoice || '9a9cf47702da476aa4629e2506d4a857';
+    const { model = 's2.1-pro-free', format = 'mp3' } = this.options;
     const cacheKey = ttsCache.createKey(chunk.text, model, referenceId, format);
     const controller = new AbortController();
     this.activeControllersMap.set(index, controller);

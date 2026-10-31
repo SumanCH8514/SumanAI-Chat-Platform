@@ -28,12 +28,11 @@ const DEFAULT_GOVERNANCE = {
       }
     },
     free: {
-      maxSelectableModels: 17,
+      maxSelectableModels: 15,
       allowedModelIds: [
-        'meta/llama-3.2-11b-vision-instruct',
-        'z-ai/glm-5.3',
-        'z-ai/glm-5.3-flash',
-        'moonshotai/kimi-k3',
+        '@cf/meta/llama-3.2-11b-vision-instruct',
+        'nvidia/llama-3.1-nemotron-70b-instruct',
+        'meta/llama-3.3-70b-instruct',
         'google/gemma-4-31b-it',
         'google/diffusiongemma-26b-a4b-it',
         'meta/muse-glimmer-30b',
@@ -45,7 +44,6 @@ const DEFAULT_GOVERNANCE = {
         '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
         '@cf/qwen/qwen2.5-72b-instruct',
         '@cf/meta/llama-3.1-8b-instruct',
-        '@cf/meta/llama-3.2-11b-vision-instruct',
         '@cf/black-forest-labs/flux-1-schnell'
       ],
       defaultModelId: 'openai/gpt-oss-120b',
@@ -58,10 +56,9 @@ const DEFAULT_GOVERNANCE = {
     pro: {
       maxSelectableModels: 25,
       allowedModelIds: [
-        'meta/llama-3.2-11b-vision-instruct',
-        'z-ai/glm-5.3',
-        'z-ai/glm-5.3-flash',
-        'moonshotai/kimi-k3',
+        '@cf/meta/llama-3.2-11b-vision-instruct',
+        'nvidia/llama-3.1-nemotron-70b-instruct',
+        'meta/llama-3.3-70b-instruct',
         'google/gemma-4-31b-it',
         'google/diffusiongemma-26b-a4b-it',
         'meta/muse-glimmer-30b',
@@ -73,7 +70,6 @@ const DEFAULT_GOVERNANCE = {
         '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
         '@cf/qwen/qwen2.5-72b-instruct',
         '@cf/meta/llama-3.1-8b-instruct',
-        '@cf/meta/llama-3.2-11b-vision-instruct',
         '@cf/black-forest-labs/flux-1-schnell'
       ],
       premiumModelIds: [
@@ -241,7 +237,7 @@ export const adminService = {
     window.addEventListener('sumanai_governance_updated', handleCustomUpdate);
     window.addEventListener('storage', handleStorageUpdate);
 
-    let unsubSnapshot = () => {};
+    let unsubSnapshot = () => { };
     const db = getFirebaseDb();
     if (db) {
       try {

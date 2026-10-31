@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   X, Settings, Database, Sun, Moon, Monitor, Info,
   User, Sliders, Zap, HelpCircle, Check, Copy, ShieldCheck,
-  CheckCircle2, ArrowRight, Wallet, CreditCard, RefreshCw,
+  CheckCircle2, ArrowRight, ArrowLeft, Wallet, CreditCard, RefreshCw,
   Phone, MapPin, Building2, AlertCircle, FileText,
-  Gift, Share2, Link2, Users
+  Gift, Share2, Link2, Users, Volume2, VolumeX, ChevronDown, Play
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { COLOR_THEMES } from '../constants/themes';
@@ -13,6 +13,8 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useChatStore } from '../store/useChatStore';
 import { firestoreService } from '../services/firestoreService';
 import { referralService } from '../services/referralService';
+import { ttsService } from '../services/ttsService';
+import { AI_VOICE_GROUPS, DEFAULT_VOICE_ID, getVoiceById, getVoiceCategory } from '../constants/voices';
 import { getFirebaseAuth } from '../services/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getUserDisplayName } from '../utils/formatters';
@@ -40,6 +42,118 @@ const SettingsModal = ({ onClose, initialTab = 'general' }) => {
   const isPro = adminService.checkHasProAccess(user);
   const userName = isGuest ? 'Guest User' : getUserDisplayName(user);
   const userEmail = user?.email || (isGuest ? 'Guest Session' : 'No email');
+
+  const [selectedVoiceId, setSelectedVoiceId] = useState(() => {
+    return localStorage.getItem('sumanai_selected_voice_id') || DEFAULT_VOICE_ID;
+  });
+  const [isVoiceTesting, setIsVoiceTesting] = useState(false);
+  const [previewingVoiceId, setPreviewingVoiceId] = useState(null);
+  const [isVoiceMenuOpen, setIsVoiceMenuOpen] = useState(false);
+  const voiceMenuRef = useRef(null);
+
+  const currentVoice = getVoiceById(selectedVoiceId);
+
+  const handleSelectVoice = (newId) => {
+    setSelectedVoiceId(newId);
+    try {
+      localStorage.setItem('sumanai_selected_voice_id', newId);
+    } catch {
+      void 0;
+    }
+    if (isVoiceTesting) {
+      ttsService.stop();
+      setIsVoiceTesting(false);
+      setPreviewingVoiceId(null);
+    }
+    setIsVoiceMenuOpen(false);
+  };
+
+  const handleMainTestVoice = () => {
+    if (isVoiceTesting && previewingVoiceId === selectedVoiceId) {
+      ttsService.stop();
+      setIsVoiceTesting(false);
+      setPreviewingVoiceId(null);
+      return;
+    }
+
+    ttsService.stop();
+    const sampleText = `Hello! I am ${currentVoice.name}. I will be your AI voice assistant.`;
+    setIsVoiceTesting(true);
+    setPreviewingVoiceId(selectedVoiceId);
+    ttsService.speak(sampleText, {
+      referenceId: selectedVoiceId,
+      onStart: () => {
+        setIsVoiceTesting(true);
+        setPreviewingVoiceId(selectedVoiceId);
+      },
+      onEnd: () => {
+        setIsVoiceTesting(false);
+        setPreviewingVoiceId(null);
+      },
+      onError: () => {
+        setIsVoiceTesting(false);
+        setPreviewingVoiceId(null);
+      }
+    });
+  };
+
+  const handleAuditionVoice = (voice) => {
+    if (isVoiceTesting && previewingVoiceId === voice.id) {
+      ttsService.stop();
+      setIsVoiceTesting(false);
+      setPreviewingVoiceId(null);
+      return;
+    }
+
+    ttsService.stop();
+    const sampleText = `Hello! I am ${voice.name}. I will be your AI voice assistant.`;
+    setIsVoiceTesting(true);
+    setPreviewingVoiceId(voice.id);
+    ttsService.speak(sampleText, {
+      referenceId: voice.id,
+      onStart: () => {
+        setIsVoiceTesting(true);
+        setPreviewingVoiceId(voice.id);
+      },
+      onEnd: () => {
+        setIsVoiceTesting(false);
+        setPreviewingVoiceId(null);
+      },
+      onError: () => {
+        setIsVoiceTesting(false);
+        setPreviewingVoiceId(null);
+      }
+    });
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (voiceMenuRef.current && !voiceMenuRef.current.contains(e.target)) {
+        setIsVoiceMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsVoiceMenuOpen(false);
+      }
+    };
+    if (isVoiceMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isVoiceMenuOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (isVoiceTesting) {
+        ttsService.stop();
+      }
+    };
+  }, [isVoiceTesting]);
 
   const [copiedUid, setCopiedUid] = useState(false);
   const [personalizationSaved, setPersonalizationSaved] = useState(false);
@@ -404,9 +518,10 @@ const SettingsModal = ({ onClose, initialTab = 'general' }) => {
     <>
       <div className="settings-overlay" onClick={onClose} role="dialog" aria-modal="true">
         <div className="settings-modal" onClick={e => e.stopPropagation()}>
-          <div className="settings-sheet-handle" aria-hidden="true" />
-
           <div className="settings-mobile-header">
+            <button className="settings-android-back-btn" onClick={onClose} aria-label="Go back" type="button">
+              <ArrowLeft size={20} />
+            </button>
             <span className="settings-mobile-title">Settings</span>
             <button className="settings-close-circle" onClick={onClose} aria-label="Close settings" type="button">
               <X size={18} />
@@ -505,6 +620,125 @@ const SettingsModal = ({ onClose, initialTab = 'general' }) => {
                     <option>Bengali</option>
                     <option>Hindi</option>
                   </select>
+                </div>
+
+                <div className="settings-divider" />
+
+                <div className="settings-voice-section">
+                  <div className="settings-voice-header">
+                    <div className="settings-voice-meta">
+                      <span className="settings-row-label">Voice Model</span>
+                      <p className="settings-voice-hint">Select the voice model used for spoken responses</p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`settings-voice-test-btn ${isVoiceTesting && previewingVoiceId === selectedVoiceId ? 'active' : ''}`}
+                      onClick={handleMainTestVoice}
+                      title={isVoiceTesting && previewingVoiceId === selectedVoiceId ? 'Stop preview' : 'Listen to preview'}
+                      aria-label={isVoiceTesting && previewingVoiceId === selectedVoiceId ? 'Stop audio preview' : 'Listen to audio preview'}
+                    >
+                      {isVoiceTesting && previewingVoiceId === selectedVoiceId ? (
+                        <>
+                          <div className="voice-equalizer-bars" aria-hidden="true">
+                            <span className="eq-bar eq-bar-1" />
+                            <span className="eq-bar eq-bar-2" />
+                            <span className="eq-bar eq-bar-3" />
+                          </div>
+                          <span>Stop</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 size={15} />
+                          <span>Listen</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="settings-voice-picker-container" ref={voiceMenuRef}>
+                    <button
+                      type="button"
+                      className={`settings-voice-trigger-btn ${isVoiceMenuOpen ? 'open' : ''}`}
+                      onClick={() => setIsVoiceMenuOpen(!isVoiceMenuOpen)}
+                      aria-haspopup="listbox"
+                      aria-expanded={isVoiceMenuOpen}
+                      aria-label="Select AI assistant voice model"
+                    >
+                      <div className="settings-voice-trigger-left">
+                        <span className="settings-voice-avatar-badge">{currentVoice.initials || 'AI'}</span>
+                        <div className="settings-voice-trigger-text">
+                          <span className="settings-voice-trigger-name">{currentVoice.name}</span>
+                          <span className="settings-voice-trigger-tag">{currentVoice.tag || getVoiceCategory(selectedVoiceId)}</span>
+                        </div>
+                      </div>
+                      <div className="settings-voice-trigger-right">
+                        <span className="settings-voice-category-pill">{getVoiceCategory(selectedVoiceId)}</span>
+                        <ChevronDown size={16} className={`settings-voice-chevron ${isVoiceMenuOpen ? 'rotated' : ''}`} />
+                      </div>
+                    </button>
+
+                    {isVoiceMenuOpen && (
+                      <div className="settings-voice-popover" role="listbox" aria-label="Available voice models">
+                        {AI_VOICE_GROUPS.map((group) => (
+                          <div key={group.category} className="settings-voice-category-block">
+                            <div className="settings-voice-category-header">
+                              <span className="settings-voice-category-title">{group.category}</span>
+                              <span className="settings-voice-category-count">{group.voices.length} models</span>
+                            </div>
+                            <div className="settings-voice-cards-grid">
+                              {group.voices.map((v) => {
+                                const isSelected = v.id === selectedVoiceId;
+                                const isItemPlaying = isVoiceTesting && previewingVoiceId === v.id;
+                                return (
+                                  <div
+                                    key={v.id}
+                                    role="option"
+                                    aria-selected={isSelected}
+                                    tabIndex={0}
+                                    className={`settings-voice-card ${isSelected ? 'selected' : ''}`}
+                                    onClick={() => handleSelectVoice(v.id)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        handleSelectVoice(v.id);
+                                      }
+                                    }}
+                                  >
+                                    <div className="voice-card-identity">
+                                      <span className="voice-card-avatar">{v.initials || 'AI'}</span>
+                                      <div className="voice-card-info">
+                                        <span className="voice-card-name">{v.name}</span>
+                                        <span className="voice-card-tag">{v.tag}</span>
+                                      </div>
+                                    </div>
+                                    <div className="voice-card-right">
+                                      <button
+                                        type="button"
+                                        className={`voice-card-audition-btn ${isItemPlaying ? 'playing' : ''}`}
+                                        title={isItemPlaying ? 'Stop preview' : 'Audition sample'}
+                                        aria-label={`Audition ${v.name}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleAuditionVoice(v);
+                                        }}
+                                      >
+                                        {isItemPlaying ? <VolumeX size={13} /> : <Play size={12} />}
+                                      </button>
+                                      {isSelected && (
+                                        <span className="voice-card-check" aria-hidden="true">
+                                          <Check size={14} />
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             )}

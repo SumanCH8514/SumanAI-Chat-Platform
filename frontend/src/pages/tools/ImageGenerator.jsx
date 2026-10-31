@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { chatService } from '../../services/ChatService';
 import { downloadImage } from '../../utils/downloadUtils';
+import { applySumanAIWatermark } from '../../utils/watermarkUtils';
 import './ToolAppShared.css';
 import './ImageGenerator.css';
 
@@ -85,7 +86,7 @@ export const ImageGenerator = () => {
     const styleObj = STYLES.find((s) => s.id === selectedStyle);
     const paletteObj = PALETTES.find((p) => p.id === selectedPalette);
 
-    const fullPrompt = `${prompt.trim()}${styleObj?.suffix || ''}${paletteObj?.suffix || ''}, subtle watermark at bottom right corner reading "SumanAI" with small AI logo badge, strictly no other text`;
+    const fullPrompt = `${prompt.trim()}${styleObj?.suffix || ''}${paletteObj?.suffix || ''}`;
     const encoded = encodeURIComponent(fullPrompt);
     const url = `https://image.pollinations.ai/prompt/${encoded}?width=${resObj.width}&height=${resObj.height}&seed=${seed}&nologo=true`;
 
@@ -93,26 +94,34 @@ export const ImageGenerator = () => {
     img.crossOrigin = 'anonymous';
     img.src = url;
     img.onload = () => {
-      setGeneratedImageUrl(url);
-      setIsGenerating(false);
-      try {
-        const raw = localStorage.getItem('sumanai_uploaded_files');
-        const list = raw ? JSON.parse(raw) : [];
-        const cleanPrompt = prompt.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_').slice(0, 32) || 'Illustration';
-        const newFile = {
-          id: `gen-ig-${Date.now()}`,
-          name: `${cleanPrompt}.jpg`,
-          type: 'image',
-          subtype: 'generated',
-          url,
-          size: '512 KB',
-          chatTitle: 'AI Graphic Generator',
-          createdAt: Date.now()
-        };
-        localStorage.setItem('sumanai_uploaded_files', JSON.stringify([newFile, ...list.filter(item => item.url !== url)]));
-      } catch {
-        void 0;
-      }
+      applySumanAIWatermark(url)
+        .then((watermarked) => {
+          const finalUrl = watermarked || url;
+          setGeneratedImageUrl(finalUrl);
+          setIsGenerating(false);
+          try {
+            const raw = localStorage.getItem('sumanai_uploaded_files');
+            const list = raw ? JSON.parse(raw) : [];
+            const cleanPrompt = prompt.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_').slice(0, 32) || 'Illustration';
+            const newFile = {
+              id: `gen-ig-${Date.now()}`,
+              name: `${cleanPrompt}.jpg`,
+              type: 'image',
+              subtype: 'generated',
+              url: finalUrl,
+              size: '512 KB',
+              chatTitle: 'AI Graphic Generator',
+              createdAt: Date.now()
+            };
+            localStorage.setItem('sumanai_uploaded_files', JSON.stringify([newFile, ...list.filter(item => item.url !== finalUrl)]));
+          } catch {
+            void 0;
+          }
+        })
+        .catch(() => {
+          setGeneratedImageUrl(url);
+          setIsGenerating(false);
+        });
     };
     img.onerror = () => {
       setGeneratedImageUrl(url);

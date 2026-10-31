@@ -74,6 +74,7 @@ const InputBar = () => {
   const inputRef = useRef(null);
   const actionMenuRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const isGeneratingRef = useRef(false);
   const recognitionRef = useRef(null);
   const startingPrefixRef = useRef('');
   const isStartingMicRef = useRef(false);
@@ -284,7 +285,19 @@ const InputBar = () => {
   };
 
   useEffect(() => {
+    useChatStore.setState({
+      abortCurrentGeneration: () => {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+          abortControllerRef.current = null;
+        }
+        isGeneratingRef.current = false;
+        setIsGenerating(false);
+        useChatStore.setState({ isGenerating: false });
+      }
+    });
     return () => {
+      useChatStore.setState({ abortCurrentGeneration: null });
       stopListening();
     };
   }, [stopListening]);
@@ -292,8 +305,11 @@ const InputBar = () => {
   const handleStop = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-      setIsGenerating(false);
+      abortControllerRef.current = null;
     }
+    isGeneratingRef.current = false;
+    setIsGenerating(false);
+    useChatStore.setState({ isGenerating: false });
   };
 
   const handleSend = useCallback(async (cmdOrEvent = null, overrideOptions = {}) => {
@@ -301,7 +317,7 @@ const InputBar = () => {
     const isManualSend = typeof cmdOrEvent !== 'string';
     const promptValue = isManualSend ? text.trim() : cmdOrEvent;
 
-    if (isGenerating) return;
+    if (isGeneratingRef.current) return;
     if (!promptValue && attachments.length === 0) return;
 
     const autoDetectedImageGen = isImageGenerationIntent(promptValue);
@@ -337,7 +353,9 @@ const InputBar = () => {
     let targetChatId = null;
 
     try {
+      isGeneratingRef.current = true;
       setIsGenerating(true);
+      useChatStore.setState({ isGenerating: true });
       abortControllerRef.current = new AbortController();
 
       if (isManualSend) {
@@ -450,7 +468,9 @@ const InputBar = () => {
         }
       }
     } finally {
+      isGeneratingRef.current = false;
       setIsGenerating(false);
+      useChatStore.setState({ isGenerating: false });
       abortControllerRef.current = null;
       if (isImageGen) {
         if (resetToDefaultModel) {
@@ -460,7 +480,7 @@ const InputBar = () => {
         }
       }
     }
-  }, [text, isGenerating, attachments, deepThinking, smartSearch, ensureActiveChat, navigate, addMessage, selectedModel, setSelectedModel, updateLastMessage, setHasImageGenActive, stopListening, governance, hasImageGenActive, openAuthModal, user, defaultModelForTier, resetToDefaultModel]);
+  }, [text, attachments, deepThinking, smartSearch, ensureActiveChat, navigate, addMessage, selectedModel, setSelectedModel, updateLastMessage, setHasImageGenActive, stopListening, governance, hasImageGenActive, openAuthModal, user, defaultModelForTier, resetToDefaultModel]);
 
   useEffect(() => {
     if (isPendingGeneration) {
@@ -470,11 +490,19 @@ const InputBar = () => {
       if (activeChat && activeChat.messages.length > 0) {
         setPendingGeneration(false);
 
-        if (pendingOptions.smartSearch) setSmartSearch(true);
-        if (pendingOptions.deepThinking) setDeepThinking(true);
+        if (pendingOptions?.smartSearch) setSmartSearch(true);
+        if (pendingOptions?.deepThinking) setDeepThinking(true);
 
         const lastMsg = activeChat.messages[activeChat.messages.length - 1];
-        if (lastMsg.role === 'user') {
+        if (lastMsg && lastMsg.role === 'user') {
+          if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+          }
+          isGeneratingRef.current = false;
+          setIsGenerating(false);
+          useChatStore.setState({ isGenerating: false });
+
           handleSend(lastMsg.content, pendingOptions);
         }
       }

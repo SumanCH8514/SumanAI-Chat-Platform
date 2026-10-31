@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { chunkTextForStreamingTTS, cleanTextForSpeech } from '../frontend/src/utils/textChunker.js';
 import { ttsCache } from '../frontend/src/services/ttsCache.js';
 import { TTSPlaybackEngine } from '../frontend/src/services/ttsPlaybackEngine.js';
+import { AI_VOICE_GROUPS, DEFAULT_VOICE_ID, ALL_VOICES, getVoiceById } from '../frontend/src/constants/voices.js';
 
 describe('Text-to-Speech Smart Text Chunker', () => {
   it('cleans markdown artifacts while keeping speech-friendly words', () => {
@@ -174,5 +175,105 @@ describe('TTS Playback Engine Lifecycle & Session Management', () => {
     assert.equal(engine.decodedBufferMap.has(0), true);
     assert.equal(engine.decodedBufferMap.has(1), true);
     assert.equal(engine.decodedBufferMap.has(2), true);
+  });
+});
+
+describe('AI Assistant Voice Registry & Selection', () => {
+  it('correctly registers all 19 voice models across celebrity, politician, anime/cartoon, and normal AI categories', () => {
+    assert.equal(AI_VOICE_GROUPS.length, 4);
+    assert.equal(ALL_VOICES.length, 19);
+
+    const celebGroup = AI_VOICE_GROUPS.find(g => g.category === 'Celebrities Voice');
+    assert.ok(celebGroup);
+    assert.equal(celebGroup.voices.length, 4);
+
+    const polGroup = AI_VOICE_GROUPS.find(g => g.category === 'Politicians');
+    assert.ok(polGroup);
+    assert.equal(polGroup.voices.length, 4);
+
+    const animeGroup = AI_VOICE_GROUPS.find(g => g.category === 'Anime and Cartoon');
+    assert.ok(animeGroup);
+    assert.equal(animeGroup.voices.length, 4);
+
+    const normalGroup = AI_VOICE_GROUPS.find(g => g.category === 'Normal AI voice');
+    assert.ok(normalGroup);
+    assert.equal(normalGroup.voices.length, 7);
+  });
+
+  it('maps each celebrity voice to its exact reference ID and defaults to Peter Parker', () => {
+    const celebMap = {
+      'SRK': '2029912836a045079bf2539751f5db10',
+      'Akshay Kumar': '7b2a94a1708d41218d11c7fb051e3eb8',
+      'Peter Parker (Default)': 'f3436e1952784a9d9e348fedb15adde9',
+      'Tony Stark': '9cc81fcf04534a7abc1e8c2a9d88eeec'
+    };
+
+    assert.equal(DEFAULT_VOICE_ID, 'f3436e1952784a9d9e348fedb15adde9');
+
+    for (const [name, refId] of Object.entries(celebMap)) {
+      const voice = ALL_VOICES.find(v => v.name === name);
+      assert.ok(voice, `Missing voice for ${name}`);
+      assert.equal(voice.id, refId);
+    }
+  });
+
+  it('maps each politician voice to its exact reference ID', () => {
+    const polMap = {
+      'Narendra Modi': '8b734220ba20480aa95b5e6329730003',
+      'Mamta Banerjee': 'c411173d43764b838e3fe02cf749433b',
+      'Rahul Gandhi': '2cecab01bc0648d490f5783b5b3be32f',
+      'Mahatma Gandhi': 'a17fceae5f3b492da2d46cfc52b09140'
+    };
+
+    for (const [name, refId] of Object.entries(polMap)) {
+      const voice = ALL_VOICES.find(v => v.name === name);
+      assert.ok(voice, `Missing voice for ${name}`);
+      assert.equal(voice.id, refId);
+    }
+  });
+
+  it('maps each anime and cartoon voice to its exact reference ID', () => {
+    const animeMap = {
+      'Doraemon': 'a32f14ad4d66457193d68abb997ed6c1',
+      'Nobita': 'e42bc2b9f99a4e79ac8f0a3e30142ce2',
+      'Shinchan': 'a1edc95b8d554d1192ac989e5d292689',
+      'Ash Ketchum': '58c31ee9e7d5415da6b809b9db89a55f'
+    };
+
+    for (const [name, refId] of Object.entries(animeMap)) {
+      const voice = ALL_VOICES.find(v => v.name === name);
+      assert.ok(voice, `Missing voice for ${name}`);
+      assert.equal(voice.id, refId);
+    }
+  });
+
+  it('maps each normal AI voice to its exact reference ID', () => {
+    const normalMap = {
+      'Hannah': '9a9cf47702da476aa4629e2506d4a857',
+      'Adrian': 'bf322df2096a46f18c579d0baa36f41d',
+      'Sarah': '933563129e564b19a115bedd57b7406a',
+      'Ethan': '536d3a5e000945adb7038665781a4aca',
+      'Laura': 'e3cd384158934cc9a01029cd7d278634',
+      'Jordan': '79d0bd3e4e5444b18f7b6d89b5927bf1',
+      'Selene': 'b347db033a6549378b48d00acb0d06cd'
+    };
+
+    for (const [name, refId] of Object.entries(normalMap)) {
+      const voice = ALL_VOICES.find(v => v.name === name);
+      assert.ok(voice, `Missing voice for ${name}`);
+      assert.equal(voice.id, refId);
+    }
+  });
+
+  it('retrieves voice by ID safely and falls back to default on unknown IDs', () => {
+    const srk = getVoiceById('2029912836a045079bf2539751f5db10');
+    assert.equal(srk.name, 'SRK');
+
+    const modi = getVoiceById('8b734220ba20480aa95b5e6329730003');
+    assert.equal(modi.name, 'Narendra Modi');
+
+    const unknown = getVoiceById('non-existent-id');
+    assert.equal(unknown.id, DEFAULT_VOICE_ID);
+    assert.ok(unknown.name.includes('Peter Parker'));
   });
 });
