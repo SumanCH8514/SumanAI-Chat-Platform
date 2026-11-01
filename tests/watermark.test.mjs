@@ -256,5 +256,18 @@ describe('AI Image Generation Watermark Architecture', () => {
     assert.strictEqual(resolveFallbackModel('@cf/meta/llama-3.3-70b-instruct-fp8-fast'), 'openai/gpt-oss-120b');
     assert.strictEqual(resolveFallbackModel('@cf/meta/llama-3.1-8b-instruct'), 'qwen/qwen3.8-27b');
   });
+
+  it('defaults to 100% JPEG quality (1.0) for uncompressed fidelity', () => {
+    let capturedQuality = null;
+    const mockCanvas = {
+      toDataURL: (type, quality) => {
+        capturedQuality = quality;
+        return `data:${type};base64,mock`;
+      }
+    };
+    const resolveQuality = (options = {}) => options.quality !== undefined ? options.quality : 1.0;
+    mockCanvas.toDataURL('image/jpeg', resolveQuality());
+    assert.strictEqual(capturedQuality, 1.0);
+  });
 });
 

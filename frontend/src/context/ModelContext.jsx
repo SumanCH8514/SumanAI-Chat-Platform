@@ -141,6 +141,12 @@ export const ModelProvider = ({ children }) => {
       return false;
     }
 
+    if (model.supportsImageGen) {
+      useChatStore.getState().setHasImageGenActive(true);
+    } else if (useChatStore.getState().hasImageGenActive) {
+      useChatStore.getState().setHasImageGenActive(false);
+    }
+
     setSelectedModelId(model.id);
     localStorage.setItem('sumanai_selected_model', model.id);
 

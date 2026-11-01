@@ -19,6 +19,11 @@ const STYLES = [
   { id: 'cyberpunk', label: 'Cyberpunk', promptSuffix: ', neon lighting, cyberpunk city aesthetic, high tech, dark rainy reflections' }
 ];
 
+const ENGINES = [
+  { id: 'flux', label: 'Flux 1 Schnell', modelParam: 'flux' },
+  { id: 'grok', label: 'Grok Imagine Quality (xAI)', modelParam: 'grok-imagine' }
+];
+
 const ASPECT_RATIOS = [
   { id: '1:1', label: 'Square (1:1)', width: 1024, height: 1024 },
   { id: '16:9', label: 'Landscape (16:9)', width: 1280, height: 720 },
@@ -31,6 +36,7 @@ export const TextToImage = () => {
   const [prompt, setPrompt] = useState('A sleek architectural modern villa in the mountains at twilight with floor-to-ceiling glass windows and warm interior lighting');
   const [negativePrompt, setNegativePrompt] = useState('blurry, low quality, distorted, extra limbs');
   const [selectedStyle, setSelectedStyle] = useState('photorealistic');
+  const [selectedEngine, setSelectedEngine] = useState('flux');
   const [aspectRatio, setAspectRatio] = useState('16:9');
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 999999));
   const [isEnhancing, setIsEnhancing] = useState(false);
@@ -75,9 +81,10 @@ export const TextToImage = () => {
 
     const ratio = ASPECT_RATIOS.find((r) => r.id === aspectRatio) || ASPECT_RATIOS[0];
     const styleObj = STYLES.find((s) => s.id === selectedStyle);
+    const engObj = ENGINES.find((e) => e.id === selectedEngine) || ENGINES[0];
     const fullPrompt = `${prompt.trim()}${styleObj?.promptSuffix || ''}`;
     const encoded = encodeURIComponent(fullPrompt);
-    const url = `https://image.pollinations.ai/prompt/${encoded}?width=${ratio.width}&height=${ratio.height}&seed=${seed}&nologo=true`;
+    const url = `https://image.pollinations.ai/prompt/${encoded}?width=${ratio.width}&height=${ratio.height}&seed=${seed}&nologo=true&model=${engObj.modelParam}`;
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -192,6 +199,22 @@ export const TextToImage = () => {
                   onClick={() => setSelectedStyle(st.id)}
                 >
                   {st.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="tool-input-group">
+            <label className="tool-input-label">AI Generation Model</label>
+            <div className="tool-options-grid">
+              {ENGINES.map((eng) => (
+                <button
+                  key={eng.id}
+                  type="button"
+                  className={`tool-option-chip ${selectedEngine === eng.id ? 'active' : ''}`}
+                  onClick={() => setSelectedEngine(eng.id)}
+                >
+                  {eng.label}
                 </button>
               ))}
             </div>

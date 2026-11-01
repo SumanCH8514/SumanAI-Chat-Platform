@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FolderHeart,
   Search,
@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { useChatStore } from '../store/useChatStore';
 import { env } from '../config/env';
+import { deduplicateWorkspaceFiles, findRedundantCustomFiles } from '../utils/fileUtils';
+import { downloadImage } from '../utils/downloadUtils';
 import './FilesPage.css';
 
 export const FilesPage = () => {
@@ -136,17 +138,25 @@ export const FilesPage = () => {
     return list;
   }, [chats]);
 
-  const allFiles = useMemo(() => {
-    const deletedSet = new Set(deletedFileIds);
-    const combined = [...customFiles, ...chatFiles].filter(
-      (item) => !deletedSet.has(item.id) && !(item.url && deletedSet.has(item.url))
-    );
+  useEffect(() => {
+    if (chatFiles.length === 0) return;
+    try {
+      const saved = localStorage.getItem('sumanai_uploaded_files');
+      if (!saved) return;
+      const list = JSON.parse(saved);
+      const redundant = findRedundantCustomFiles(list, chatFiles);
+      if (redundant.length > 0) {
+        const redundantIds = new Set(redundant.map((f) => f.id));
+        const cleaned = list.filter((f) => !redundantIds.has(f.id));
+        localStorage.setItem('sumanai_uploaded_files', JSON.stringify(cleaned));
+      }
+    } catch {
+      void 0;
+    }
+  }, [chatFiles]);
 
-    return combined.sort((a, b) => {
-      const timeA = typeof a.createdAt === 'number' ? a.createdAt : new Date(a.createdAt || 0).getTime();
-      const timeB = typeof b.createdAt === 'number' ? b.createdAt : new Date(b.createdAt || 0).getTime();
-      return timeB - timeA;
-    });
+  const allFiles = useMemo(() => {
+    return deduplicateWorkspaceFiles(chatFiles, customFiles, deletedFileIds);
   }, [customFiles, chatFiles, deletedFileIds]);
 
   const filteredFiles = useMemo(() => {
@@ -166,12 +176,7 @@ export const FilesPage = () => {
 
   const handleDownload = (file) => {
     if (file.url) {
-      const a = document.createElement('a');
-      a.href = file.url;
-      a.download = file.name || 'SumanAI_Generated_Image.jpg';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      downloadImage(file.url, file.name ? file.name.replace(/\.[^/.]+$/, '') : 'SumanAI_File');
     } else if (file.content) {
       const blob = new Blob([file.content], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -195,18 +200,6 @@ export const FilesPage = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleDeleteCustomFile = (id) => {
-    setCustomFiles((prev) => {
-      const updated = prev.filter((f) => f.id !== id);
-      try {
-        localStorage.setItem('sumanai_uploaded_files', JSON.stringify(updated));
-      } catch {
-        void 0;
-      }
-      return updated;
-    });
-  };
-
   const handleDeleteImage = async (file) => {
     if (!file) return;
 
@@ -217,7 +210,8 @@ export const FilesPage = () => {
     const fileUrl = file.url;
 
     setDeletedFileIds((prev) => {
-      const next = [...prev, fileId, ...(fileUrl ? [fileUrl] : [])];
+      const cleanUrl = fileUrl ? fileUrl.split('?')[0].split('#')[0] : null;
+      const next = [...prev, fileId, ...(fileUrl ? [fileUrl] : []), ...(cleanUrl && cleanUrl !== fileUrl ? [cleanUrl] : [])];
       try {
         localStorage.setItem('sumanai_deleted_file_ids', JSON.stringify(next));
       } catch {
@@ -230,9 +224,15 @@ export const FilesPage = () => {
       setPreviewItem(null);
     }
 
-    if (fileId.startsWith('upload-')) {
-      handleDeleteCustomFile(fileId);
-    }
+    setCustomFiles((prev) => {
+      const updated = prev.filter((f) => f.id !== fileId && (!fileUrl || f.url !== fileUrl));
+      try {
+        localStorage.setItem('sumanai_uploaded_files', JSON.stringify(updated));
+      } catch {
+        void 0;
+      }
+      return updated;
+    });
 
     if (file.chatId && fileUrl) {
       useChatStore.getState().removeImageFromChat(file.chatId, fileUrl);
@@ -342,7 +342,7 @@ export const FilesPage = () => {
                   onClick={() => handleDeleteImage(previewItem)}
                   title="Delete from storage and workspace"
                 >
-                  <Trash2 size={13} />
+                  <Trash2 size={14} />
                   <span>Delete</span>
                 </button>
               )}
@@ -350,13 +350,25 @@ export const FilesPage = () => {
                 type="button"
                 className="files-btn-secondary"
                 onClick={() => handleCopyContent(previewItem.id, previewItem)}
+                title={previewItem.type === 'image' ? 'Copy image URL' : 'Copy code content'}
               >
-                {copiedId === previewItem.id ? 'Copied' : (previewItem.type === 'image' ? 'Copy URL' : 'Copy Content')}
+                {copiedId === previewItem.id ? (
+                  <>
+                    <Check size={14} color="#22C55E" />
+                    <span>Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={14} />
+                    <span>{previewItem.type === 'image' ? 'Copy URL' : 'Copy'}</span>
+                  </>
+                )}
               </button>
               <button
                 type="button"
                 className="files-btn-primary"
                 onClick={() => handleDownload(previewItem)}
+                title="Download file"
               >
                 <Download size={14} />
                 <span>Download</span>

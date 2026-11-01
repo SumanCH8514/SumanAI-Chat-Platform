@@ -10,6 +10,20 @@ import { generateChatTranscript } from '../utils/formatters';
 import RenameModal from '../components/RenameModal';
 import './HistoryPage.css';
 
+const formatSnippet = (content) => {
+  if (!content || typeof content !== 'string') return 'No text recorded in this session';
+  let text = content;
+  text = text.replace(/!\[(.*?)\]\([^)]+\)/g, (_, alt) => {
+    const label = alt ? alt.trim() : 'Generated image';
+    return `[Image: ${label}]`;
+  });
+  text = text.replace(/```[\s\S]*?```/g, '[Code snippet]');
+  text = text.replace(/`([^`]+)`/g, '$1');
+  text = text.replace(/[*_#~>]/g, '');
+  text = text.replace(/\s+/g, ' ').trim();
+  return text || 'No text recorded in this session';
+};
+
 const HistoryPage = () => {
   const navigate = useNavigate();
   const { chats, createNewChat, renameChat, togglePinChat, deleteChat, clearAll, isSyncing, syncChats } = useChatStore();
@@ -296,7 +310,7 @@ const HistoryPage = () => {
             {filteredChats.map((chat) => {
               const msgCount = chat.messages?.length || 0;
               const latestMessage = chat.messages?.[chat.messages.length - 1];
-              const snippet = latestMessage?.content || 'No text recorded in this session';
+              const snippet = formatSnippet(latestMessage?.content);
 
               return (
                 <article key={chat.id} className={`history-card ${chat.isPinned ? 'is-pinned' : ''}`}>

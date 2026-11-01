@@ -5,7 +5,8 @@ import {
   IconMeta,
   IconNvidia,
   IconCloudflare,
-  IconDeepSeek
+  IconDeepSeek,
+  IconXAI
 } from './ModelIcons.jsx';
 
 export const MODEL_LIST = [
@@ -23,7 +24,8 @@ export const MODEL_LIST = [
   { id: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b', name: 'DeepSeek R1 32B', locked: false, badge: 'Reasoning', icon: IconDeepSeek, supportsVision: false, supportsImageGen: false, tier: 'premium' },
   { id: '@cf/qwen/qwen2.5-72b-instruct', name: 'Qwen 2.5 72B', locked: false, badge: 'Flagship', icon: IconCloudflare, supportsVision: false, supportsImageGen: false, tier: 'premium' },
   { id: '@cf/meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B (Turbo)', locked: false, badge: 'Max Limit', icon: IconCloudflare, supportsVision: false, supportsImageGen: false, tier: 'premium' },
-  { id: '@cf/black-forest-labs/flux-1-schnell', name: 'Flux 1 Schnell (CF)', locked: false, badge: 'Image Gen', icon: IconCloudflare, supportsVision: false, supportsImageGen: true, tier: 'premium' }
+  { id: '@cf/black-forest-labs/flux-1-schnell', name: 'Flux 1 Schnell (CF)', locked: false, badge: 'Image Gen', icon: IconCloudflare, supportsVision: false, supportsImageGen: true, tier: 'premium' },
+  { id: 'xai/grok-imagine-image-quality', name: 'Grok Imagine Quality', locked: false, badge: 'Image Gen', icon: IconXAI, supportsVision: false, supportsImageGen: true, tier: 'premium' }
 ];
 
 export const DEFAULT_VISION_MODEL = MODEL_LIST.find(m => m.id === '@cf/meta/llama-3.2-11b-vision-instruct') || MODEL_LIST.find(m => m.supportsVision);

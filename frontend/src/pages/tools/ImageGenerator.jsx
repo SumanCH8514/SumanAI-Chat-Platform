@@ -19,6 +19,11 @@ const STYLES = [
   { id: 'editorial', label: 'Editorial Watercolor', suffix: ', modern editorial watercolor illustration, textured paper grain, loose wet ink washes, magazine layout style' }
 ];
 
+const ENGINES = [
+  { id: 'flux', label: 'Flux 1 Schnell', modelParam: 'flux' },
+  { id: 'grok', label: 'Grok Imagine Quality (xAI)', modelParam: 'grok-imagine' }
+];
+
 const PALETTES = [
   { id: 'tech', label: 'Modern Tech', suffix: ', electric cyan, deep navy, clean white palette' },
   { id: 'monochrome', label: 'Monochrome', suffix: ', grayscale, high contrast charcoal and bright white' },
@@ -39,6 +44,7 @@ export const ImageGenerator = () => {
   const [prompt, setPrompt] = useState('An isometric smart home robotic assistant hub hovering above a wooden desk');
   const [negativePrompt, setNegativePrompt] = useState('blurry, photorealistic skin, low resolution, bad anatomy');
   const [selectedStyle, setSelectedStyle] = useState('vector');
+  const [selectedEngine, setSelectedEngine] = useState('flux');
   const [selectedPalette, setSelectedPalette] = useState('tech');
   const [resolution, setResolution] = useState('1024x1024');
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 888888));
@@ -85,10 +91,11 @@ export const ImageGenerator = () => {
     const resObj = RESOLUTIONS.find((r) => r.id === resolution) || RESOLUTIONS[0];
     const styleObj = STYLES.find((s) => s.id === selectedStyle);
     const paletteObj = PALETTES.find((p) => p.id === selectedPalette);
+    const engObj = ENGINES.find((e) => e.id === selectedEngine) || ENGINES[0];
 
     const fullPrompt = `${prompt.trim()}${styleObj?.suffix || ''}${paletteObj?.suffix || ''}`;
     const encoded = encodeURIComponent(fullPrompt);
-    const url = `https://image.pollinations.ai/prompt/${encoded}?width=${resObj.width}&height=${resObj.height}&seed=${seed}&nologo=true`;
+    const url = `https://image.pollinations.ai/prompt/${encoded}?width=${resObj.width}&height=${resObj.height}&seed=${seed}&nologo=true&model=${engObj.modelParam}`;
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -202,6 +209,22 @@ export const ImageGenerator = () => {
                   onClick={() => setSelectedStyle(style.id)}
                 >
                   <span>{style.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="tool-input-group">
+            <label className="tool-label">AI Generation Model</label>
+            <div className="tool-grid-options">
+              {ENGINES.map((eng) => (
+                <button
+                  key={eng.id}
+                  type="button"
+                  className={`tool-option-card ${selectedEngine === eng.id ? 'active' : ''}`}
+                  onClick={() => setSelectedEngine(eng.id)}
+                >
+                  <span>{eng.label}</span>
                 </button>
               ))}
             </div>

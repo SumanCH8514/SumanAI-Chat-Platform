@@ -462,21 +462,26 @@
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+  width: 100%;
 }
 
 .files-btn-danger {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 7px 14px;
+  height: 38px;
+  padding: 0 16px;
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: var(--radius-sm);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   color: #EF4444;
   cursor: pointer;
   margin-right: auto;
+  white-space: nowrap;
+  box-sizing: border-box;
   transition: all 0.15s ease;
 }
 
@@ -486,14 +491,21 @@
 }
 
 .files-btn-secondary {
-  padding: 7px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 16px;
   background: var(--bg-hover);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
+  white-space: nowrap;
+  box-sizing: border-box;
   transition: all 0.15s ease;
 }
 
@@ -505,18 +517,62 @@
 .files-btn-primary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 7px 16px;
+  height: 38px;
+  padding: 0 18px;
   background: var(--brand-accent);
   color: #FFFFFF;
   border: none;
   border-radius: var(--radius-sm);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+  box-sizing: border-box;
   transition: opacity 0.15s ease;
 }
 
 .files-btn-primary:hover {
   opacity: 0.9;
+}
+
+@media (max-width: 640px) {
+  .files-modal-backdrop {
+    padding: 12px;
+  }
+
+  .files-modal-card {
+    padding: 14px;
+    max-height: 94vh;
+  }
+
+  .files-modal-card.is-image-modal {
+    max-width: 96vw;
+    padding: 12px;
+  }
+
+  .files-modal-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .files-modal-footer .files-btn-danger,
+  .files-modal-footer .files-btn-secondary,
+  .files-modal-footer .files-btn-primary {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 40px;
+    padding: 0 4px;
+    margin: 0;
+    font-size: 12px;
+  }
+
+  .files-modal-footer button span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }

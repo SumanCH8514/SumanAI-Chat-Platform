@@ -432,3 +432,169 @@
   cursor: pointer;
 }
 
+@media (max-width: 768px) {
+  .library-page-wrap {
+    padding: 20px 16px 80px;
+  }
+
+  .library-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .library-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .library-search-wrap {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .library-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .library-page-wrap {
+    padding: 14px 12px 80px;
+  }
+
+  .library-header {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .library-title {
+    font-size: 20px;
+  }
+
+  .library-subtitle {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .library-create-btn {
+    width: 100%;
+    height: 42px;
+    justify-content: center;
+    font-size: 13.5px;
+    border-radius: 8px;
+  }
+
+  .library-filter-row {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .library-search-wrap {
+    height: 38px;
+    border-radius: 8px;
+  }
+
+  .library-cat-list {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+    width: 100%;
+  }
+
+  .library-cat-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .library-cat-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+    height: 34px;
+    padding: 0 14px;
+    font-size: 12.5px;
+    border-radius: 6px;
+  }
+
+  .library-grid {
+    gap: 12px;
+  }
+
+  .library-card {
+    padding: 14px;
+    border-radius: 8px;
+    gap: 10px;
+  }
+
+  .library-card-title {
+    font-size: 14px;
+  }
+
+  .library-card-content {
+    max-height: 80px;
+    padding: 8px 10px;
+    border-radius: 6px;
+  }
+
+  .library-card-content code {
+    font-size: 11.5px;
+    -webkit-line-clamp: 3;
+  }
+
+  .library-card-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding-top: 10px;
+    margin-top: 4px;
+  }
+
+  .library-copy-btn,
+  .library-launch-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 40px;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 12.5px;
+    border-radius: 6px;
+    box-sizing: border-box;
+  }
+
+  .library-copy-btn span,
+  .library-launch-btn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .library-modal-backdrop {
+    padding: 12px;
+  }
+
+  .library-modal-card {
+    padding: 16px;
+    border-radius: 8px;
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+
+  .library-form-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .library-btn-secondary,
+  .library-btn-primary {
+    flex: 1 1 0;
+    height: 40px;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+}
+

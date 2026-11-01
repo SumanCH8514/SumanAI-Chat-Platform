@@ -20,6 +20,7 @@ describe('Real Model Resolution & SumanAI Formatting Pipeline', () => {
     assert.strictEqual(formatModelTitle('@cf/deepseek-ai/deepseek-r1-distill-qwen-32b'), 'SumanAI * DeepSeek R1 32B');
     assert.strictEqual(formatModelTitle('@cf/black-forest-labs/flux-1-schnell'), 'SumanAI * Flux 1 Schnell');
     assert.strictEqual(formatModelTitle('pollinations/flux'), 'SumanAI * Flux 1');
+    assert.strictEqual(formatModelTitle('xai/grok-imagine-image-quality'), 'SumanAI * Grok Imagine Quality');
   });
 
   it('prevents redundant nested prefixes when already prefixed', () => {
@@ -46,6 +47,7 @@ describe('Real Model Resolution & SumanAI Formatting Pipeline', () => {
     assert.strictEqual(resolveModelBadge('SumanAI * Qwen 2.5 72B'), 'Flagship');
     assert.strictEqual(resolveModelBadge('SumanAI * DeepSeek R1 32B'), 'Reasoning');
     assert.strictEqual(resolveModelBadge('SumanAI * GPT-OSS 120B'), 'Default');
+    assert.strictEqual(resolveModelBadge('SumanAI * Grok Imagine Quality'), 'Image Gen');
     assert.strictEqual(resolveModelBadge('SumanAI'), null);
   });
 });

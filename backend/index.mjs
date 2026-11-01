@@ -851,6 +851,11 @@ export default {
         '@cf/black-forest-labs/flux-1-schnell'
       ]);
 
+      const imageSupportedModels = new Set([
+        '@cf/black-forest-labs/flux-1-schnell',
+        'xai/grok-imagine-image-quality'
+      ]);
+
       const DEPRECATED_MODEL_ALIASES = {
         'z-ai/glm-5.3': 'nvidia/llama-3.1-nemotron-70b-instruct',
         'z-ai/glm-5.3-flash': 'nvidia/llama-3.1-nemotron-70b-instruct',
@@ -859,7 +864,10 @@ export default {
         '@cf/qwen/qwen2.5-72b-instruct': 'qwen/qwen3.8-27b',
         'meta/llama-3.2-11b-vision-instruct': '@cf/meta/llama-3.2-11b-vision-instruct',
         'llama-3.2-11b-vision-preview': '@cf/meta/llama-3.2-11b-vision-instruct',
-        'llama-3.2-90b-vision-preview': '@cf/meta/llama-3.2-11b-vision-instruct'
+        'llama-3.2-90b-vision-preview': '@cf/meta/llama-3.2-11b-vision-instruct',
+        'grok-imagine': 'xai/grok-imagine-image-quality',
+        'grok-imagine-image': 'xai/grok-imagine-image-quality',
+        'xai/grok-imagine': 'xai/grok-imagine-image-quality'
       };
 
       const isGoogle = await isGoogleAuthenticated(request, env);
@@ -871,8 +879,9 @@ export default {
       const lastUserMsg = messages.filter(m => m.role === 'user').pop();
       const lastUserText = lastUserMsg?.content || '';
 
+      const isImageModel = imageSupportedModels.has(targetModel);
       const detectedImageIntent = isImageGenerationIntent(lastUserText);
-      if (detectedImageIntent && targetModel !== '@cf/black-forest-labs/flux-1-schnell') {
+      if (detectedImageIntent && !isImageModel) {
         if (!isGoogle) {
           return new Response(JSON.stringify({
             error: "Image generation requires a signed-in Google account. Please sign in to create images."
@@ -897,7 +906,9 @@ export default {
 
       let provider = 'groq';
 
-      if (targetModel.startsWith('@cf/') || cloudflareSupportedModels.has(targetModel)) {
+      if (imageSupportedModels.has(targetModel)) {
+        provider = 'image-generator';
+      } else if (targetModel.startsWith('@cf/') || cloudflareSupportedModels.has(targetModel)) {
         provider = 'cloudflare';
       } else if (targetModel.startsWith('gemini')) {
         targetModel = 'gemini-1.5-flash';
@@ -918,7 +929,7 @@ export default {
         API_KEY = env.NVIDIA_API_KEY;
       }
 
-      if (provider !== 'cloudflare' && !API_KEY) {
+      if (provider !== 'cloudflare' && provider !== 'image-generator' && !API_KEY) {
         const keyName = provider === 'nvidia' ? 'NVIDIA_API_KEY' : (provider === 'google' ? 'GEMINI_API_KEY' : 'GROQ_API_KEY');
         throw new Error(`${keyName} not configured. Please add it to your Cloudflare Worker Runtime variables and secrets.`);
       }
@@ -935,132 +946,213 @@ export default {
       const modelDisplayName = targetModel.split('/').pop().replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       const systemInstruction = `You are SumanAI - Model: ${modelDisplayName}. You are an intelligent, high-performance AI assistant. Always provide clear, beautifully structured responses. Format answers with clean Markdown headings (###), paragraphs, lists, and horizontal dividers (---) where appropriate. When presenting poems, creative compositions, summaries, or structured analyses, divide sections clearly with headers and dividers, and provide an insightful closing reflection or key takeaway in a Markdown blockquote (> **Key Reflection:** ...). When providing code, always format inside fenced code blocks with the exact language identifier. You are a text-based AI assistant and do not generate direct image files, external URLs, or markdown image tags (![...]). If the user asks for image creation or visual scenes, provide detailed creative scene descriptions in text.${personalizationPrompt}`;
 
-      if (provider === 'cloudflare') {
-        if (!env.AI) {
-          throw new Error("Cloudflare Workers AI binding is not available in the worker runtime.");
+      if (provider === 'image-generator') {
+        if (!isGoogle) {
+          return new Response(JSON.stringify({
+            error: "Image generation requires a signed-in Google account. Please sign in to create images."
+          }), {
+            status: 403,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
         }
 
-        if (targetModel === '@cf/black-forest-labs/flux-1-schnell') {
-          if (!isGoogle) {
-            return new Response(JSON.stringify({
-              error: "Image generation requires a signed-in Google account. Please sign in to create images."
-            }), {
-              status: 403,
-              headers: { "Content-Type": "application/json", ...corsHeaders }
-            });
+        const filteredMessages = messages.filter((m, idx) => {
+          if (m.role === 'assistant' && !m.content?.trim() && idx === messages.length - 1) {
+            return false;
           }
+          return true;
+        });
 
-          const filteredMessages = messages.filter((m, idx) => {
-            if (m.role === 'assistant' && !m.content?.trim() && idx === messages.length - 1) {
-              return false;
-            }
-            return true;
-          });
+        const userMessages = filteredMessages.filter(m => m.role === 'user' || !m.role);
+        const promptMsg = userMessages.pop();
+        let rawPrompt = (promptMsg?.content || 'A vibrant artistic composition').trim();
 
-          const userMessages = filteredMessages.filter(m => m.role === 'user' || !m.role);
-          const promptMsg = userMessages.pop();
-          let rawPrompt = (promptMsg?.content || 'A vibrant artistic composition').trim();
+        let cleanPrompt = rawPrompt
+          .replace(/!\[.*?\]\(.*?\)/g, '')
+          .replace(/https?:\/\/[^\s]+/g, '')
+          .replace(/data:image\/[a-zA-Z0-9.+_-]+;base64,[A-Za-z0-9+/=]+/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
 
-          let cleanPrompt = rawPrompt
-            .replace(/!\[.*?\]\(.*?\)/g, '')
-            .replace(/https?:\/\/[^\s]+/g, '')
-            .replace(/data:image\/[a-zA-Z0-9.+_-]+;base64,[A-Za-z0-9+/=]+/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
+        const lowerPrompt = cleanPrompt.toLowerCase();
+        const STYLE_PROFILES = {
+          'oil painting': 'rich classical oil painting on canvas, visible textured impasto brushstrokes, rich oil pigments, gallery fine art',
+          'watercolor': 'delicate translucent watercolor painting on cold-press paper, fluid wet-on-wet paint washes, soft bleeding edges, authentic watercolor pigments',
+          'pixel art': 'detailed 16-bit retro pixel art, vibrant color palette, clean pixel clusters, classic isometric game aesthetic',
+          'pencil sketch': 'hand-drawn graphite pencil sketch on textured paper, detailed cross-hatching, delicate shading, fine monochrome line art',
+          'anime': 'high-end Japanese anime aesthetic, vibrant studio lighting, Makoto Shinkai cinematic atmosphere, sharp clean line art',
+          'pop art': 'vibrant pop art silkscreen print, bold contrasting colors, halftone dot pattern, Andy Warhol and Roy Lichtenstein aesthetic'
+        };
 
-          const lowerPrompt = cleanPrompt.toLowerCase();
-          const STYLE_PROFILES = {
-            'oil painting': 'rich classical oil painting on canvas, visible textured impasto brushstrokes, rich oil pigments, gallery fine art',
-            'watercolor': 'delicate translucent watercolor painting on cold-press paper, fluid wet-on-wet paint washes, soft bleeding edges, authentic watercolor pigments',
-            'pixel art': 'detailed 16-bit retro pixel art, vibrant color palette, clean pixel clusters, classic isometric game aesthetic',
-            'pencil sketch': 'hand-drawn graphite pencil sketch on textured paper, detailed cross-hatching, delicate shading, fine monochrome line art',
-            'anime': 'high-end Japanese anime aesthetic, vibrant studio lighting, Makoto Shinkai cinematic atmosphere, sharp clean line art',
-            'pop art': 'vibrant pop art silkscreen print, bold contrasting colors, halftone dot pattern, Andy Warhol and Roy Lichtenstein aesthetic'
-          };
+        let matchedStyleKey = null;
+        for (const key of Object.keys(STYLE_PROFILES)) {
+          if (lowerPrompt.includes(key)) {
+            matchedStyleKey = key;
+            break;
+          }
+        }
 
-          let matchedStyleKey = null;
-          for (const key of Object.keys(STYLE_PROFILES)) {
-            if (lowerPrompt.includes(key)) {
-              matchedStyleKey = key;
+        const isStyleConversion = lowerPrompt.includes('convert this image') ||
+          lowerPrompt.includes('in this style') ||
+          lowerPrompt.includes('change style to') ||
+          lowerPrompt.startsWith('convert to');
+
+        let promptText = cleanPrompt;
+
+        if (matchedStyleKey) {
+          let baseSubject = '';
+          for (let i = userMessages.length - 1; i >= 0; i--) {
+            const c = (userMessages[i]?.content || '')
+              .replace(/!\[.*?\]\(.*?\)/g, '')
+              .replace(/https?:\/\/[^\s]+/g, '')
+              .trim();
+            const cLower = c.toLowerCase();
+            const isAnotherConversion = cLower.includes('convert this image') ||
+              cLower.includes('in this style') ||
+              cLower.startsWith('convert to');
+            if (c && !isAnotherConversion) {
+              baseSubject = c;
               break;
             }
           }
 
-          const isStyleConversion = lowerPrompt.includes('convert this image') ||
-            lowerPrompt.includes('in this style') ||
-            lowerPrompt.includes('change style to') ||
-            lowerPrompt.startsWith('convert to');
-
-          let promptText = cleanPrompt;
-
-          if (matchedStyleKey) {
-            let baseSubject = '';
-            for (let i = userMessages.length - 1; i >= 0; i--) {
-              const c = (userMessages[i]?.content || '')
-                .replace(/!\[.*?\]\(.*?\)/g, '')
-                .replace(/https?:\/\/[^\s]+/g, '')
-                .trim();
-              const cLower = c.toLowerCase();
-              const isAnotherConversion = cLower.includes('convert this image') ||
-                cLower.includes('in this style') ||
-                cLower.startsWith('convert to');
-              if (c && !isAnotherConversion) {
-                baseSubject = c;
+          if (!baseSubject) {
+            for (let i = filteredMessages.length - 1; i >= 0; i--) {
+              const content = filteredMessages[i]?.content || '';
+              const imgMatch = content.match(/!\[(.*?)\]\(/);
+              if (imgMatch && imgMatch[1] && !imgMatch[1].toLowerCase().includes('generated image') && !imgMatch[1].toLowerCase().includes('image')) {
+                baseSubject = imgMatch[1].trim();
                 break;
               }
             }
-
-            if (!baseSubject) {
-              for (let i = filteredMessages.length - 1; i >= 0; i--) {
-                const content = filteredMessages[i]?.content || '';
-                const imgMatch = content.match(/!\[(.*?)\]\(/);
-                if (imgMatch && imgMatch[1] && !imgMatch[1].toLowerCase().includes('generated image') && !imgMatch[1].toLowerCase().includes('image')) {
-                  baseSubject = imgMatch[1].trim();
-                  break;
-                }
-              }
-            }
-
-            if (baseSubject) {
-              promptText = `${baseSubject}, ${STYLE_PROFILES[matchedStyleKey]}`;
-            } else {
-              promptText = `${cleanPrompt}, ${STYLE_PROFILES[matchedStyleKey]}`;
-            }
-          } else if (isStyleConversion && userMessages.length > 0) {
-            const previousPromptMsg = userMessages.pop();
-            const previousText = (previousPromptMsg?.content || '')
-              .replace(/!\[.*?\]\(.*?\)/g, '')
-              .replace(/https?:\/\/[^\s]+/g, '')
-              .trim();
-            if (previousText) {
-              const cleanedStyle = cleanPrompt
-                .replace(/^(convert this image into|convert this image to|convert to|make this|change style to)\s+/i, '')
-                .replace(/\s+style$/i, '')
-                .trim();
-              promptText = `${previousText}, rendered in ${cleanedStyle} style, high quality artwork`;
-            }
           }
 
-          let optimizedPrompt = promptText
-            .replace(/^(?:please\s+)?(?:can\s+you\s+)?(?:could\s+you\s+)?(?:i\s+(?:want|need|would\s+like)\s+)?(?:give\s+me\s+)?(?:generate|create|draw|make|render|produce|paint|design|illustrate|synthesize)\s+(?:a|an|the|me\s+a|me\s+an|some)?\s*/i, '')
+          if (baseSubject) {
+            promptText = `${baseSubject}, ${STYLE_PROFILES[matchedStyleKey]}`;
+          } else {
+            promptText = `${cleanPrompt}, ${STYLE_PROFILES[matchedStyleKey]}`;
+          }
+        } else if (isStyleConversion && userMessages.length > 0) {
+          const previousPromptMsg = userMessages.pop();
+          const previousText = (previousPromptMsg?.content || '')
+            .replace(/!\[.*?\]\(.*?\)/g, '')
+            .replace(/https?:\/\/[^\s]+/g, '')
             .trim();
+          if (previousText) {
+            const cleanedStyle = cleanPrompt
+              .replace(/^(convert this image into|convert this image to|convert to|make this|change style to)\s+/i, '')
+              .replace(/\s+style$/i, '')
+              .trim();
+            promptText = `${previousText}, rendered in ${cleanedStyle} style, high quality artwork`;
+          }
+        }
 
-          if (!optimizedPrompt) {
-            optimizedPrompt = 'A majestic scenic composition, cinematic lighting, 8k resolution, highly detailed fine art';
+        let optimizedPrompt = promptText
+          .replace(/^(?:please\s+)?(?:can\s+you\s+)?(?:could\s+you\s+)?(?:i\s+(?:want|need|would\s+like)\s+)?(?:give\s+me\s+)?(?:generate|create|draw|make|render|produce|paint|design|illustrate|synthesize)\s+(?:a|an|the|me\s+a|me\s+an|some)?\s*/i, '')
+          .trim();
+
+        if (!optimizedPrompt) {
+          optimizedPrompt = 'A majestic scenic composition, cinematic lighting, 8k resolution, highly detailed fine art';
+        }
+
+        if (optimizedPrompt.length > 1800) {
+          optimizedPrompt = optimizedPrompt.slice(0, 1800).trim();
+        }
+
+        let imageBase64 = null;
+        let respondingImageModel = targetModel;
+
+        if (targetModel === 'xai/grok-imagine-image-quality') {
+          if (env.AI) {
+            try {
+              const result = await env.AI.run('xai/grok-imagine-image-quality', {
+                prompt: optimizedPrompt
+              });
+              imageBase64 = result?.image || result?.result?.image;
+            } catch (cfErr) {
+              void cfErr;
+            }
           }
 
-          if (optimizedPrompt.length > 1800) {
-            optimizedPrompt = optimizedPrompt.slice(0, 1800).trim();
+          if (!imageBase64 && env.XAI_API_KEY) {
+            try {
+              const xaiRes = await fetch("https://api.x.ai/v1/images/generations", {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${env.XAI_API_KEY}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  model: "grok-imagine-image",
+                  prompt: optimizedPrompt,
+                  response_format: "b64_json"
+                })
+              });
+              if (xaiRes.ok) {
+                const xaiData = await xaiRes.json();
+                imageBase64 = xaiData?.data?.[0]?.b64_json;
+              }
+            } catch (xaiErr) {
+              void xaiErr;
+            }
           }
 
-          let imageBase64 = null;
-          let respondingImageModel = '@cf/black-forest-labs/flux-1-schnell';
+          if (!imageBase64) {
+            try {
+              const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(optimizedPrompt)}?width=1024&height=1024&nologo=true&model=grok-imagine`;
+              const pollRes = await fetch(pollUrl);
+              if (pollRes.ok) {
+                const arrayBuf = await pollRes.arrayBuffer();
+                const bytes = new Uint8Array(arrayBuf);
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) {
+                  binary += String.fromCharCode(bytes[i]);
+                }
+                imageBase64 = btoa(binary);
+              }
+            } catch (pollErr) {
+              void pollErr;
+            }
+          }
+
+          if (!imageBase64) {
+            try {
+              const altUrl = `https://gen.pollinations.ai/image/${encodeURIComponent(optimizedPrompt)}?model=grok-imagine&width=1024&height=1024&nologo=true`;
+              const altRes = await fetch(altUrl);
+              if (altRes.ok) {
+                const arrayBuf = await altRes.arrayBuffer();
+                const bytes = new Uint8Array(arrayBuf);
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) {
+                  binary += String.fromCharCode(bytes[i]);
+                }
+                imageBase64 = btoa(binary);
+              }
+            } catch (altErr) {
+              void altErr;
+            }
+          }
+
+          if (!imageBase64 && env.AI) {
+            try {
+              const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
+                prompt: optimizedPrompt,
+                steps: 4
+              });
+              imageBase64 = result?.image || result?.result?.image;
+            } catch (fallbackErr) {
+              void fallbackErr;
+            }
+          }
+        } else {
           try {
-            const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
-              prompt: optimizedPrompt,
-              steps: 4
-            });
-            imageBase64 = result?.image || result?.result?.image;
+            if (env.AI) {
+              const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
+                prompt: optimizedPrompt,
+                steps: 4
+              });
+              imageBase64 = result?.image || result?.result?.image;
+            }
           } catch (cfErr) {
             const errStr = String(cfErr?.message || cfErr || '');
             if (errStr.includes('4006') || errStr.includes('neurons') || errStr.includes('allocation') || errStr.includes('quota')) {
@@ -1088,44 +1180,68 @@ export default {
           }
 
           if (!imageBase64) {
-            throw new Error("Unable to generate image. Please try again or rephrase your prompt.");
-          }
-
-          const { readable, writable } = new TransformStream();
-          const writer = writable.getWriter();
-          const encoder = new TextEncoder();
-
-          (async () => {
             try {
-              await writer.write(encoder.encode(`data: ${JSON.stringify({ meta: { model: respondingImageModel } })}\n\n`));
-              const cleanTitle = (promptMsg?.content || promptText).replace(/[\[\]\(\)\n\r]/g, ' ').trim().slice(0, 70) || 'Generated Image';
-              const cleanBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-              const rawDataUrl = `data:image/jpeg;base64,${cleanBase64}`;
-              const markdown = `![${cleanTitle}](${rawDataUrl})`;
-              const chunk = {
-                candidates: [{
-                  content: {
-                    parts: [{ text: markdown }]
-                  }
-                }]
-              };
-              await writer.write(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-              await writer.write(encoder.encode('data: [DONE]\n\n'));
-            } catch (err) {
-              void err;
-            } finally {
-              writer.close();
+              const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(optimizedPrompt)}?width=1024&height=1024&nologo=true&model=flux`;
+              const pollRes = await fetch(pollUrl);
+              if (pollRes.ok) {
+                const arrayBuf = await pollRes.arrayBuffer();
+                const bytes = new Uint8Array(arrayBuf);
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) {
+                  binary += String.fromCharCode(bytes[i]);
+                }
+                imageBase64 = btoa(binary);
+              }
+            } catch (finalPollErr) {
+              void finalPollErr;
             }
-          })();
+          }
+        }
 
-          return new Response(readable, {
-            headers: {
-              "Content-Type": "text/event-stream",
-              "Cache-Control": "no-cache",
-              "X-Responding-Model": respondingImageModel,
-              ...corsHeaders
-            },
-          });
+        if (!imageBase64) {
+          throw new Error("Unable to generate image. Please try again or rephrase your prompt.");
+        }
+
+        const { readable, writable } = new TransformStream();
+        const writer = writable.getWriter();
+        const encoder = new TextEncoder();
+
+        (async () => {
+          try {
+            await writer.write(encoder.encode(`data: ${JSON.stringify({ meta: { model: respondingImageModel } })}\n\n`));
+            const cleanTitle = (promptMsg?.content || promptText).replace(/[\[\]\(\)\n\r]/g, ' ').trim().slice(0, 70) || 'Generated Image';
+            const cleanBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+            const rawDataUrl = `data:image/jpeg;base64,${cleanBase64}`;
+            const markdown = `![${cleanTitle}](${rawDataUrl})`;
+            const chunk = {
+              candidates: [{
+                content: {
+                  parts: [{ text: markdown }]
+                }
+              }]
+            };
+            await writer.write(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+            await writer.write(encoder.encode('data: [DONE]\n\n'));
+          } catch (err) {
+            void err;
+          } finally {
+            writer.close();
+          }
+        })();
+
+        return new Response(readable, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "X-Responding-Model": respondingImageModel,
+            ...corsHeaders
+          },
+        });
+      }
+
+      if (provider === 'cloudflare') {
+        if (!env.AI) {
+          throw new Error("Cloudflare Workers AI binding is not available in the worker runtime.");
         }
 
         const filteredMessages = messages.filter((m, idx) => {

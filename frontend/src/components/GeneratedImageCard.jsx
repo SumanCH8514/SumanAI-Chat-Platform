@@ -24,16 +24,19 @@ export const ImagePlaceholderCard = ({ status = 'generating' }) => {
   return (
     <div className="generated-image-card image-placeholder-mode" role="status" aria-live="polite">
       <div className="generated-image-container placeholder-container">
+        <div className="rendering-scan-bar" />
         <div className="image-generation-status-box">
           <div className="generation-spinner-wrapper">
-            <Loader2 className="generation-spin-icon" size={30} />
+            <Loader2 className="generation-spin-icon" size={24} />
           </div>
           <p className="generation-status-text">
             {isRendering ? 'Rendering image...' : 'Generating image...'}
           </p>
-          <span className="generation-status-subtext">
-            {isRendering ? 'Applying SumanAI watermark' : 'Synthesizing with Flux AI'}
-          </span>
+          {!isRendering && (
+            <span className="generation-status-subtext">
+              Synthesizing with Flux AI
+            </span>
+          )}
         </div>
       </div>
 
@@ -140,26 +143,13 @@ const GeneratedImageCard = ({ src, alt, promptText }) => {
 
                 try {
                   const raw = localStorage.getItem('sumanai_uploaded_files');
-                  const list = raw ? JSON.parse(raw) : [];
-                  const cleanTitle = cleanPrompt
-                    .replace(/[^a-zA-Z0-9_\-\s]/g, '')
-                    .trim()
-                    .replace(/\s+/g, '_')
-                    .slice(0, 32) || 'SumanAI_Artwork';
-                  const newFile = {
-                    id: `gen-img-${Date.now()}`,
-                    name: `${cleanTitle}.jpg`,
-                    type: 'image',
-                    subtype: 'generated',
-                    url: permanentUrl,
-                    size: '480 KB',
-                    chatTitle: cleanPrompt,
-                    createdAt: Date.now()
-                  };
-                  localStorage.setItem(
-                    'sumanai_uploaded_files',
-                    JSON.stringify([newFile, ...list.filter((item) => item.url !== permanentUrl && item.url !== src)])
-                  );
+                  if (raw) {
+                    const list = JSON.parse(raw);
+                    const cleaned = list.filter((item) => item.url !== permanentUrl && item.url !== src);
+                    if (cleaned.length !== list.length) {
+                      localStorage.setItem('sumanai_uploaded_files', JSON.stringify(cleaned));
+                    }
+                  }
                 } catch {
                   void 0;
                 }
@@ -192,6 +182,17 @@ const GeneratedImageCard = ({ src, alt, promptText }) => {
       }
     };
   }, [isSpeaking]);
+
+  useEffect(() => {
+    if (!isZoomed) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsZoomed(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isZoomed]);
 
   const handleDownload = () => {
     downloadImage(activeSrc, 'SumanAI', 'jpg');
@@ -271,7 +272,7 @@ const GeneratedImageCard = ({ src, alt, promptText }) => {
     });
   };
 
-  if (isRendering) {
+  if (isRendering && (!src || typeof src !== 'string' || !src.trim())) {
     return <ImagePlaceholderCard status="rendering" />;
   }
 
@@ -294,18 +295,42 @@ const GeneratedImageCard = ({ src, alt, promptText }) => {
               </button>
             </div>
           ) : (
-            <div className="image-zoom-trigger" onClick={() => setIsZoomed(true)}>
+            <div className="image-zoom-trigger" onClick={() => !isRendering && setIsZoomed(true)}>
               <img
                 src={activeSrc}
                 alt={cleanPrompt}
-                className="generated-image-display"
-                loading="lazy"
+                className={`generated-image-display ${isRendering ? 'rendering-preview' : ''}`}
+                loading="eager"
                 onError={() => setLoadError(true)}
               />
-              <div className="image-zoom-overlay">
-                <ZoomIn size={16} />
-                <span>Click to expand</span>
-              </div>
+              {isRendering ? (
+                <div className="image-rendering-overlay">
+                  <div className="rendering-scan-bar" />
+                  <div className="rendering-status-badge">
+                    <Loader2 size={15} className="rendering-spin-icon" />
+                    <span>Rendering image...</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="image-hover-actions">
+                  <button
+                    type="button"
+                    className="image-hover-download-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload();
+                    }}
+                    title="Download image"
+                    aria-label="Download image"
+                  >
+                    <Download size={13} />
+                  </button>
+                  <div className="image-zoom-overlay">
+                    <ZoomIn size={14} />
+                    <span>Click to expand</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -315,12 +340,13 @@ const GeneratedImageCard = ({ src, alt, promptText }) => {
             {!loadError && (
               <button
                 type="button"
-                className="img-card-action-btn primary"
+                className={`img-card-action-btn primary ${isRendering ? 'disabled' : ''}`}
                 onClick={handleDownload}
-                title="Download full resolution image"
+                disabled={isRendering}
+                title={isRendering ? 'Rendering image...' : 'Download full resolution image'}
               >
                 <Download size={14} />
-                <span>Download</span>
+                <span>{isRendering ? 'Rendering...' : 'Download'}</span>
               </button>
             )}
           </div>
@@ -394,22 +420,27 @@ const GeneratedImageCard = ({ src, alt, promptText }) => {
       {isZoomed && (
         <div className="image-lightbox-backdrop" onClick={() => setIsZoomed(false)}>
           <div className="image-lightbox-wrapper" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              className="lightbox-close-btn"
-              onClick={() => setIsZoomed(false)}
-              aria-label="Close preview"
-            >
-              <X size={20} />
-            </button>
-            <img src={activeSrc} alt={cleanPrompt} className="lightbox-image-preview" />
-            <div className="lightbox-footer">
-              <span className="lightbox-caption">{cleanPrompt}</span>
-              <button type="button" className="lightbox-download-btn" onClick={handleDownload}>
-                <Download size={14} />
-                <span>Download</span>
+            <div className="lightbox-top-actions">
+              <button
+                type="button"
+                className="lightbox-control-btn"
+                onClick={handleDownload}
+                title="Download image"
+                aria-label="Download image"
+              >
+                <Download size={18} />
+              </button>
+              <button
+                type="button"
+                className="lightbox-control-btn"
+                onClick={() => setIsZoomed(false)}
+                title="Close preview"
+                aria-label="Close preview"
+              >
+                <X size={20} />
               </button>
             </div>
+            <img src={activeSrc} alt={cleanPrompt} className="lightbox-image-preview" />
           </div>
         </div>
       )}

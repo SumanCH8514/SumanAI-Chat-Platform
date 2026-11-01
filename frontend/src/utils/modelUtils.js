@@ -13,7 +13,8 @@ export const MODEL_METADATA = [
   { id: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b', name: 'DeepSeek R1 32B', badge: 'Reasoning' },
   { id: '@cf/qwen/qwen2.5-72b-instruct', name: 'Qwen 2.5 72B', badge: 'Flagship' },
   { id: '@cf/meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B (Turbo)', badge: 'Max Limit' },
-  { id: '@cf/black-forest-labs/flux-1-schnell', name: 'Flux 1 Schnell (CF)', badge: 'Image Gen' }
+  { id: '@cf/black-forest-labs/flux-1-schnell', name: 'Flux 1 Schnell (CF)', badge: 'Image Gen' },
+  { id: 'xai/grok-imagine-image-quality', name: 'Grok Imagine Quality', badge: 'Image Gen' }
 ];
 
 export const formatModelTitle = (rawIdentifier, content = '') => {
@@ -66,6 +67,8 @@ export const formatModelTitle = (rawIdentifier, content = '') => {
     baseName = 'DeepSeek R1 32B';
   } else if (raw.includes('flux')) {
     baseName = 'Flux 1 Schnell';
+  } else if (raw.includes('grok-imagine') || raw.includes('grok')) {
+    baseName = 'Grok Imagine Quality';
   }
 
   let clean = baseName.replace(/^SumanAI\s*[*•·-]?\s*/i, '').trim();

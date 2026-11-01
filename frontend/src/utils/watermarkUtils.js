@@ -100,7 +100,7 @@ export const applySumanAIWatermark = (imageSource, options = {}) => {
         ctx.drawImage(img, 0, 0, width, height);
         renderWatermarkOnCanvas(canvas, ctx, width, height);
 
-        const quality = options.quality || 0.94;
+        const quality = options.quality !== undefined ? options.quality : 1.0;
         const watermarkedDataUrl = canvas.toDataURL('image/jpeg', quality);
 
         resolve(watermarkedDataUrl);
@@ -132,7 +132,7 @@ export const applySumanAIWatermark = (imageSource, options = {}) => {
                 if (ctx) {
                   ctx.drawImage(fallbackImg, 0, 0, width, height);
                   renderWatermarkOnCanvas(canvas, ctx, width, height);
-                  const dataUrl = canvas.toDataURL('image/jpeg', 0.94);
+                  const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
                   URL.revokeObjectURL(blobUrl);
                   return resolve(dataUrl);
                 }

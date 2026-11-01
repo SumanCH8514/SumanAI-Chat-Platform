@@ -327,6 +327,7 @@ const InputBar = () => {
       overrideOptions?.isImageGen || 
       overrideOptions?.modelId === DEFAULT_IMAGE_GEN_MODEL?.id ||
       overrideOptions?.modelId?.includes('flux') ||
+      overrideOptions?.modelId?.includes('grok-imagine') ||
       autoDetectedImageGen
     );
 
@@ -357,6 +358,12 @@ const InputBar = () => {
       setIsGenerating(true);
       useChatStore.setState({ isGenerating: true });
       abortControllerRef.current = new AbortController();
+
+      const activeImageModel = selectedModel?.supportsImageGen ? selectedModel : DEFAULT_IMAGE_GEN_MODEL;
+      const chosenModelId = overrideOptions?.modelId 
+        || (isImageGen ? activeImageModel?.id : selectedModel.id);
+      const chosenModelName = overrideOptions?.modelDisplayName 
+        || (isImageGen ? activeImageModel?.name : (selectedModel?.name || 'SumanAI'));
 
       if (isManualSend) {
         setText('');
@@ -389,9 +396,8 @@ const InputBar = () => {
         });
       }
 
-      const modelToUse = overrideOptions?.modelId 
-        || (isImageGen && DEFAULT_IMAGE_GEN_MODEL ? DEFAULT_IMAGE_GEN_MODEL.id : selectedModel.id);
-      const modelDisplayName = (isImageGen && DEFAULT_IMAGE_GEN_MODEL) ? DEFAULT_IMAGE_GEN_MODEL.name : (selectedModel?.name || 'SumanAI');
+      const modelToUse = chosenModelId;
+      const modelDisplayName = chosenModelName;
 
       addMessage(chatId, { role: 'assistant', content: '', model: modelDisplayName });
 

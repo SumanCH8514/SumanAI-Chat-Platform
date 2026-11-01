@@ -44,7 +44,8 @@ const DEFAULT_GOVERNANCE = {
         '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
         '@cf/qwen/qwen2.5-72b-instruct',
         '@cf/meta/llama-3.1-8b-instruct',
-        '@cf/black-forest-labs/flux-1-schnell'
+        '@cf/black-forest-labs/flux-1-schnell',
+        'xai/grok-imagine-image-quality'
       ],
       defaultModelId: 'openai/gpt-oss-120b',
       imageGenLimit: 5,
@@ -70,7 +71,8 @@ const DEFAULT_GOVERNANCE = {
         '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
         '@cf/qwen/qwen2.5-72b-instruct',
         '@cf/meta/llama-3.1-8b-instruct',
-        '@cf/black-forest-labs/flux-1-schnell'
+        '@cf/black-forest-labs/flux-1-schnell',
+        'xai/grok-imagine-image-quality'
       ],
       premiumModelIds: [
         '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
@@ -78,7 +80,8 @@ const DEFAULT_GOVERNANCE = {
         '@cf/qwen/qwen2.5-72b-instruct',
         '@cf/meta/llama-3.1-8b-instruct',
         '@cf/meta/llama-3.2-11b-vision-instruct',
-        '@cf/black-forest-labs/flux-1-schnell'
+        '@cf/black-forest-labs/flux-1-schnell',
+        'xai/grok-imagine-image-quality'
       ],
       defaultModelId: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
       imageGenLimit: -1,

@@ -138,7 +138,9 @@ const ModelSelector = () => {
     const isDisabledByVision = hasAttachments && !model.supportsVision;
 
     if (!isDisabledByVision) {
-      if (hasImageGenActive && !model.supportsImageGen) {
+      if (model.supportsImageGen) {
+        useChatStore.getState().setHasImageGenActive(true);
+      } else if (hasImageGenActive) {
         useChatStore.getState().setHasImageGenActive(false);
       }
       setSelectedModel(model);
