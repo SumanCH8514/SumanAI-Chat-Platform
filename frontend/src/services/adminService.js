@@ -45,6 +45,9 @@ const DEFAULT_GOVERNANCE = {
         '@cf/qwen/qwen2.5-72b-instruct',
         '@cf/meta/llama-3.1-8b-instruct',
         '@cf/black-forest-labs/flux-1-schnell',
+        '@cf/black-forest-labs/flux-2-dev',
+        '@cf/black-forest-labs/flux-2-klein-9b',
+        '@cf/moondream/moondream3.1-9B-A2B',
         'xai/grok-imagine-image-quality'
       ],
       defaultModelId: 'openai/gpt-oss-120b',
@@ -72,6 +75,9 @@ const DEFAULT_GOVERNANCE = {
         '@cf/qwen/qwen2.5-72b-instruct',
         '@cf/meta/llama-3.1-8b-instruct',
         '@cf/black-forest-labs/flux-1-schnell',
+        '@cf/black-forest-labs/flux-2-dev',
+        '@cf/black-forest-labs/flux-2-klein-9b',
+        '@cf/moondream/moondream3.1-9B-A2B',
         'xai/grok-imagine-image-quality'
       ],
       premiumModelIds: [
@@ -81,6 +87,8 @@ const DEFAULT_GOVERNANCE = {
         '@cf/meta/llama-3.1-8b-instruct',
         '@cf/meta/llama-3.2-11b-vision-instruct',
         '@cf/black-forest-labs/flux-1-schnell',
+        '@cf/black-forest-labs/flux-2-dev',
+        '@cf/black-forest-labs/flux-2-klein-9b',
         'xai/grok-imagine-image-quality'
       ],
       defaultModelId: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',

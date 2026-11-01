@@ -1,20 +1,23 @@
 export const MODEL_METADATA = [
-  { id: '@cf/meta/llama-3.2-11b-vision-instruct', name: 'Llama 3.2 Vision', badge: 'Vision' },
-  { id: 'nvidia/llama-3.1-nemotron-70b-instruct', name: 'Nemotron 70B', badge: 'NVIDIA' },
-  { id: 'meta/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', badge: 'NVIDIA' },
-  { id: 'google/gemma-4-31b-it', name: 'Gemma 4 31B IT', badge: 'Google' },
-  { id: 'google/diffusiongemma-26b-a4b-it', name: 'Diffusion Gemma 26B', badge: 'Google' },
-  { id: 'meta/muse-glimmer-30b', name: 'Muse Glimmer 30B', badge: 'Meta' },
-  { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', badge: 'Default' },
-  { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B', badge: 'Fast' },
-  { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B', badge: 'Qwen' },
-  { id: 'canopylabs/orpheus-v1-english', name: 'Orpheus English', badge: 'Canopy' },
-  { id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', name: 'Llama 3.3 70B (Fast)', badge: 'CF 70B' },
-  { id: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b', name: 'DeepSeek R1 32B', badge: 'Reasoning' },
-  { id: '@cf/qwen/qwen2.5-72b-instruct', name: 'Qwen 2.5 72B', badge: 'Flagship' },
-  { id: '@cf/meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B (Turbo)', badge: 'Max Limit' },
-  { id: '@cf/black-forest-labs/flux-1-schnell', name: 'Flux 1 Schnell (CF)', badge: 'Image Gen' },
-  { id: 'xai/grok-imagine-image-quality', name: 'Grok Imagine Quality', badge: 'Image Gen' }
+  { id: '@cf/meta/llama-3.2-11b-vision-instruct', name: 'Llama 3.2 Vision', badge: 'Visual Chat' },
+  { id: 'nvidia/llama-3.1-nemotron-70b-instruct', name: 'Nemotron 70B', badge: 'High Precision' },
+  { id: 'meta/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', badge: 'Versatile 70B' },
+  { id: 'google/gemma-4-31b-it', name: 'Gemma 4 31B IT', badge: 'Concise Chat' },
+  { id: 'google/diffusiongemma-26b-a4b-it', name: 'Diffusion Gemma 26B', badge: 'Experimental' },
+  { id: 'meta/muse-glimmer-30b', name: 'Muse Glimmer 30B', badge: 'Creative Prose' },
+  { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', badge: '120B Flagship' },
+  { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B', badge: 'Ultra Fast' },
+  { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B', badge: 'Vision & Code' },
+  { id: 'canopylabs/orpheus-v1-english', name: 'Orpheus English', badge: 'Dialogue' },
+  { id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', name: 'Llama 3.3 70B (Fast)', badge: 'Fast 70B' },
+  { id: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b', name: 'DeepSeek R1 32B', badge: 'Deep Reasoning' },
+  { id: '@cf/qwen/qwen2.5-72b-instruct', name: 'Qwen 2.5 72B', badge: 'Coding & Analysis' },
+  { id: '@cf/meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B (Turbo)', badge: 'Instant Speed' },
+  { id: '@cf/black-forest-labs/flux-1-schnell', name: 'Flux 1 Schnell (CF)', badge: 'Turbo Image' },
+  { id: '@cf/black-forest-labs/flux-2-dev', name: 'Flux 2 Dev (CF)', badge: 'Studio Quality' },
+  { id: '@cf/black-forest-labs/flux-2-klein-9b', name: 'Flux 2 Klein 9B (CF)', badge: 'Compact 9B' },
+  { id: '@cf/moondream/moondream3.1-9B-A2B', name: 'Moondream 3.1 9B (CF)', badge: 'Fast Vision' },
+  { id: 'xai/grok-imagine-image-quality', name: 'Grok Imagine Quality (CF)', badge: 'Cinematic Art' }
 ];
 
 export const formatModelTitle = (rawIdentifier, content = '') => {
@@ -65,8 +68,14 @@ export const formatModelTitle = (rawIdentifier, content = '') => {
     baseName = 'GPT-OSS 20B';
   } else if (raw.includes('deepseek-r1')) {
     baseName = 'DeepSeek R1 32B';
+  } else if (raw.includes('flux-2-dev')) {
+    baseName = 'Flux 2 Dev';
+  } else if (raw.includes('flux-2-klein')) {
+    baseName = 'Flux 2 Klein 9B';
   } else if (raw.includes('flux')) {
     baseName = 'Flux 1 Schnell';
+  } else if (raw.includes('moondream')) {
+    baseName = 'Moondream 3.1 9B';
   } else if (raw.includes('grok-imagine') || raw.includes('grok')) {
     baseName = 'Grok Imagine Quality';
   }

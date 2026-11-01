@@ -848,11 +848,17 @@ export default {
         '@cf/meta/llama-3.1-8b-instruct',
         '@cf/meta/llama-3.1-8b-instruct-fp8',
         '@cf/meta/llama-3.2-11b-vision-instruct',
-        '@cf/black-forest-labs/flux-1-schnell'
+        '@cf/black-forest-labs/flux-1-schnell',
+        '@cf/black-forest-labs/flux-2-dev',
+        '@cf/black-forest-labs/flux-2-klein-9b',
+        '@cf/moondream/moondream3.1-9B-A2B',
+        'xai/grok-imagine-image-quality'
       ]);
 
       const imageSupportedModels = new Set([
         '@cf/black-forest-labs/flux-1-schnell',
+        '@cf/black-forest-labs/flux-2-dev',
+        '@cf/black-forest-labs/flux-2-klein-9b',
         'xai/grok-imagine-image-quality'
       ]);
 
@@ -906,9 +912,7 @@ export default {
 
       let provider = 'groq';
 
-      if (imageSupportedModels.has(targetModel)) {
-        provider = 'image-generator';
-      } else if (targetModel.startsWith('@cf/') || cloudflareSupportedModels.has(targetModel)) {
+      if (targetModel.startsWith('@cf/') || cloudflareSupportedModels.has(targetModel)) {
         provider = 'cloudflare';
       } else if (targetModel.startsWith('gemini')) {
         targetModel = 'gemini-1.5-flash';
@@ -929,7 +933,7 @@ export default {
         API_KEY = env.NVIDIA_API_KEY;
       }
 
-      if (provider !== 'cloudflare' && provider !== 'image-generator' && !API_KEY) {
+      if (provider !== 'cloudflare' && !API_KEY) {
         const keyName = provider === 'nvidia' ? 'NVIDIA_API_KEY' : (provider === 'google' ? 'GEMINI_API_KEY' : 'GROQ_API_KEY');
         throw new Error(`${keyName} not configured. Please add it to your Cloudflare Worker Runtime variables and secrets.`);
       }
@@ -946,24 +950,29 @@ export default {
       const modelDisplayName = targetModel.split('/').pop().replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       const systemInstruction = `You are SumanAI - Model: ${modelDisplayName}. You are an intelligent, high-performance AI assistant. Always provide clear, beautifully structured responses. Format answers with clean Markdown headings (###), paragraphs, lists, and horizontal dividers (---) where appropriate. When presenting poems, creative compositions, summaries, or structured analyses, divide sections clearly with headers and dividers, and provide an insightful closing reflection or key takeaway in a Markdown blockquote (> **Key Reflection:** ...). When providing code, always format inside fenced code blocks with the exact language identifier. You are a text-based AI assistant and do not generate direct image files, external URLs, or markdown image tags (![...]). If the user asks for image creation or visual scenes, provide detailed creative scene descriptions in text.${personalizationPrompt}`;
 
-      if (provider === 'image-generator') {
-        if (!isGoogle) {
-          return new Response(JSON.stringify({
-            error: "Image generation requires a signed-in Google account. Please sign in to create images."
-          }), {
-            status: 403,
-            headers: { "Content-Type": "application/json", ...corsHeaders }
-          });
+      if (provider === 'cloudflare') {
+        if (!env.AI) {
+          throw new Error("Cloudflare Workers AI binding is not available in the worker runtime.");
         }
 
-        const filteredMessages = messages.filter((m, idx) => {
+        if (imageSupportedModels.has(targetModel)) {
+          if (!isGoogle) {
+            return new Response(JSON.stringify({
+              error: "Image generation requires a signed-in Google account. Please sign in to create images."
+            }), {
+              status: 403,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+        const imgFilteredMessages = messages.filter((m, idx) => {
           if (m.role === 'assistant' && !m.content?.trim() && idx === messages.length - 1) {
             return false;
           }
           return true;
         });
 
-        const userMessages = filteredMessages.filter(m => m.role === 'user' || !m.role);
+        const userMessages = imgFilteredMessages.filter(m => m.role === 'user' || !m.role);
         const promptMsg = userMessages.pop();
         let rawPrompt = (promptMsg?.content || 'A vibrant artistic composition').trim();
 
@@ -1017,8 +1026,8 @@ export default {
           }
 
           if (!baseSubject) {
-            for (let i = filteredMessages.length - 1; i >= 0; i--) {
-              const content = filteredMessages[i]?.content || '';
+            for (let i = imgFilteredMessages.length - 1; i >= 0; i--) {
+              const content = imgFilteredMessages[i]?.content || '';
               const imgMatch = content.match(/!\[(.*?)\]\(/);
               if (imgMatch && imgMatch[1] && !imgMatch[1].toLowerCase().includes('generated image') && !imgMatch[1].toLowerCase().includes('image')) {
                 baseSubject = imgMatch[1].trim();
@@ -1144,38 +1153,57 @@ export default {
               void fallbackErr;
             }
           }
-        } else {
-          try {
-            if (env.AI) {
-              const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
-                prompt: optimizedPrompt,
-                steps: 4
-              });
-              imageBase64 = result?.image || result?.result?.image;
+
+          if (!imageBase64) {
+            try {
+              const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(optimizedPrompt)}?width=1024&height=1024&nologo=true&model=flux`;
+              const pollRes = await fetch(pollUrl);
+              if (pollRes.ok) {
+                const arrayBuf = await pollRes.arrayBuffer();
+                const bytes = new Uint8Array(arrayBuf);
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) {
+                  binary += String.fromCharCode(bytes[i]);
+                }
+                imageBase64 = btoa(binary);
+              }
+            } catch (finalPollErr) {
+              void finalPollErr;
             }
-          } catch (cfErr) {
-            const errStr = String(cfErr?.message || cfErr || '');
-            if (errStr.includes('4006') || errStr.includes('neurons') || errStr.includes('allocation') || errStr.includes('quota')) {
-              try {
-                respondingImageModel = 'pollinations/flux';
-                const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(optimizedPrompt)}?width=1024&height=1024&nologo=true&model=flux`;
-                const pollRes = await fetch(pollUrl);
-                if (pollRes.ok) {
-                  const arrayBuf = await pollRes.arrayBuffer();
-                  const bytes = new Uint8Array(arrayBuf);
-                  let binary = '';
-                  for (let i = 0; i < bytes.length; i++) {
-                    binary += String.fromCharCode(bytes[i]);
+          }
+        } else {
+          if (env.AI) {
+            try {
+              const runOptions = { prompt: optimizedPrompt };
+              if (targetModel === '@cf/black-forest-labs/flux-1-schnell') {
+                runOptions.steps = 4;
+              }
+              const result = await env.AI.run(targetModel, runOptions);
+              imageBase64 = result?.image || result?.result?.image;
+            } catch (cfErr) {
+              const errStr = String(cfErr?.message || cfErr || '');
+              if (errStr.includes('4006') || errStr.includes('neurons') || errStr.includes('allocation') || errStr.includes('quota')) {
+                try {
+                  respondingImageModel = 'pollinations/flux';
+                  const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(optimizedPrompt)}?width=1024&height=1024&nologo=true&model=flux`;
+                  const pollRes = await fetch(pollUrl);
+                  if (pollRes.ok) {
+                    const arrayBuf = await pollRes.arrayBuffer();
+                    const bytes = new Uint8Array(arrayBuf);
+                    let binary = '';
+                    for (let i = 0; i < bytes.length; i++) {
+                      binary += String.fromCharCode(bytes[i]);
+                    }
+                    imageBase64 = btoa(binary);
+                  } else {
+                    throw cfErr;
                   }
-                  imageBase64 = btoa(binary);
-                } else {
+                } catch {
                   throw cfErr;
                 }
-              } catch {
+              } else {
                 throw cfErr;
               }
-            } else {
-              throw cfErr;
             }
           }
 
@@ -1239,19 +1267,14 @@ export default {
         });
       }
 
-      if (provider === 'cloudflare') {
-        if (!env.AI) {
-          throw new Error("Cloudflare Workers AI binding is not available in the worker runtime.");
-        }
-
-        const filteredMessages = messages.filter((m, idx) => {
+      const filteredMessages = messages.filter((m, idx) => {
           if (m.role === 'assistant' && !m.content?.trim() && idx === messages.length - 1) {
             return false;
           }
           return true;
         });
 
-        const isVisionModel = targetModel === '@cf/meta/llama-3.2-11b-vision-instruct';
+        const isVisionModel = targetModel === '@cf/meta/llama-3.2-11b-vision-instruct' || targetModel === '@cf/moondream/moondream3.1-9B-A2B';
         const latestAttachmentIdx = filteredMessages.map(m => Boolean(m.attachments && m.attachments.length > 0)).lastIndexOf(true);
 
         const cfMessages = filteredMessages.map((m, index) => {
@@ -1435,6 +1458,7 @@ export default {
 
         const supportsVision = targetModel === 'qwen/qwen3.8-27b' ||
           targetModel === '@cf/meta/llama-3.2-11b-vision-instruct' ||
+          targetModel === '@cf/moondream/moondream3.1-9B-A2B' ||
           targetModel.includes('vision');
 
         const filteredMessages = messages.filter((m, idx) => {

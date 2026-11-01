@@ -269,7 +269,20 @@ const ModelSelector = () => {
                       </span>
                     );
                   } else if (model.badge) {
-                    badge = <span className={`model-badge ${model.tier === 'premium' ? 'premium-model-badge' : ''}`}>{model.badge}</span>;
+                    let badgeTypeClass = 'badge-general';
+                    const lowerBadge = String(model.badge || '').toLowerCase();
+                    if (model.supportsImageGen || lowerBadge.includes('image') || lowerBadge.includes('art') || lowerBadge.includes('studio') || lowerBadge.includes('compact') || lowerBadge.includes('render') || lowerBadge.includes('diffusion')) {
+                      badgeTypeClass = 'badge-image';
+                    } else if (model.supportsVision || lowerBadge.includes('vision') || lowerBadge.includes('visual')) {
+                      badgeTypeClass = 'badge-vision';
+                    } else if (lowerBadge.includes('reasoning') || lowerBadge.includes('logic') || lowerBadge.includes('think')) {
+                      badgeTypeClass = 'badge-reasoning';
+                    } else if (lowerBadge.includes('speed') || lowerBadge.includes('fast') || lowerBadge.includes('turbo') || lowerBadge.includes('instant')) {
+                      badgeTypeClass = 'badge-speed';
+                    } else if (lowerBadge.includes('flagship') || lowerBadge.includes('coding') || lowerBadge.includes('analysis') || lowerBadge.includes('precision') || lowerBadge.includes('versatile')) {
+                      badgeTypeClass = 'badge-flagship';
+                    }
+                    badge = <span className={`model-badge ${badgeTypeClass}`}>{model.badge}</span>;
                   }
 
                   return (
