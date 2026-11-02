@@ -28,7 +28,7 @@ export const ChatPage = ({ onSettingsClick, onLoginClick }) => {
   const hasMessages = activeChat && activeChat.messages.length > 0;
   const pageTitle = hasMessages
     ? `${activeChat.title} | SumanAI`
-    : 'SumanAI Chat Platform | Smarter tools for a connected world';
+    : 'SumanAI Chat Platform | Smart AI - SumanOnline';
 
   const userName = getUserDisplayName(user);
 
@@ -36,6 +36,12 @@ export const ChatPage = ({ onSettingsClick, onLoginClick }) => {
     <MainLayout onSettingsClick={onSettingsClick} onLoginClick={onLoginClick}>
       <Helmet>
         <title>{pageTitle}</title>
+        {!hasMessages && (
+          <meta
+            name="description"
+            content="SumanAI is a smart multi-model AI chat platform featuring deep reasoning, code generation, vision chat, and AI image creation. Fast, free, private, and secure."
+          />
+        )}
       </Helmet>
       {hasMessages ? <ChatThread /> : <EmptyState userName={userName} />}
       <InputBar key={chatId || 'new'} />
