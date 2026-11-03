@@ -16,6 +16,7 @@ export const useChatStore = create(
       pendingOptions: {},
       hasAttachments: false,
       hasImageGenActive: false,
+      hasVideoGenActive: false,
       canvas: {
         isOpen: false,
         content: '',
@@ -44,6 +45,7 @@ export const useChatStore = create(
 
       setHasAttachments: (val) => set({ hasAttachments: val }),
       setHasImageGenActive: (val) => set({ hasImageGenActive: val }),
+      setHasVideoGenActive: (val) => set({ hasVideoGenActive: val }),
 
       createNewChat: () => {
         const id = uuidv4();

@@ -157,10 +157,11 @@ const ModelSelector = ({ variant = 'default', isCentered = false, deepThinking =
 
   useLayoutEffect(() => {
     if (!open) return;
-    updatePosition();
+    const frameId = requestAnimationFrame(updatePosition);
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
     return () => {
+      cancelAnimationFrame(frameId);
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
@@ -254,7 +255,7 @@ const ModelSelector = ({ variant = 'default', isCentered = false, deepThinking =
       return clean.slice(0, 16) + '…';
     }
     return clean;
-  }, [selectedModel?.name]);
+  }, [selectedModel]);
 
   return (
     <div className={`model-selector-wrapper ${isInline ? 'wrapper-inline' : ''}`}>

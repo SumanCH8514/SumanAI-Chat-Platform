@@ -9,6 +9,7 @@ import {
   Trash2,
   FileCode,
   Image as ImageIcon,
+  Film,
   Upload,
   X
 } from 'lucide-react';
@@ -73,38 +74,44 @@ export const FilesPage = () => {
           }
 
           if (typeof msg.content === 'string') {
-            const markdownImageRegex = /!\[(.*?)\]\(((?:data:image\/[^)]+)|(?:https?:\/\/[^)]+))\)/g;
-            let imgMatch;
-            let imgIdx = 0;
-            while ((imgMatch = markdownImageRegex.exec(msg.content)) !== null) {
-              const altText = (imgMatch[1] || 'Generated_Image').trim();
-              const imgUrl = imgMatch[2];
+            const markdownMediaRegex = /!\[(.*?)\]\(((?:data:[^)]+)|(?:https?:\/\/[^)]+))\)/g;
+            let mediaMatch;
+            let mediaIdx = 0;
+            while ((mediaMatch = markdownMediaRegex.exec(msg.content)) !== null) {
+              const rawAlt = (mediaMatch[1] || '').trim();
+              const mediaUrl = mediaMatch[2];
+              const isVideo = Boolean(
+                mediaUrl.includes('/generated-videos/') ||
+                mediaUrl.endsWith('.mp4') ||
+                rawAlt.startsWith('video:')
+              );
+              const altText = isVideo ? rawAlt.replace(/^video:/, '').trim() : rawAlt || 'Generated_Media';
               const cleanPrompt = altText
                 .replace(/[^a-zA-Z0-9_\-\s]/g, '')
                 .trim()
                 .replace(/\s+/g, '_')
-                .slice(0, 32) || 'AI_Generated_Image';
-              const isPng = imgUrl.startsWith('data:image/png') || imgUrl.endsWith('.png');
-              const isWebp = imgUrl.startsWith('data:image/webp') || imgUrl.endsWith('.webp');
-              const ext = isPng ? 'png' : (isWebp ? 'webp' : 'jpg');
-              const isData = imgUrl.startsWith('data:');
-              const sizeKb = isData ? Math.max(1, Math.round((imgUrl.length * 0.75) / 1024)) : 420;
+                .slice(0, 32) || (isVideo ? 'AI_Generated_Video' : 'AI_Generated_Image');
+              const isPng = mediaUrl.startsWith('data:image/png') || mediaUrl.endsWith('.png');
+              const isWebp = mediaUrl.startsWith('data:image/webp') || mediaUrl.endsWith('.webp');
+              const ext = isVideo ? 'mp4' : (isPng ? 'png' : (isWebp ? 'webp' : 'jpg'));
+              const isData = mediaUrl.startsWith('data:');
+              const sizeKb = isVideo ? '2.4 MB' : (isData ? `${Math.max(1, Math.round((mediaUrl.length * 0.75) / 1024))} KB` : '420 KB');
 
-              const tsMatch = imgUrl.match(/img_(\d{10,13})/);
+              const tsMatch = mediaUrl.match(/(?:img|vid)_(\d{10,13})/);
               const fileCreatedAt = tsMatch
                 ? parseInt(tsMatch[1], 10)
                 : (msg.createdAt || msg.timestamp || chat.updatedAt || chat.createdAt || Date.now());
 
               list.push({
-                id: `gen-img-${chat.id}-${mIdx}-${imgIdx++}`,
+                id: `gen-${isVideo ? 'vid' : 'img'}-${chat.id}-${mIdx}-${mediaIdx++}`,
                 chatId: chat.id,
                 messageIdx: mIdx,
                 name: `${cleanPrompt}.${ext}`,
-                type: 'image',
+                type: isVideo ? 'video' : 'image',
                 subtype: 'generated',
-                url: imgUrl,
-                size: `${sizeKb} KB`,
-                chatTitle: chat.title || 'AI Image Gen',
+                url: mediaUrl,
+                size: sizeKb,
+                chatTitle: chat.title || (isVideo ? 'AI Video Gen' : 'AI Image Gen'),
                 createdAt: fileCreatedAt,
                 prompt: altText
               });
@@ -164,6 +171,7 @@ export const FilesPage = () => {
       const matchType =
         selectedType === 'All' ||
         (selectedType === 'Images' && item.type === 'image') ||
+        (selectedType === 'Videos' && item.type === 'video') ||
         (selectedType === 'Code' && item.type === 'code');
       const q = searchQuery.toLowerCase().trim();
       const matchQuery =
@@ -174,8 +182,23 @@ export const FilesPage = () => {
     });
   }, [allFiles, selectedType, searchQuery]);
 
-  const handleDownload = (file) => {
-    if (file.url) {
+  const handleDownload = async (file) => {
+    if (file.type === 'video' && file.url) {
+      try {
+        const res = await fetch(file.url);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = file.name || 'SumanAI_Video.mp4';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      } catch {
+        window.open(file.url, '_blank');
+      }
+    } else if (file.url) {
       downloadImage(file.url, file.name ? file.name.replace(/\.[^/.]+$/, '') : 'SumanAI_File');
     } else if (file.content) {
       const blob = new Blob([file.content], { type: 'text/plain;charset=utf-8' });
@@ -200,10 +223,11 @@ export const FilesPage = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleDeleteImage = async (file) => {
+  const handleDeleteFile = async (file) => {
     if (!file) return;
 
-    const confirmDelete = window.confirm(`Are you sure you want to delete "${file.name}"? This will remove the image from storage and your workspace.`);
+    const isVid = file.type === 'video';
+    const confirmDelete = window.confirm(`Are you sure you want to delete "${file.name}"? This will remove the ${isVid ? 'video' : 'image'} from storage and your workspace.`);
     if (!confirmDelete) return;
 
     const fileId = file.id;
@@ -242,7 +266,8 @@ export const FilesPage = () => {
       try {
         const baseUrl = (env.WORKER_URL || '').replace(/\/+$/, '');
         if (baseUrl) {
-          await fetch(`${baseUrl}/api/delete-image`, {
+          const endpoint = isVid ? `${baseUrl}/api/delete-video` : `${baseUrl}/api/delete-image`;
+          await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: fileUrl })
@@ -303,7 +328,7 @@ export const FilesPage = () => {
       {previewItem && (
         <div className="files-modal-backdrop" onClick={() => setPreviewItem(null)}>
           <div
-            className={`files-modal-card ${previewItem.type === 'image' ? 'is-image-modal' : ''}`}
+            className={`files-modal-card ${previewItem.type === 'image' ? 'is-image-modal' : (previewItem.type === 'video' ? 'is-video-modal' : '')}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="files-modal-head">
@@ -318,13 +343,22 @@ export const FilesPage = () => {
               </button>
             </div>
 
-            <div className={`files-modal-body ${previewItem.type === 'image' ? 'is-image-body' : ''}`}>
+            <div className={`files-modal-body ${previewItem.type === 'image' || previewItem.type === 'video' ? 'is-image-body' : ''}`}>
               {previewItem.type === 'image' && (
                 <img
                   src={previewItem.url}
                   alt={previewItem.name || 'Preview'}
                   className="files-preview-img"
                   loading="lazy"
+                />
+              )}
+              {previewItem.type === 'video' && (
+                <video
+                  src={previewItem.url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="files-preview-video"
                 />
               )}
               {previewItem.type === 'code' && (
@@ -335,11 +369,11 @@ export const FilesPage = () => {
             </div>
 
             <div className="files-modal-footer">
-              {(previewItem.type === 'image' || previewItem.id.startsWith('upload-')) && (
+              {(previewItem.type === 'image' || previewItem.type === 'video' || previewItem.id.startsWith('upload-')) && (
                 <button
                   type="button"
                   className="files-btn-danger"
-                  onClick={() => handleDeleteImage(previewItem)}
+                  onClick={() => handleDeleteFile(previewItem)}
                   title="Delete from storage and workspace"
                 >
                   <Trash2 size={14} />
@@ -411,7 +445,7 @@ export const FilesPage = () => {
         </div>
 
         <div className="files-type-pills">
-          {['All', 'Code', 'Images'].map((type) => (
+          {['All', 'Code', 'Images', 'Videos'].map((type) => (
             <button
               key={type}
               type="button"
@@ -453,6 +487,7 @@ export const FilesPage = () => {
                   const isCopied = copiedId === f.id;
                   const isCustom = f.id.startsWith('upload-');
                   const isImage = f.type === 'image';
+                  const isVideo = f.type === 'video';
 
                   return (
                     <tr key={f.id}>
@@ -473,6 +508,8 @@ export const FilesPage = () => {
                           <div className="files-icon-box">
                             {f.type === 'image' && f.url ? (
                               <img src={f.url} alt="" className="files-thumb-img" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                            ) : f.type === 'video' ? (
+                              <Film size={15} color="#F59E0B" />
                             ) : f.type === 'image' ? (
                               <ImageIcon size={15} color={f.subtype === 'generated' ? '#A78BFA' : '#3B82F6'} />
                             ) : (
@@ -484,8 +521,8 @@ export const FilesPage = () => {
                       </td>
 
                       <td>
-                        <span className={`files-type-tag ${f.subtype === 'generated' ? 'type-generated' : `type-${f.type}`}`}>
-                          {f.subtype === 'generated' ? 'AI IMAGE' : f.type === 'code' ? (f.language || 'Code').toUpperCase() : 'IMAGE'}
+                        <span className={`files-type-tag ${f.subtype === 'generated' ? (f.type === 'video' ? 'type-video' : 'type-generated') : `type-${f.type}`}`}>
+                          {f.type === 'video' ? 'AI VIDEO' : f.subtype === 'generated' ? 'AI IMAGE' : f.type === 'code' ? (f.language || 'Code').toUpperCase() : 'IMAGE'}
                         </span>
                       </td>
 
@@ -527,12 +564,12 @@ export const FilesPage = () => {
                           >
                             <Download size={14} />
                           </button>
-                          {(isImage || isCustom) && (
+                          {(isImage || isVideo || isCustom) && (
                             <button
                               type="button"
                               className="files-action-btn btn-trash"
-                              onClick={() => handleDeleteImage(f)}
-                              title="Delete image from storage and workspace"
+                              onClick={() => handleDeleteFile(f)}
+                              title={`Delete ${isVideo ? 'video' : 'image'} from storage and workspace`}
                             >
                               <Trash2 size={14} />
                             </button>

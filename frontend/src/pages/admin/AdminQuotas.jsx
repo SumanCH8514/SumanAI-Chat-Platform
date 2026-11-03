@@ -12,7 +12,8 @@ import {
   Clock,
   ShieldAlert,
   Image as ImageIcon,
-  MessageSquare
+  MessageSquare,
+  Film
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import './AdminQuotas.css';
@@ -63,6 +64,15 @@ export const AdminQuotas = () => {
     setDraftConfig((prev) => {
       const next = JSON.parse(JSON.stringify(prev));
       next.tiers[tier].imageGenLimit = isNaN(num) ? 0 : num;
+      return next;
+    });
+  };
+
+  const handleVideoLimitChange = (tier, value) => {
+    const num = parseInt(value, 10);
+    setDraftConfig((prev) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      next.tiers[tier].videoGenLimit = isNaN(num) ? 0 : num;
       return next;
     });
   };
@@ -262,6 +272,31 @@ export const AdminQuotas = () => {
                 <span>20 / day</span>
               </div>
             </div>
+
+            <div className="admin-slider-row">
+              <div className="admin-slider-label-row">
+                <span className="admin-slider-title">
+                  <Film size={14} /> Daily Video Generations
+                </span>
+                <span className="admin-slider-val-badge">
+                  {(guest?.videoGenLimit ?? 0) === 0 ? 'Disabled (0 / day)' : `${guest?.videoGenLimit} vid / day`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="1"
+                className="admin-range-slider"
+                value={guest?.videoGenLimit ?? 0}
+                onChange={(e) => handleVideoLimitChange('guest', e.target.value)}
+              />
+              <div className="admin-slider-scale">
+                <span>0 (Disabled)</span>
+                <span>5 / day</span>
+                <span>10 / day</span>
+              </div>
+            </div>
           </div>
 
           <div className="admin-quota-card-foot">
@@ -356,6 +391,31 @@ export const AdminQuotas = () => {
                 <span>50 / day</span>
               </div>
             </div>
+
+            <div className="admin-slider-row">
+              <div className="admin-slider-label-row">
+                <span className="admin-slider-title">
+                  <Film size={14} /> Daily Video Generations
+                </span>
+                <span className="admin-slider-val-badge">
+                  {free?.videoGenLimit ?? 2} vid / day
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="20"
+                step="1"
+                className="admin-range-slider"
+                value={free?.videoGenLimit ?? 2}
+                onChange={(e) => handleVideoLimitChange('free', e.target.value)}
+              />
+              <div className="admin-slider-scale">
+                <span>0 (Disabled)</span>
+                <span>10 / day</span>
+                <span>20 / day</span>
+              </div>
+            </div>
           </div>
 
           <div className="admin-quota-card-foot">
@@ -448,6 +508,31 @@ export const AdminQuotas = () => {
                 <span>Unlimited (-1)</span>
                 <span>100 / day</span>
                 <span>200 / day</span>
+              </div>
+            </div>
+
+            <div className="admin-slider-row">
+              <div className="admin-slider-label-row">
+                <span className="admin-slider-title">
+                  <Film size={14} /> Daily Video Generations
+                </span>
+                <span className="admin-slider-val-badge badge-pro">
+                  {(pro?.videoGenLimit ?? 5) === -1 ? 'Unlimited' : `${pro?.videoGenLimit ?? 5} vid / day`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="-1"
+                max="50"
+                step="1"
+                className="admin-range-slider pro-slider"
+                value={pro?.videoGenLimit ?? 5}
+                onChange={(e) => handleVideoLimitChange('pro', e.target.value)}
+              />
+              <div className="admin-slider-scale">
+                <span>Unlimited (-1)</span>
+                <span>25 / day</span>
+                <span>50 / day</span>
               </div>
             </div>
           </div>

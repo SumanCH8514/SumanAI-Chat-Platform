@@ -22,6 +22,7 @@ const DEFAULT_GOVERNANCE = {
       allowedModelIds: ['qwen/qwen3.8-27b'],
       defaultModelId: 'qwen/qwen3.8-27b',
       imageGenLimit: 0,
+      videoGenLimit: 0,
       rateLimit: {
         requestsPerHour: 20,
         requestsPerDay: 50
@@ -52,6 +53,7 @@ const DEFAULT_GOVERNANCE = {
       ],
       defaultModelId: 'openai/gpt-oss-120b',
       imageGenLimit: 5,
+      videoGenLimit: 2,
       rateLimit: {
         requestsPerHour: 100,
         requestsPerDay: 300
@@ -93,6 +95,7 @@ const DEFAULT_GOVERNANCE = {
       ],
       defaultModelId: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
       imageGenLimit: -1,
+      videoGenLimit: 5,
       rateLimit: {
         requestsPerHour: 500,
         requestsPerDay: 2000
@@ -125,6 +128,7 @@ const deepMergeGovernance = (data) => {
         ...DEFAULT_GOVERNANCE.tiers.guest,
         ...(tiers.guest || {}),
         imageGenLimit: tiers.guest?.imageGenLimit ?? DEFAULT_GOVERNANCE.tiers.guest.imageGenLimit,
+        videoGenLimit: tiers.guest?.videoGenLimit ?? DEFAULT_GOVERNANCE.tiers.guest.videoGenLimit,
         rateLimit: {
           ...DEFAULT_GOVERNANCE.tiers.guest.rateLimit,
           ...(tiers.guest?.rateLimit || {})
@@ -134,6 +138,7 @@ const deepMergeGovernance = (data) => {
         ...DEFAULT_GOVERNANCE.tiers.free,
         ...(tiers.free || {}),
         imageGenLimit: tiers.free?.imageGenLimit ?? DEFAULT_GOVERNANCE.tiers.free.imageGenLimit,
+        videoGenLimit: tiers.free?.videoGenLimit ?? DEFAULT_GOVERNANCE.tiers.free.videoGenLimit,
         rateLimit: {
           ...DEFAULT_GOVERNANCE.tiers.free.rateLimit,
           ...(tiers.free?.rateLimit || {})
@@ -143,6 +148,7 @@ const deepMergeGovernance = (data) => {
         ...DEFAULT_GOVERNANCE.tiers.pro,
         ...(tiers.pro || {}),
         imageGenLimit: tiers.pro?.imageGenLimit ?? DEFAULT_GOVERNANCE.tiers.pro.imageGenLimit,
+        videoGenLimit: tiers.pro?.videoGenLimit ?? DEFAULT_GOVERNANCE.tiers.pro.videoGenLimit,
         premiumModelIds: (Array.isArray(tiers.pro?.premiumModelIds) && tiers.pro.premiumModelIds.length > 0)
           ? tiers.pro.premiumModelIds
           : DEFAULT_GOVERNANCE.tiers.pro.premiumModelIds,

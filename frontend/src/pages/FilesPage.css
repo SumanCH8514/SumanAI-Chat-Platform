@@ -283,6 +283,12 @@
   border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
+.type-video {
+  background: rgba(245, 158, 11, 0.12);
+  color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
 .files-source-text {
   font-size: 12px;
   color: var(--text-secondary);
@@ -381,6 +387,12 @@
   padding: 16px;
 }
 
+.files-modal-card.is-video-modal {
+  max-width: min(94vw, 960px);
+  max-height: 92vh;
+  padding: 16px;
+}
+
 .files-modal-head {
   display: flex;
   align-items: center;
@@ -444,6 +456,16 @@
   height: auto;
   object-fit: contain;
   border-radius: var(--radius-sm);
+  display: block;
+}
+
+.files-preview-video {
+  max-width: 100%;
+  max-height: calc(88vh - 144px);
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  background: #000;
   display: block;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
 }

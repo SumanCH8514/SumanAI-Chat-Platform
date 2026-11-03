@@ -28,10 +28,12 @@ export const MODEL_LIST = [
   { id: '@cf/black-forest-labs/flux-2-dev', name: 'Flux 2 Dev (CF)', locked: false, badge: 'Studio Quality', icon: IconCloudflare, supportsVision: false, supportsImageGen: true, tier: 'premium' },
   { id: '@cf/black-forest-labs/flux-2-klein-9b', name: 'Flux 2 Klein 9B (CF)', locked: false, badge: 'Compact 9B', icon: IconCloudflare, supportsVision: false, supportsImageGen: true, tier: 'premium' },
   { id: '@cf/moondream/moondream3.1-9B-A2B', name: 'Moondream 3.1 9B (CF)', locked: false, badge: 'Fast Vision', icon: IconCloudflare, supportsVision: true, supportsImageGen: false, tier: 'free' },
-  { id: 'xai/grok-imagine-image-quality', name: 'Grok Imagine Quality (CF)', locked: false, badge: 'Cinematic Art', icon: IconCloudflare, supportsVision: false, supportsImageGen: true, tier: 'premium' }
+  { id: 'xai/grok-imagine-image-quality', name: 'Grok Imagine Quality (CF)', locked: false, badge: 'Cinematic Art', icon: IconCloudflare, supportsVision: false, supportsImageGen: true, tier: 'premium' },
+  { id: 'lightricks/ltx-video-distilled', name: 'LTX Video 0.9.8 (HF)', locked: false, badge: 'ZeroGPU Video', icon: IconCloudflare, supportsVision: false, supportsImageGen: false, supportsVideoGen: true, tier: 'free' }
 ];
 
 export const DEFAULT_VISION_MODEL = MODEL_LIST.find(m => m.id === '@cf/meta/llama-3.2-11b-vision-instruct') || MODEL_LIST.find(m => m.supportsVision);
 export const DEFAULT_IMAGE_GEN_MODEL = MODEL_LIST.find(m => m.id === '@cf/black-forest-labs/flux-1-schnell') || MODEL_LIST.find(m => m.supportsImageGen);
+export const DEFAULT_VIDEO_GEN_MODEL = MODEL_LIST.find(m => m.id === 'lightricks/ltx-video-distilled') || MODEL_LIST.find(m => m.supportsVideoGen);
 
 export { formatModelTitle, resolveModelBadge } from '../utils/modelUtils.js';

@@ -11,7 +11,7 @@ import { useChatStore } from '../store/useChatStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { chatService } from '../services/ChatService';
 import { usageService } from '../services/usageService';
-import { DEFAULT_VISION_MODEL, DEFAULT_IMAGE_GEN_MODEL } from '../constants/models';
+import { DEFAULT_VISION_MODEL, DEFAULT_IMAGE_GEN_MODEL, DEFAULT_VIDEO_GEN_MODEL } from '../constants/models';
 import { compressImage, isImageGenerationIntent } from '../utils/imageUtils';
 import { parseArtifact } from '../utils/artifactUtils';
 import ModelSelector from './ModelSelector';
@@ -109,6 +109,8 @@ const InputBar = ({ isCentered = false }) => {
   const setHasAttachments = useChatStore(state => state.setHasAttachments);
   const hasImageGenActive = useChatStore(state => state.hasImageGenActive);
   const setHasImageGenActive = useChatStore(state => state.setHasImageGenActive);
+  const hasVideoGenActive = useChatStore(state => state.hasVideoGenActive);
+  const setHasVideoGenActive = useChatStore(state => state.setHasVideoGenActive);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -183,6 +185,7 @@ const InputBar = ({ isCentered = false }) => {
       }
 
       setHasImageGenActive(true);
+      setHasVideoGenActive(false);
       if (DEFAULT_IMAGE_GEN_MODEL) {
         setSelectedModel(DEFAULT_IMAGE_GEN_MODEL);
         const remainingText = quota.unlimited ? 'Unlimited' : `${quota.remaining} left today`;
@@ -191,6 +194,43 @@ const InputBar = ({ isCentered = false }) => {
       }
     } else {
       setHasImageGenActive(false);
+      const fallback = resetToDefaultModel ? resetToDefaultModel() : defaultModelForTier;
+      if (fallback) {
+        setSelectedModel(fallback);
+        setVisionToast(`Switched back to ${fallback.name}`);
+        setTimeout(() => setVisionToast(null), 3000);
+      }
+    }
+  };
+
+  const handleToggleVideoGen = () => {
+    const newState = !hasVideoGenActive;
+    setShowActionMenu(false);
+
+    if (newState) {
+      const quota = usageService.checkVideoGenAllowed(user, governance);
+      if (!quota.allowed) {
+        if (quota.reason === 'login_required') {
+          openAuthModal();
+          setVisionToast("Please sign in with Google to create AI videos.");
+          setTimeout(() => setVisionToast(null), 4000);
+        } else {
+          setVisionToast(quota.message);
+          setTimeout(() => setVisionToast(null), 4500);
+        }
+        return;
+      }
+
+      setHasImageGenActive(false);
+      setHasVideoGenActive(true);
+      if (DEFAULT_VIDEO_GEN_MODEL) {
+        setSelectedModel(DEFAULT_VIDEO_GEN_MODEL);
+        const remainingText = quota.unlimited ? 'Unlimited' : `${quota.remaining} left today`;
+        setVisionToast(`Video Gen: ${DEFAULT_VIDEO_GEN_MODEL.name} (${remainingText})`);
+        setTimeout(() => setVisionToast(null), 4000);
+      }
+    } else {
+      setHasVideoGenActive(false);
       const fallback = resetToDefaultModel ? resetToDefaultModel() : defaultModelForTier;
       if (fallback) {
         setSelectedModel(fallback);
@@ -342,7 +382,14 @@ const InputBar = ({ isCentered = false }) => {
     if (!promptValue && attachments.length === 0) return;
 
     const autoDetectedImageGen = isImageGenerationIntent(promptValue);
-    const isImageGen = Boolean(
+    const isVideoGen = Boolean(
+      selectedModel?.supportsVideoGen ||
+      hasVideoGenActive ||
+      overrideOptions?.isVideoGen ||
+      overrideOptions?.modelId === DEFAULT_VIDEO_GEN_MODEL?.id ||
+      overrideOptions?.modelId?.includes('ltx-video')
+    );
+    const isImageGen = !isVideoGen && Boolean(
       selectedModel?.supportsImageGen || 
       hasImageGenActive || 
       overrideOptions?.isImageGen || 
@@ -352,12 +399,22 @@ const InputBar = ({ isCentered = false }) => {
       autoDetectedImageGen
     );
 
-    if (autoDetectedImageGen && !hasImageGenActive && !selectedModel?.supportsImageGen) {
+    if (autoDetectedImageGen && !hasImageGenActive && !hasVideoGenActive && !selectedModel?.supportsImageGen) {
       setVisionToast('Auto-detected Image Request: Flux 1 Schnell');
       setTimeout(() => setVisionToast(null), 3200);
     }
 
-    if (isImageGen) {
+    if (isVideoGen) {
+      const quota = usageService.checkVideoGenAllowed(user, governance);
+      if (!quota.allowed) {
+        if (quota.reason === 'login_required') {
+          openAuthModal();
+        }
+        setVisionToast(quota.message);
+        setTimeout(() => setVisionToast(null), 4500);
+        return;
+      }
+    } else if (isImageGen) {
       const quota = usageService.checkImageGenAllowed(user, governance);
       if (!quota.allowed) {
         if (quota.reason === 'login_required') {
@@ -380,17 +437,19 @@ const InputBar = ({ isCentered = false }) => {
       useChatStore.setState({ isGenerating: true });
       abortControllerRef.current = new AbortController();
 
+      const activeVideoModel = selectedModel?.supportsVideoGen ? selectedModel : DEFAULT_VIDEO_GEN_MODEL;
       const activeImageModel = selectedModel?.supportsImageGen ? selectedModel : DEFAULT_IMAGE_GEN_MODEL;
       const chosenModelId = overrideOptions?.modelId 
-        || (isImageGen ? activeImageModel?.id : selectedModel.id);
+        || (isVideoGen ? activeVideoModel?.id : (isImageGen ? activeImageModel?.id : selectedModel.id));
       const chosenModelName = overrideOptions?.modelDisplayName 
-        || (isImageGen ? activeImageModel?.name : (selectedModel?.name || 'SumanAI'));
+        || (isVideoGen ? activeVideoModel?.name : (isImageGen ? activeImageModel?.name : (selectedModel?.name || 'SumanAI')));
 
       if (!isRegenerate) {
         setText('');
         setAttachments([]);
         setHasImageGenActive(false);
-        if (isImageGen) {
+        setHasVideoGenActive(false);
+        if (isImageGen || isVideoGen) {
           if (resetToDefaultModel) {
             resetToDefaultModel();
           } else if (defaultModelForTier) {
@@ -420,7 +479,7 @@ const InputBar = ({ isCentered = false }) => {
       const modelToUse = chosenModelId;
       const modelDisplayName = chosenModelName;
 
-      addMessage(chatId, { role: 'assistant', content: '', model: modelDisplayName });
+      addMessage(chatId, { role: 'assistant', content: '', model: modelDisplayName, isGeneratingVideo: isVideoGen });
 
       const { chats } = useChatStore.getState();
       const activeChat = chats.find(c => c.id === chatId);
@@ -449,6 +508,8 @@ const InputBar = ({ isCentered = false }) => {
         {
           deepThinking: useDeepThinking,
           smartSearch: useSmartSearch,
+          videoMode: isVideoGen,
+          isVideoGen,
           signal: abortControllerRef.current.signal,
           onModelResolved: (realModelId) => {
             if (realModelId) {
@@ -460,7 +521,9 @@ const InputBar = ({ isCentered = false }) => {
 
       const completedText = finalResult || '';
       if (completedText) {
-        if (isImageGen) {
+        if (isVideoGen) {
+          usageService.recordVideoGenerationTimestamp(user?.uid || 'guest');
+        } else if (isImageGen) {
           usageService.recordGenerationTimestamp(user?.uid || 'guest');
         }
         updateLastMessage(chatId, completedText);
@@ -504,7 +567,7 @@ const InputBar = ({ isCentered = false }) => {
       setIsGenerating(false);
       useChatStore.setState({ isGenerating: false });
       abortControllerRef.current = null;
-      if (isImageGen) {
+      if (isImageGen || isVideoGen) {
         if (resetToDefaultModel) {
           resetToDefaultModel();
         } else if (defaultModelForTier) {
@@ -512,7 +575,7 @@ const InputBar = ({ isCentered = false }) => {
         }
       }
     }
-  }, [text, attachments, deepThinking, smartSearch, ensureActiveChat, navigate, addMessage, selectedModel, setSelectedModel, updateLastMessage, setHasImageGenActive, stopListening, governance, hasImageGenActive, openAuthModal, user, defaultModelForTier, resetToDefaultModel]);
+  }, [text, attachments, deepThinking, smartSearch, ensureActiveChat, navigate, addMessage, selectedModel, setSelectedModel, updateLastMessage, setHasImageGenActive, setHasVideoGenActive, stopListening, governance, hasImageGenActive, hasVideoGenActive, openAuthModal, user, defaultModelForTier, resetToDefaultModel]);
 
   useEffect(() => {
     if (isPendingGeneration) {
@@ -665,6 +728,14 @@ const InputBar = ({ isCentered = false }) => {
                     {hasImageGenActive && <span className="action-active-dot" />}
                   </button>
                   <button
+                    className={`action-item ${hasVideoGenActive ? 'active' : ''}`}
+                    onClick={handleToggleVideoGen}
+                  >
+                    <Film size={16} />
+                    <span>Create video</span>
+                    {hasVideoGenActive && <span className="action-active-dot" />}
+                  </button>
+                  <button
                     className={`action-item ${deepThinking ? 'active' : ''}`}
                     onClick={() => { setDeepThinking(!deepThinking); setShowActionMenu(false); }}
                   >
@@ -684,7 +755,7 @@ const InputBar = ({ isCentered = false }) => {
               )}
             </div>
 
-            {(hasImageGenActive || deepThinking || smartSearch) && (
+            {(hasImageGenActive || hasVideoGenActive || deepThinking || smartSearch) && (
               <div className="active-pill-indicators">
                 {hasImageGenActive && (
                   <button
@@ -696,6 +767,21 @@ const InputBar = ({ isCentered = false }) => {
                   >
                     <ImageIcon size={13} className="indicator-icon" />
                     <span className="indicator-label">Images</span>
+                    <span className="indicator-close-btn">
+                      <X size={12} />
+                    </span>
+                  </button>
+                )}
+                {hasVideoGenActive && (
+                  <button
+                    type="button"
+                    className="indicator-pill video-gen"
+                    onClick={handleToggleVideoGen}
+                    title="Video mode active. Click or tap to turn off."
+                    aria-label="Video mode active. Click or tap to turn off."
+                  >
+                    <Film size={13} className="indicator-icon" />
+                    <span className="indicator-label">Video</span>
                     <span className="indicator-close-btn">
                       <X size={12} />
                     </span>

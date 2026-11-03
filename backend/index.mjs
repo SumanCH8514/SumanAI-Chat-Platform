@@ -519,7 +519,7 @@ export default {
         });
       }
 
-      if (url.pathname === "/api/delete-image") {
+      if (url.pathname === "/api/delete-image" || url.pathname === "/api/delete-video") {
         try {
           const targetUrl = body?.url || "";
           let key = body?.key || "";
@@ -527,6 +527,8 @@ export default {
           if (!key && targetUrl) {
             if (targetUrl.includes("/generated-images/")) {
               key = `generated-images/${targetUrl.split("/generated-images/")[1].split("?")[0]}`;
+            } else if (targetUrl.includes("/generated-videos/")) {
+              key = `generated-videos/${targetUrl.split("/generated-videos/")[1].split("?")[0]}`;
             } else if (targetUrl.includes("cdn.sumanai.r2.sumanonline.com/")) {
               key = targetUrl.split("cdn.sumanai.r2.sumanonline.com/")[1].split("?")[0];
             }
@@ -593,6 +595,132 @@ export default {
           });
         } catch (err) {
           return new Response(JSON.stringify({ error: err.message || "Failed to save watermarked image" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+      }
+
+      if (url.pathname === "/api/generate-video") {
+        try {
+          const isGoogleAuth = await isGoogleAuthenticated(request, env);
+          if (!isGoogleAuth) {
+            return new Response(JSON.stringify({
+              error: "Non-login users cannot generate video. Please sign in with Google."
+            }), {
+              status: 401,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
+          if (!prompt) {
+            return new Response(JSON.stringify({ error: "Prompt is required." }), {
+              status: 400,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          let videoUrl = null;
+          const hfToken = env.HF_TOKEN;
+          const hfHeaders = { "Content-Type": "application/json" };
+          if (hfToken) hfHeaders["Authorization"] = `Bearer ${hfToken}`;
+
+          try {
+            const callRes = await fetch("https://lightricks-ltx-video-distilled.hf.space/gradio_api/call/text_to_video", {
+              method: "POST",
+              headers: hfHeaders,
+              body: JSON.stringify({
+                data: [
+                  prompt,
+                  body?.negativePrompt || "worst quality, inconsistent motion, blurry, jittery, distorted",
+                  null,
+                  null,
+                  512,
+                  704,
+                  "text-to-video",
+                  65,
+                  25,
+                  Math.floor(Math.random() * 1000000),
+                  true,
+                  3.0,
+                  true
+                ]
+              })
+            });
+
+            if (callRes.ok) {
+              const callData = await callRes.json();
+              const eventId = callData?.event_id;
+              if (eventId) {
+                const sseRes = await fetch(`https://lightricks-ltx-video-distilled.hf.space/gradio_api/call/text_to_video/${eventId}`, {
+                  headers: hfHeaders
+                });
+                if (sseRes.ok) {
+                  const sseText = await sseRes.text();
+                  const lines = sseText.split("\n");
+                  for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line.startsWith("data: ")) {
+                      const dataStr = line.slice(6).trim();
+                      try {
+                        const parsed = JSON.parse(dataStr);
+                        if (Array.isArray(parsed) && parsed[0]?.video) {
+                          const vidObj = parsed[0].video;
+                          videoUrl = vidObj.url || (vidObj.path ? `https://lightricks-ltx-video-distilled.hf.space/gradio_api/file=${vidObj.path}` : null);
+                          break;
+                        }
+                      } catch {
+                        void 0;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } catch {
+            void 0;
+          }
+
+          if (!videoUrl) {
+            return new Response(JSON.stringify({ error: "Failed to generate video from ZeroGPU space. Please try again." }), {
+              status: 502,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          let key = `generated-videos/SumanAI_vid_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.mp4`;
+          let publicUrl = videoUrl;
+
+          if (env.R2_BUCKET) {
+            try {
+              const vidRes = await fetch(videoUrl);
+              if (vidRes.ok) {
+                const vidBuffer = await vidRes.arrayBuffer();
+                await env.R2_BUCKET.put(key, vidBuffer, {
+                  httpMetadata: {
+                    contentType: "video/mp4",
+                    cacheControl: "public, max-age=31536000"
+                  }
+                });
+                publicUrl = `https://cdn.sumanai.r2.sumanonline.com/${key}`;
+              }
+            } catch {
+              void 0;
+            }
+          }
+
+          return new Response(JSON.stringify({
+            success: true,
+            key,
+            url: publicUrl,
+            prompt
+          }), {
+            status: 200,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        } catch (genErr) {
+          return new Response(JSON.stringify({ error: genErr.message || "Failed to generate video" }), {
             status: 500,
             headers: { "Content-Type": "application/json", ...corsHeaders }
           });
@@ -899,6 +1027,158 @@ export default {
         if (env.AI) {
           targetModel = '@cf/black-forest-labs/flux-1-schnell';
         }
+      }
+
+      const isVideoTarget = targetModel === 'lightricks/ltx-video-distilled' || options?.videoMode === true || options?.isVideoGen === true;
+      if (isVideoTarget) {
+        if (!isGoogle) {
+          return new Response(JSON.stringify({
+            error: "Non-login users cannot generate video. Please sign in with Google to create AI videos."
+          }), {
+            status: 403,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+
+        const userMessages = messages.filter(m => m.role === 'user' || !m.role);
+        const promptMsg = userMessages.pop();
+        let cleanPrompt = (promptMsg?.content || lastUserText || 'A cinematic scene in natural lighting, high detail')
+          .replace(/!\[.*?\]\(.*?\)/g, '')
+          .replace(/https?:\/\/[^\s]+/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        if (!cleanPrompt) {
+          cleanPrompt = 'A cinematic scene in natural lighting, high detail';
+        }
+
+        let videoUrl = null;
+        const respondingVideoModel = 'lightricks/ltx-video-distilled';
+        const hfToken = env.HF_TOKEN;
+        const hfHeaders = { 'Content-Type': 'application/json' };
+        if (hfToken) hfHeaders['Authorization'] = `Bearer ${hfToken}`;
+
+        try {
+          const callRes = await fetch('https://lightricks-ltx-video-distilled.hf.space/gradio_api/call/text_to_video', {
+            method: 'POST',
+            headers: hfHeaders,
+            body: JSON.stringify({
+              data: [
+                cleanPrompt,
+                "worst quality, inconsistent motion, blurry, jittery, distorted",
+                null,
+                null,
+                512,
+                704,
+                "text-to-video",
+                65,
+                25,
+                Math.floor(Math.random() * 1000000),
+                true,
+                3.0,
+                true
+              ]
+            })
+          });
+
+          if (callRes.ok) {
+            const callData = await callRes.json();
+            const eventId = callData?.event_id;
+            if (eventId) {
+              const sseRes = await fetch(`https://lightricks-ltx-video-distilled.hf.space/gradio_api/call/text_to_video/${eventId}`, {
+                headers: hfHeaders
+              });
+              if (sseRes.ok) {
+                const sseText = await sseRes.text();
+                const lines = sseText.split('\n');
+                for (let i = 0; i < lines.length; i++) {
+                  const line = lines[i].trim();
+                  if (line.startsWith('data: ')) {
+                    const dataStr = line.slice(6).trim();
+                    try {
+                      const parsed = JSON.parse(dataStr);
+                      if (Array.isArray(parsed) && parsed[0]?.video) {
+                        const vidObj = parsed[0].video;
+                        videoUrl = vidObj.url || (vidObj.path ? `https://lightricks-ltx-video-distilled.hf.space/gradio_api/file=${vidObj.path}` : null);
+                        break;
+                      }
+                    } catch {
+                      void 0;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (hfErr) {
+          void hfErr;
+        }
+
+        if (!videoUrl) {
+          throw new Error("Unable to synthesize video at this moment. The ZeroGPU space may be queuing; please try again shortly.");
+        }
+
+        let permanentUrl = null;
+        if (env.R2_BUCKET) {
+          try {
+            const vidRes = await fetch(videoUrl);
+            if (vidRes.ok) {
+              const vidBuffer = await vidRes.arrayBuffer();
+              const r2Key = `generated-videos/SumanAI_vid_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.mp4`;
+              await env.R2_BUCKET.put(r2Key, vidBuffer, {
+                httpMetadata: {
+                  contentType: 'video/mp4',
+                  cacheControl: 'public, max-age=31536000'
+                }
+              });
+              permanentUrl = `https://cdn.sumanai.r2.sumanonline.com/${r2Key}`;
+            }
+          } catch {
+            void 0;
+          }
+        }
+
+        if (!permanentUrl) {
+          permanentUrl = videoUrl;
+        }
+
+        const { readable, writable } = new TransformStream();
+        const writer = writable.getWriter();
+        const encoder = new TextEncoder();
+
+        (async () => {
+          try {
+            await writer.write(encoder.encode(`data: ${JSON.stringify({ meta: { model: respondingVideoModel } })}\n\n`));
+            const markdown = `![video:${cleanPrompt.slice(0, 60)}](${permanentUrl})`;
+            const chunk = {
+              candidates: [{
+                content: {
+                  parts: [{ text: markdown }]
+                }
+              }]
+            };
+            await writer.write(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+            await writer.write(encoder.encode(`data: [DONE]\n\n`));
+          } catch (streamErr) {
+            void streamErr;
+          } finally {
+            try {
+              await writer.close();
+            } catch {
+              void 0;
+            }
+          }
+        })();
+
+        return new Response(readable, {
+          headers: {
+            "Content-Type": "text/event-stream; charset=utf-8",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Responding-Model": respondingVideoModel,
+            ...corsHeaders
+          }
+        });
       }
 
       if (!isGoogle && targetModel !== 'qwen/qwen3.8-27b') {

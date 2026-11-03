@@ -819,6 +819,39 @@
   border-color: #d1d5db;
 }
 
+.indicator-pill.video-gen {
+  background: var(--bg-hover);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+.dark .indicator-pill.video-gen {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f9fafb;
+}
+
+.light .indicator-pill.video-gen {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #111827;
+}
+
+.indicator-pill.video-gen:hover {
+  background: var(--bg-active);
+  border-color: var(--border-medium);
+}
+
+.dark .indicator-pill.video-gen:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.light .indicator-pill.video-gen:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
 .indicator-pill.thinking {
   background: rgba(168, 85, 247, 0.12);
   color: #7c3aed;

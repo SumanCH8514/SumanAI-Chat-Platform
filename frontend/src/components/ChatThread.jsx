@@ -26,6 +26,7 @@ import { ttsService } from '../services/ttsService';
 import { getVoiceById, DEFAULT_VOICE_ID } from '../constants/voices';
 import CodeBlock from './CodeBlock';
 import GeneratedImageCard, { ImagePlaceholderCard } from './GeneratedImageCard';
+import GeneratedVideoCard, { VideoPlaceholderCard } from './GeneratedVideoCard';
 import { isImageGenerationIntent } from '../utils/imageUtils';
 import ThinkingIndicator from './ThinkingIndicator';
 import VoiceSelectionModal from './VoiceSelectionModal';
@@ -311,7 +312,14 @@ const ChatThread = () => {
           .reverse()
           .find(m => m.role === 'user')?.content || '';
 
-        const isImageGenMsg = Boolean(
+        const isVideoGenMsg = Boolean(
+          msg.isGeneratingVideo ||
+          useChatStore.getState().hasVideoGenActive ||
+          (msg.model && msg.model.toLowerCase().includes('video')) ||
+          (msg.content && msg.content.includes('/generated-videos/'))
+        );
+
+        const isImageGenMsg = !isVideoGenMsg && Boolean(
           useChatStore.getState().hasImageGenActive ||
           isImageGenerationIntent(previousUserPrompt) ||
           previousUserPrompt.toLowerCase().includes('convert this image') ||
@@ -489,7 +497,7 @@ const ChatThread = () => {
                           const hasBlockChild = Boolean(
                             node?.children?.some((child) => child.tagName === 'img') ||
                             React.Children.toArray(children).some(
-                              (child) => React.isValidElement(child) && (child.type === GeneratedImageCard || child.type === 'div')
+                              (child) => React.isValidElement(child) && (child.type === GeneratedImageCard || child.type === GeneratedVideoCard || child.type === 'div')
                             )
                           );
 
@@ -521,13 +529,28 @@ const ChatThread = () => {
                             </code>
                           );
                         },
-                        img: ({ src, alt }) => (
-                          <GeneratedImageCard
-                            src={src}
-                            alt={alt}
-                            promptText={previousUserPrompt || alt}
-                          />
-                        ),
+                        img: ({ src, alt }) => {
+                          const isVideo = Boolean(
+                            (typeof src === 'string' && (src.includes('/generated-videos/') || src.endsWith('.mp4'))) ||
+                            (typeof alt === 'string' && alt.startsWith('video:'))
+                          );
+                          if (isVideo) {
+                            return (
+                              <GeneratedVideoCard
+                                src={src}
+                                title={typeof alt === 'string' ? alt.replace(/^video:/, '') : 'Generated Video'}
+                                promptText={previousUserPrompt || alt}
+                              />
+                            );
+                          }
+                          return (
+                            <GeneratedImageCard
+                              src={src}
+                              alt={alt}
+                              promptText={previousUserPrompt || alt}
+                            />
+                          );
+                        },
                         table: ({ children }) => (
                           <div className="table-responsive-container">
                             <table className="markdown-table">{children}</table>
@@ -540,7 +563,9 @@ const ChatThread = () => {
                         : msg.content}
                     </ReactMarkdown>
                   ) : (
-                    isImageGenMsg ? (
+                    isVideoGenMsg ? (
+                      <VideoPlaceholderCard statusText="Generating video with LTX Video AI..." />
+                    ) : isImageGenMsg ? (
                       <ImagePlaceholderCard status="generating" />
                     ) : (
                       <ThinkingIndicator
