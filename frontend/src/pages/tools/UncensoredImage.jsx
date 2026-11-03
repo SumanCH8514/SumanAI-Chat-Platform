@@ -287,8 +287,8 @@ export const UncensoredImage = () => {
           <button type="button" className="breadcrumb-link" onClick={() => navigate('/tools/view')}>
             Tools
           </button>
-          <span className="breadcrumb-sep">&gt;</span>
-          <button type="button" className="breadcrumb-link" onClick={() => navigate('/tools/view')}>
+          <span className="breadcrumb-sep breadcrumb-hide-mobile">&gt;</span>
+          <button type="button" className="breadcrumb-link breadcrumb-hide-mobile" onClick={() => navigate('/tools/view')}>
             Image Processing
           </button>
           <span className="breadcrumb-sep">&gt;</span>
@@ -302,7 +302,8 @@ export const UncensoredImage = () => {
           className="uncensored-doc-btn"
         >
           <BookOpen size={14} />
-          <span>Documentation</span>
+          <span className="doc-btn-text">Documentation</span>
+          <span className="doc-btn-short">Docs</span>
           <ExternalLink size={12} className="doc-ext-icon" />
         </a>
       </div>
@@ -353,7 +354,8 @@ export const UncensoredImage = () => {
               onClick={() => setMode('edit')}
             >
               <ImageIcon size={14} />
-              <span>Image to Image (Edit)</span>
+              <span className="tab-label-full">Image to Image (Edit)</span>
+              <span className="tab-label-short">Image to Image</span>
             </button>
           </div>
 
@@ -544,21 +546,23 @@ export const UncensoredImage = () => {
               <Info size={12} className="info-icon" />
             </span>
             <div className="seed-controls-line">
-              <input
-                type="number"
-                className="seed-num-input"
-                value={seed}
-                disabled={randomizeSeed}
-                onChange={(e) => setSeed(Number(e.target.value))}
-              />
-              <button
-                type="button"
-                className="seed-dice-btn"
-                onClick={handleRandomSeed}
-                title="Randomize Seed"
-              >
-                <Dices size={16} />
-              </button>
+              <div className="seed-input-row">
+                <input
+                  type="number"
+                  className="seed-num-input"
+                  value={seed}
+                  disabled={randomizeSeed}
+                  onChange={(e) => setSeed(Number(e.target.value))}
+                />
+                <button
+                  type="button"
+                  className="seed-dice-btn"
+                  onClick={handleRandomSeed}
+                  title="Randomize Seed"
+                >
+                  <Dices size={16} />
+                </button>
+              </div>
               <label className="seed-checkbox-item">
                 <input
                   type="checkbox"

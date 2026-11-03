@@ -5,7 +5,8 @@ import {
   Search, Compass, BookOpen, FolderHeart, Clock,
   MessageSquare, Wrench, Plus, Zap, Sliders, User,
   Settings, HelpCircle, LogOut, ChevronRight, X, PlusCircle,
-  MoreHorizontal, Share, Edit2, Pin, Trash2, ShieldCheck, Wallet, Gift
+  MoreHorizontal, Share, Edit2, Pin, Trash2, ShieldCheck, Wallet, Gift,
+  Home, PlusSquare, Folder, Layers, MoreVertical, MessageSquareWarning, Crown, ChevronDown
 } from 'lucide-react';
 import Skeleton from './Skeleton';
 import RenameModal from './RenameModal';
@@ -40,11 +41,12 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
   const UserAvatar = ({ className }) => {
     const [imgError, setImgError] = useState(false);
     const photoURL = user?.photoURL;
-    const initials = USER_DATA.name.slice(0, 2).toUpperCase();
+    const initials = (USER_DATA.name?.[0] || 'S').toUpperCase();
 
     if (photoURL && !imgError) {
       return (
         <img
+          key={photoURL}
           src={photoURL}
           alt={USER_DATA.name}
           className={className}
@@ -61,6 +63,23 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
     );
   };
 
+  const formatChatTime = (chat) => {
+    if (chat?.time) return chat.time;
+    const ts = chat?.updatedAt || chat?.createdAt;
+    if (!ts) return 'Recent';
+    const d = new Date(ts);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+    const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (isToday) return timeStr;
+    if (isYesterday) return `Yesterday, ${timeStr}`;
+    const monthStr = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return `${monthStr}, ${timeStr}`;
+  };
+
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [menuPosition, setMenuPosition] = useState(null);
@@ -71,6 +90,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const menuRef = useRef(null);
+  const mobileMenuWrapperRef = useRef(null);
   const chatOptionsRef = useRef(null);
 
   const handleCloseMenu = () => {
@@ -100,8 +120,14 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
 
   useEffect(() => {
     const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setShowUserMenu(false);
-      if (chatOptionsRef.current && !chatOptionsRef.current.contains(e.target)) handleCloseMenu();
+      const insideDesktop = menuRef.current && menuRef.current.contains(e.target);
+      const insideMobile = mobileMenuWrapperRef.current && mobileMenuWrapperRef.current.contains(e.target);
+      if (!insideDesktop && !insideMobile) {
+        setShowUserMenu(false);
+      }
+      if (chatOptionsRef.current && !chatOptionsRef.current.contains(e.target)) {
+        handleCloseMenu();
+      }
     };
     const handleScrollOrResize = () => {
       if (openMenuId) handleCloseMenu();
@@ -253,232 +279,427 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
 
   return (
     <aside className={`sidebar${isOpen ? ' sidebar--open' : ''}`}>
-      <div className="brand">
-        <div
-          className="brand-logo-container"
-          onClick={() => {
-            navigate('/');
-            if (window.innerWidth <= 640 && typeof onClose === 'function') onClose();
-          }}
-          role="button"
-          tabIndex={0}
-          title="Return to Home"
-          style={{ cursor: 'pointer' }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+      <div className="sidebar-desktop-view">
+        <div className="brand">
+          <div
+            className="brand-logo-container"
+            onClick={() => {
               navigate('/');
               if (window.innerWidth <= 640 && typeof onClose === 'function') onClose();
+            }}
+            role="button"
+            tabIndex={0}
+            title="Return to Home"
+            style={{ cursor: 'pointer' }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                navigate('/');
+                if (window.innerWidth <= 640 && typeof onClose === 'function') onClose();
+              }
+            }}
+          >
+            <img src="/sumanAI-logo1.png" alt="SumanAI" className="brand-logo" />
+          </div>
+          <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="search-bar">
+          <Search size={15} className="search-bar-icon" />
+          <input
+            type="text"
+            placeholder="Search conversations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search conversations"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="search-clear-btn"
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear search"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
+        <nav className="nav-links" aria-label="Main Navigation">
+          <Link
+            to="/explore"
+            className={`nav-item ${location.pathname === '/explore' ? 'active' : ''}`}
+            onClick={() => { if (window.innerWidth <= 640) onClose(); }}
+          >
+            <Compass size={17} />
+            <span>Explore</span>
+          </Link>
+          <Link
+            to="/library"
+            className={`nav-item ${location.pathname === '/library' ? 'active' : ''}`}
+            onClick={() => { if (window.innerWidth <= 640) onClose(); }}
+          >
+            <BookOpen size={17} />
+            <span>Library</span>
+          </Link>
+          <Link
+            to="/files"
+            className={`nav-item ${location.pathname === '/files' ? 'active' : ''}`}
+            onClick={() => { if (window.innerWidth <= 640) onClose(); }}
+          >
+            <FolderHeart size={17} />
+            <span>Files</span>
+          </Link>
+          <Link
+            to="/history"
+            className={`nav-item ${location.pathname === '/history' ? 'active' : ''}`}
+            onClick={() => { if (window.innerWidth <= 640) onClose(); }}
+          >
+            <Clock size={17} />
+            <span>History</span>
+          </Link>
+          <Link
+            to="/tools/view"
+            className={`nav-item ${location.pathname.startsWith('/tools') ? 'active' : ''}`}
+            onClick={() => { if (window.innerWidth <= 640) onClose(); }}
+          >
+            <Wrench size={17} />
+            <span>Tools</span>
+          </Link>
+          {adminService.checkIsAdmin(user) && (
+            <Link
+              to="/admin"
+              className={`nav-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`}
+              onClick={() => { if (window.innerWidth <= 640) onClose(); }}
+            >
+              <ShieldCheck size={17} color="#8B5CF6" />
+              <span>Admin</span>
+            </Link>
+          )}
+        </nav>
+
+        <div className="recent-chats-header">
+          <span>Recent Chats</span>
+          <button
+            className="new-chat-btn"
+            onClick={() => { navigate('/'); if (window.innerWidth <= 640) onClose(); }}
+            title="Start new conversation"
+            aria-label="Start new conversation"
+          >
+            <PlusCircle size={15} />
+          </button>
+        </div>
+
+        <div className="recent-chats">
+          {isSyncing ? (
+            [1, 2, 3, 4].map(i => (
+              <div key={i} className="chat-item-skeleton">
+                <Skeleton width="16px" height="16px" borderRadius="4px" />
+                <Skeleton width="75%" height="14px" borderRadius="4px" />
+              </div>
+            ))
+          ) : sortedChats.length > 0 ? (
+            sortedChats.map((chat) => (
+              <div
+                key={chat.id}
+                className={`chat-item ${activeChatId === chat.id ? 'active' : ''}`}
+                onClick={() => { navigate(`/${chat.id}`); if (window.innerWidth <= 640) onClose(); }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    navigate(`/${chat.id}`);
+                    if (window.innerWidth <= 640) onClose();
+                  }
+                }}
+              >
+                <div className="chat-item-left">
+                  {chat.isPinned ? <Pin size={14} className="pin-icon" /> : <MessageSquare size={14} className="chat-icon" />}
+                  <span className="chat-title-text">{chat.title}</span>
+                </div>
+
+                <div
+                  className="chat-options-container"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    className="chat-options-btn"
+                    onClick={(e) => handleOpenMenu(e, chat)}
+                    aria-label="Chat options"
+                    title="More options"
+                  >
+                    <MoreHorizontal size={14} />
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="chat-empty-state">
+              <span>{searchQuery ? 'No matching chats found' : 'No recent chats'}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="sb-user-wrapper" ref={menuRef}>
+          {showUserMenu && (
+            <div className="sb-user-menu">
+              <div className="sb-menu-user-row">
+                <UserAvatar className="sb-menu-avatar" />
+                <div className="sb-menu-user-info">
+                  <div className="sb-menu-name">{USER_DATA.name}</div>
+                  <div className="sb-menu-sub">{isAdmin ? 'Super Admin (Pro Access)' : USER_DATA.email}</div>
+                </div>
+              </div>
+
+              {menuItems.map((item, i) => (
+                <React.Fragment key={i}>
+                  {item.dividerBefore && <div className="sb-menu-divider" />}
+                  <button
+                    className="sb-menu-item"
+                    onClick={() => { item.action ? item.action() : setShowUserMenu(false); }}
+                  >
+                    <span className="sb-menu-icon">{item.icon}</span>
+                    <span className="sb-menu-label">{item.label}</span>
+                    {item.badge && <span className="sb-menu-badge">{item.badge}</span>}
+                    {item.hasArrow && <ChevronRight size={13} className="sb-menu-arrow" />}
+                  </button>
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+
+          {user ? (
+            <button
+              type="button"
+              className="sb-profile-bar"
+              onClick={() => setShowUserMenu(v => !v)}
+              aria-label="User account menu"
+            >
+              <UserAvatar className="sb-profile-avatar" />
+              <div className="sb-profile-info">
+                <span className="sb-profile-name">{USER_DATA.name}</span>
+                <span className="sb-profile-sub">{USER_DATA.sub}</span>
+              </div>
+            </button>
+          ) : (
+            <div
+              className="sb-login-card"
+              onClick={handleLoginTrigger}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleLoginTrigger(); }}
+            >
+              <div className="sb-login-card-badge">PRO</div>
+              <div className="sb-login-card-header">
+                <div className="sb-login-card-icon">
+                  <Zap size={15} />
+                </div>
+                <span className="sb-login-card-title">Login / Sign up</span>
+              </div>
+              <p className="sb-login-card-desc">
+                Sync history across devices, access advanced AI models & cloud tools.
+              </p>
+              <div className="sb-login-card-btn">
+                <span>Get started free</span>
+                <span className="sb-login-arrow">→</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="sidebar-mobile-view">
+        <div className="mobile-sb-user-wrapper" ref={mobileMenuWrapperRef}>
+          <div
+            className="mobile-sb-user-bar"
+            onClick={() => setShowUserMenu(v => !v)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                setShowUserMenu(v => !v);
+              }
+            }}
+          >
+            <div className="mobile-sb-avatar">
+              <UserAvatar className="mobile-sb-avatar-inner" />
+            </div>
+            <div className="mobile-sb-user-details">
+              <div className="mobile-sb-user-name">{USER_DATA.name}</div>
+              <div className="mobile-sb-user-email">{USER_DATA.email}</div>
+            </div>
+            <ChevronDown size={18} className={`mobile-sb-user-chevron ${showUserMenu ? 'open' : ''}`} />
+          </div>
+
+          {showUserMenu && (
+            <div className="mobile-sb-user-menu">
+              <div className="sb-menu-user-row">
+                <UserAvatar className="sb-menu-avatar" />
+                <div className="sb-menu-user-info">
+                  <div className="sb-menu-name">{USER_DATA.name}</div>
+                  <div className="sb-menu-sub">{isAdmin ? 'Super Admin (Pro Access)' : USER_DATA.email}</div>
+                </div>
+              </div>
+
+              {menuItems.map((item, i) => (
+                <React.Fragment key={i}>
+                  {item.dividerBefore && <div className="sb-menu-divider" />}
+                  <button
+                    className="sb-menu-item"
+                    onClick={() => {
+                      if (item.action) item.action();
+                      setShowUserMenu(false);
+                      if (onClose) onClose();
+                    }}
+                  >
+                    <span className="sb-menu-icon">{item.icon}</span>
+                    <span className="sb-menu-label">{item.label}</span>
+                    {item.badge && <span className="sb-menu-badge">{item.badge}</span>}
+                    {item.hasArrow && <ChevronRight size={13} className="sb-menu-arrow" />}
+                  </button>
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mobile-sb-scroll-area">
+          <div className="mobile-sb-nav">
+            <button
+              type="button"
+              className={`mobile-sb-nav-item ${location.pathname === '/' ? 'active' : ''}`}
+              onClick={() => { navigate('/'); if (onClose) onClose(); }}
+            >
+              <Home size={19} className="mobile-sb-nav-icon" />
+              <span>Home</span>
+            </button>
+            <button
+              type="button"
+              className="mobile-sb-nav-item"
+              onClick={() => { navigate('/'); if (onClose) onClose(); }}
+            >
+              <PlusSquare size={19} className="mobile-sb-nav-icon" />
+              <span>New chat</span>
+            </button>
+            <button
+              type="button"
+              className={`mobile-sb-nav-item ${location.pathname === '/library' ? 'active' : ''}`}
+              onClick={() => { navigate('/library'); if (onClose) onClose(); }}
+            >
+              <Folder size={19} className="mobile-sb-nav-icon" />
+              <span>Library</span>
+            </button>
+            <button
+              type="button"
+              className={`mobile-sb-nav-item ${location.pathname === '/explore' ? 'active' : ''}`}
+              onClick={() => { navigate('/explore'); if (onClose) onClose(); }}
+            >
+              <Layers size={19} className="mobile-sb-nav-icon" />
+              <span>Prompt templates</span>
+            </button>
+            <button
+              type="button"
+              className={`mobile-sb-nav-item ${location.pathname.startsWith('/tools') ? 'active' : ''}`}
+              onClick={() => { navigate('/tools/view'); if (onClose) onClose(); }}
+            >
+              <Wrench size={19} className="mobile-sb-nav-icon" />
+              <span>Tools</span>
+            </button>
+          </div>
+
+          <div className="mobile-sb-section-header">
+            <span className="mobile-sb-section-title">Recent chats</span>
+            <button
+              type="button"
+              className="mobile-sb-see-all-btn"
+              onClick={() => { navigate('/history'); if (onClose) onClose(); }}
+            >
+              See all
+            </button>
+          </div>
+
+          <div className="mobile-sb-recent-list">
+            {sortedChats.length > 0 ? (
+              sortedChats.map((chat) => (
+                <div
+                  key={chat.id}
+                  className={`mobile-sb-chat-item ${activeChatId === chat.id ? 'active' : ''}`}
+                  onClick={() => { navigate(`/${chat.id}`); if (onClose) onClose(); }}
+                >
+                  <div className="mobile-sb-chat-icon-wrap">
+                    <MessageSquare size={16} className="mobile-sb-chat-icon" />
+                  </div>
+                  <div className="mobile-sb-chat-info">
+                    <div className="mobile-sb-chat-title">{chat.title}</div>
+                    <div className="mobile-sb-chat-time">{formatChatTime(chat)}</div>
+                  </div>
+                  <button
+                    type="button"
+                    className="mobile-sb-chat-more-btn"
+                    onClick={(e) => handleOpenMenu(e, chat)}
+                    aria-label="Chat options"
+                  >
+                    <MoreVertical size={16} />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="mobile-sb-empty-chats">
+                <span>No recent chats</span>
+              </div>
+            )}
+          </div>
+
+          <div className="mobile-sb-utility-links">
+            <button
+              type="button"
+              className="mobile-sb-utility-item"
+              onClick={() => { if (onSettingsClick) onSettingsClick('general'); if (onClose) onClose(); }}
+            >
+              <Settings size={18} className="mobile-sb-utility-icon" />
+              <span>Settings</span>
+            </button>
+            <button
+              type="button"
+              className="mobile-sb-utility-item"
+              onClick={() => { if (onSettingsClick) onSettingsClick('help'); if (onClose) onClose(); }}
+            >
+              <HelpCircle size={18} className="mobile-sb-utility-icon" />
+              <span>Help & Support</span>
+            </button>
+            <button
+              type="button"
+              className="mobile-sb-utility-item"
+              onClick={() => { if (onSettingsClick) onSettingsClick('help'); if (onClose) onClose(); }}
+            >
+              <MessageSquareWarning size={18} className="mobile-sb-utility-icon" />
+              <span>Feedback</span>
+            </button>
+          </div>
+        </div>
+
+        <div
+          className="mobile-sb-upgrade-card"
+          onClick={() => { if (onSettingsClick) onSettingsClick('upgrade'); if (onClose) onClose(); }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              if (onSettingsClick) onSettingsClick('upgrade');
+              if (onClose) onClose();
             }
           }}
         >
-          <img src="/sumanAI-logo1.png" alt="SumanAI" className="brand-logo" />
+          <div className="mobile-sb-upgrade-icon-wrap">
+            <Crown size={22} className="mobile-sb-upgrade-crown" />
+          </div>
+          <div className="mobile-sb-upgrade-text">
+            <div className="mobile-sb-upgrade-title">Upgrade Plan</div>
+            <div className="mobile-sb-upgrade-sub">Get higher limits and more features</div>
+          </div>
+          <ChevronRight size={18} className="mobile-sb-upgrade-chevron" />
         </div>
-        <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar">
-          <X size={18} />
-        </button>
-      </div>
-
-      <div className="search-bar">
-        <Search size={15} className="search-bar-icon" />
-        <input
-          type="text"
-          placeholder="Search conversations..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          aria-label="Search conversations"
-        />
-        {searchQuery && (
-          <button
-            type="button"
-            className="search-clear-btn"
-            onClick={() => setSearchQuery('')}
-            aria-label="Clear search"
-          >
-            <X size={13} />
-          </button>
-        )}
-      </div>
-
-      <nav className="nav-links" aria-label="Main Navigation">
-        <Link
-          to="/explore"
-          className={`nav-item ${location.pathname === '/explore' ? 'active' : ''}`}
-          onClick={() => { if (window.innerWidth <= 640) onClose(); }}
-        >
-          <Compass size={17} />
-          <span>Explore</span>
-        </Link>
-        <Link
-          to="/library"
-          className={`nav-item ${location.pathname === '/library' ? 'active' : ''}`}
-          onClick={() => { if (window.innerWidth <= 640) onClose(); }}
-        >
-          <BookOpen size={17} />
-          <span>Library</span>
-        </Link>
-        <Link
-          to="/files"
-          className={`nav-item ${location.pathname === '/files' ? 'active' : ''}`}
-          onClick={() => { if (window.innerWidth <= 640) onClose(); }}
-        >
-          <FolderHeart size={17} />
-          <span>Files</span>
-        </Link>
-        <Link
-          to="/history"
-          className={`nav-item ${location.pathname === '/history' ? 'active' : ''}`}
-          onClick={() => { if (window.innerWidth <= 640) onClose(); }}
-        >
-          <Clock size={17} />
-          <span>History</span>
-        </Link>
-        <Link
-          to="/tools/view"
-          className={`nav-item ${location.pathname.startsWith('/tools') ? 'active' : ''}`}
-          onClick={() => { if (window.innerWidth <= 640) onClose(); }}
-        >
-          <Wrench size={17} />
-          <span>Tools</span>
-        </Link>
-        {adminService.checkIsAdmin(user) && (
-          <Link
-            to="/admin"
-            className={`nav-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`}
-            onClick={() => { if (window.innerWidth <= 640) onClose(); }}
-          >
-            <ShieldCheck size={17} color="#8B5CF6" />
-            <span>Admin</span>
-          </Link>
-        )}
-      </nav>
-
-      <div className="recent-chats-header">
-        <span>Recent Chats</span>
-        <button
-          className="new-chat-btn"
-          onClick={() => { navigate('/'); if (window.innerWidth <= 640) onClose(); }}
-          title="Start new conversation"
-          aria-label="Start new conversation"
-        >
-          <PlusCircle size={15} />
-        </button>
-      </div>
-
-      <div className="recent-chats">
-        {isSyncing ? (
-          [1, 2, 3, 4].map(i => (
-            <div key={i} className="chat-item-skeleton">
-              <Skeleton width="16px" height="16px" borderRadius="4px" />
-              <Skeleton width="75%" height="14px" borderRadius="4px" />
-            </div>
-          ))
-        ) : sortedChats.length > 0 ? (
-          sortedChats.map((chat) => (
-            <div
-              key={chat.id}
-              className={`chat-item ${activeChatId === chat.id ? 'active' : ''}`}
-              onClick={() => { navigate(`/${chat.id}`); if (window.innerWidth <= 640) onClose(); }}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  navigate(`/${chat.id}`);
-                  if (window.innerWidth <= 640) onClose();
-                }
-              }}
-            >
-              <div className="chat-item-left">
-                {chat.isPinned ? <Pin size={14} className="pin-icon" /> : <MessageSquare size={14} className="chat-icon" />}
-                <span className="chat-title-text">{chat.title}</span>
-              </div>
-
-              <div
-                className="chat-options-container"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  className="chat-options-btn"
-                  onClick={(e) => handleOpenMenu(e, chat)}
-                  aria-label="Chat options"
-                  title="More options"
-                >
-                  <MoreHorizontal size={14} />
-                </button>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="chat-empty-state">
-            <span>{searchQuery ? 'No matching chats found' : 'No recent chats'}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="sb-user-wrapper" ref={menuRef}>
-        {showUserMenu && (
-          <div className="sb-user-menu">
-            <div className="sb-menu-user-row">
-              <UserAvatar className="sb-menu-avatar" />
-              <div className="sb-menu-user-info">
-                <div className="sb-menu-name">{USER_DATA.name}</div>
-                <div className="sb-menu-sub">{isAdmin ? 'Super Admin (Pro Access)' : USER_DATA.email}</div>
-              </div>
-            </div>
-
-            {menuItems.map((item, i) => (
-              <React.Fragment key={i}>
-                {item.dividerBefore && <div className="sb-menu-divider" />}
-                <button
-                  className="sb-menu-item"
-                  onClick={() => { item.action ? item.action() : setShowUserMenu(false); }}
-                >
-                  <span className="sb-menu-icon">{item.icon}</span>
-                  <span className="sb-menu-label">{item.label}</span>
-                  {item.badge && <span className="sb-menu-badge">{item.badge}</span>}
-                  {item.hasArrow && <ChevronRight size={13} className="sb-menu-arrow" />}
-                </button>
-              </React.Fragment>
-            ))}
-          </div>
-        )}
-
-        {user ? (
-          <button
-            type="button"
-            className="sb-profile-bar"
-            onClick={() => setShowUserMenu(v => !v)}
-            aria-label="User account menu"
-          >
-            <UserAvatar className="sb-profile-avatar" />
-            <div className="sb-profile-info">
-              <span className="sb-profile-name">{USER_DATA.name}</span>
-              <span className="sb-profile-sub">{USER_DATA.sub}</span>
-            </div>
-          </button>
-        ) : (
-          <div
-            className="sb-login-card"
-            onClick={handleLoginTrigger}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleLoginTrigger(); }}
-          >
-            <div className="sb-login-card-badge">PRO</div>
-            <div className="sb-login-card-header">
-              <div className="sb-login-card-icon">
-                <Zap size={15} />
-              </div>
-              <span className="sb-login-card-title">Login / Sign up</span>
-            </div>
-            <p className="sb-login-card-desc">
-              Sync history across devices, access advanced AI models & cloud tools.
-            </p>
-            <div className="sb-login-card-btn">
-              <span>Get started free</span>
-              <span className="sb-login-arrow">→</span>
-            </div>
-          </div>
-        )}
       </div>
 
       <RenameModal

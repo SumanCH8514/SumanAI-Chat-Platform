@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Bot,
-  User,
   Download,
   Copy,
   Check,
+  CheckCheck,
   Volume2,
   VolumeX,
   Share2,
@@ -13,7 +13,8 @@ import {
   RotateCw,
   Loader2,
   Speech,
-  Pencil
+  Pencil,
+  MoreHorizontal
 } from 'lucide-react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -35,6 +36,7 @@ import './ChatThread.css';
 const UserAvatar = ({ user }) => {
   const [hasError, setHasError] = useState(false);
   const photo = user?.photoURL;
+  const initial = (user?.displayName || user?.email || 'S')[0].toUpperCase();
 
   if (photo && !hasError) {
     return (
@@ -48,7 +50,15 @@ const UserAvatar = ({ user }) => {
     );
   }
 
-  return <User size={18} />;
+  return <div className="user-profile-avatar-fallback">{initial}</div>;
+};
+
+const formatMessageTime = (msg) => {
+  const ts = msg?.timestamp || msg?.createdAt;
+  if (!ts) return '10:24 PM';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '10:24 PM';
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
 const copyToClipboard = async (textToCopy) => {
@@ -414,7 +424,13 @@ const ChatThread = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="user-message-text">{msg.content}</div>
+                    <>
+                      <div className="user-message-text">{msg.content}</div>
+                      <div className="user-message-meta">
+                        <span className="user-message-time">{formatMessageTime(msg)}</span>
+                        <CheckCheck size={13} className="user-message-check" />
+                      </div>
+                    </>
                   )}
                 </div>
 
@@ -451,8 +467,17 @@ const ChatThread = () => {
 
         return (
           <div key={messageId} className="message-wrapper ai">
+            <div className="mobile-ai-msg-header">
+              <div className="mobile-ai-header-left">
+                <img src="/favicon.png" alt="SumanAI" className="mobile-ai-avatar-icon" />
+                <span className="mobile-ai-name">SumanAI</span>
+                <span className="mobile-ai-badge">AI</span>
+              </div>
+              <span className="mobile-ai-time">{formatMessageTime(msg)}</span>
+            </div>
+
             <div className="ai-response-card">
-              <div className="ai-response-header">
+              <div className="ai-response-header desktop-only-ai-header">
                 <div className="message-avatar">
                   <Bot size={17} />
                 </div>
@@ -462,7 +487,7 @@ const ChatThread = () => {
                 </div>
               </div>
 
-              <div className="ai-response-divider" />
+              <div className="ai-response-divider desktop-only-ai-divider" />
 
               <div className="ai-response-body">
                 <div className={`message-bubble ${isPureImage ? 'pure-image-bubble' : ''}`}>
@@ -578,81 +603,95 @@ const ChatThread = () => {
 
                 {!isPureImage && (
                   <div className="message-actions-toolbar" role="toolbar" aria-label="Message options">
-                    <button
-                      type="button"
-                      className={`msg-action-btn ${copiedIdx === idx ? 'active' : ''}`}
-                      onClick={() => handleCopyMessage(idx, msg.content)}
-                      title={copiedIdx === idx ? 'Copied to clipboard' : 'Copy'}
-                      aria-label="Copy message"
-                    >
-                      {copiedIdx === idx ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
-                    </button>
+                    <div className="message-actions-left-group">
+                      <button
+                        type="button"
+                        className={`msg-action-btn ${copiedIdx === idx ? 'active' : ''}`}
+                        onClick={() => handleCopyMessage(idx, msg.content)}
+                        title={copiedIdx === idx ? 'Copied to clipboard' : 'Copy'}
+                        aria-label="Copy message"
+                      >
+                        {copiedIdx === idx ? <Check size={15} color="#10B981" /> : <Copy size={15} />}
+                      </button>
 
-                    <button
-                      type="button"
-                      className={`msg-action-btn ${speakingIdx === idx ? 'active speaking' : ''} ${loadingTTSIdx === idx ? 'active loading-audio' : ''}`}
-                      onClick={() => handleToggleSpeakMessage(idx, msg.content)}
-                      title={speakingIdx === idx ? 'Stop listening' : loadingTTSIdx === idx ? 'Synthesizing voice...' : 'Read aloud'}
-                      aria-label="Read aloud"
-                    >
-                      {speakingIdx === idx ? (
-                        <VolumeX size={14} />
-                      ) : loadingTTSIdx === idx ? (
-                        <Loader2 size={14} className="tts-spinner" />
-                      ) : (
-                        <Volume2 size={14} />
-                      )}
-                    </button>
+                      <button
+                        type="button"
+                        className={`msg-action-btn ${feedbackMap[idx] === 'like' ? 'active liked' : ''}`}
+                        onClick={() => handleToggleFeedback(idx, 'like')}
+                        title="Good response"
+                        aria-label="Thumbs up"
+                      >
+                        <ThumbsUp size={15} />
+                      </button>
 
-                    <button
-                      type="button"
-                      className="msg-action-btn"
-                      onClick={() => setIsVoiceModalOpen(true)}
-                      title={`Voice model (${currentVoice.name})`}
-                      aria-label={`Select AI voice model. Currently using ${currentVoice.name}`}
-                    >
-                      <Speech size={14} />
-                    </button>
+                      <button
+                        type="button"
+                        className={`msg-action-btn ${feedbackMap[idx] === 'dislike' ? 'active disliked' : ''}`}
+                        onClick={() => handleToggleFeedback(idx, 'dislike')}
+                        title="Bad response"
+                        aria-label="Thumbs down"
+                      >
+                        <ThumbsDown size={15} />
+                      </button>
 
-                    <button
-                      type="button"
-                      className={`msg-action-btn ${sharedIdx === idx ? 'active' : ''}`}
-                      onClick={() => handleShareMessage(idx, msg.content)}
-                      title={sharedIdx === idx ? 'Link Copied!' : 'Share message'}
-                      aria-label="Share message"
-                    >
-                      <Share2 size={14} />
-                    </button>
+                      <button
+                        type="button"
+                        className="msg-action-btn"
+                        onClick={() => handleRegenerateMessage(idx)}
+                        title="Regenerate response"
+                        aria-label="Regenerate response"
+                      >
+                        <RotateCw size={15} />
+                      </button>
 
-                    <button
-                      type="button"
-                      className={`msg-action-btn ${feedbackMap[idx] === 'like' ? 'active liked' : ''}`}
-                      onClick={() => handleToggleFeedback(idx, 'like')}
-                      title="Good response"
-                      aria-label="Thumbs up"
-                    >
-                      <ThumbsUp size={14} />
-                    </button>
+                      <button
+                        type="button"
+                        className={`msg-action-btn ${sharedIdx === idx ? 'active' : ''}`}
+                        onClick={() => handleShareMessage(idx, msg.content)}
+                        title={sharedIdx === idx ? 'Link Copied!' : 'Share message'}
+                        aria-label="Share message"
+                      >
+                        <Share2 size={15} />
+                      </button>
 
-                    <button
-                      type="button"
-                      className={`msg-action-btn ${feedbackMap[idx] === 'dislike' ? 'active disliked' : ''}`}
-                      onClick={() => handleToggleFeedback(idx, 'dislike')}
-                      title="Bad response"
-                      aria-label="Thumbs down"
-                    >
-                      <ThumbsDown size={14} />
-                    </button>
+                      <button
+                        type="button"
+                        className={`msg-action-btn desktop-only-action ${speakingIdx === idx ? 'active speaking' : ''} ${loadingTTSIdx === idx ? 'active loading-audio' : ''}`}
+                        onClick={() => handleToggleSpeakMessage(idx, msg.content)}
+                        title={speakingIdx === idx ? 'Stop listening' : loadingTTSIdx === idx ? 'Synthesizing voice...' : 'Read aloud'}
+                        aria-label="Read aloud"
+                      >
+                        {speakingIdx === idx ? (
+                          <VolumeX size={15} />
+                        ) : loadingTTSIdx === idx ? (
+                          <Loader2 size={15} className="tts-spinner" />
+                        ) : (
+                          <Volume2 size={15} />
+                        )}
+                      </button>
 
-                    <button
-                      type="button"
-                      className="msg-action-btn"
-                      onClick={() => handleRegenerateMessage(idx)}
-                      title="Regenerate response"
-                      aria-label="Regenerate response"
-                    >
-                      <RotateCw size={14} />
-                    </button>
+                      <button
+                        type="button"
+                        className="msg-action-btn desktop-only-action"
+                        onClick={() => setIsVoiceModalOpen(true)}
+                        title={`Voice model (${currentVoice.name})`}
+                        aria-label={`Select AI voice model. Currently using ${currentVoice.name}`}
+                      >
+                        <Speech size={15} />
+                      </button>
+                    </div>
+
+                    <div className="message-actions-right-group">
+                      <button
+                        type="button"
+                        className="msg-action-btn"
+                        onClick={() => handleShareMessage(idx, msg.content)}
+                        title="More options"
+                        aria-label="More options"
+                      >
+                        <MoreHorizontal size={15} />
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
