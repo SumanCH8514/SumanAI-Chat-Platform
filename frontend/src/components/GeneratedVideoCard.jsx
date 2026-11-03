@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { Download, Share2, Copy, Check, Loader2, Film, Sparkles } from 'lucide-react';
 import './GeneratedVideoCard.css';
 
-export const VideoPlaceholderCard = ({ statusText = 'Generating video...' }) => {
+export const VideoPlaceholderCard = ({ statusText = 'Generating Video...' }) => {
   return (
     <div className="generated-video-card" role="status" aria-live="polite">
       <div className="video-placeholder-container">
         <Loader2 className="video-status-spinner" size={32} />
         <p className="video-status-text">{statusText}</p>
-        <p className="video-status-subtext">Rendering high-quality frames with LTX-Video on ZeroGPU</p>
+        <p className="video-status-subtext">Rendering frames with LTX-Video. Please Wait...</p>
       </div>
       <div className="video-card-actions">
         <div className="video-actions-left">

@@ -564,7 +564,7 @@ const ChatThread = () => {
                     </ReactMarkdown>
                   ) : (
                     isVideoGenMsg ? (
-                      <VideoPlaceholderCard statusText="Generating video with LTX Video AI..." />
+                      <VideoPlaceholderCard statusText="Generating Video..." />
                     ) : isImageGenMsg ? (
                       <ImagePlaceholderCard status="generating" />
                     ) : (

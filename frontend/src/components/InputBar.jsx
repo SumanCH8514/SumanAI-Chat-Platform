@@ -15,6 +15,7 @@ import { DEFAULT_VISION_MODEL, DEFAULT_IMAGE_GEN_MODEL, DEFAULT_VIDEO_GEN_MODEL 
 import { compressImage, isImageGenerationIntent } from '../utils/imageUtils';
 import { parseArtifact } from '../utils/artifactUtils';
 import ModelSelector from './ModelSelector';
+import VideoOptionsToolbar from './VideoOptionsToolbar';
 
 const mergeSpeechTranscripts = (results) => {
   if (!results || results.length === 0) return '';
@@ -510,6 +511,7 @@ const InputBar = ({ isCentered = false }) => {
           smartSearch: useSmartSearch,
           videoMode: isVideoGen,
           isVideoGen,
+          videoOptions: isVideoGen ? useChatStore.getState().videoOptions : undefined,
           signal: abortControllerRef.current.signal,
           onModelResolved: (realModelId) => {
             if (realModelId) {
@@ -773,19 +775,22 @@ const InputBar = ({ isCentered = false }) => {
                   </button>
                 )}
                 {hasVideoGenActive && (
-                  <button
-                    type="button"
-                    className="indicator-pill video-gen"
-                    onClick={handleToggleVideoGen}
-                    title="Video mode active. Click or tap to turn off."
-                    aria-label="Video mode active. Click or tap to turn off."
-                  >
-                    <Film size={13} className="indicator-icon" />
-                    <span className="indicator-label">Video</span>
-                    <span className="indicator-close-btn">
-                      <X size={12} />
-                    </span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="indicator-pill video-gen"
+                      onClick={handleToggleVideoGen}
+                      title="Video mode active. Click or tap to turn off."
+                      aria-label="Video mode active. Click or tap to turn off."
+                    >
+                      <Film size={13} className="indicator-icon" />
+                      <span className="indicator-label">Video</span>
+                      <span className="indicator-close-btn">
+                        <X size={12} />
+                      </span>
+                    </button>
+                    <VideoOptionsToolbar />
+                  </>
                 )}
                 {deepThinking && (
                   <button

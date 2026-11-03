@@ -17,6 +17,12 @@ export const useChatStore = create(
       hasAttachments: false,
       hasImageGenActive: false,
       hasVideoGenActive: false,
+      videoOptions: {
+        duration: 'auto',
+        aspectRatio: 'auto',
+        quality: 'auto',
+        audio: 'auto'
+      },
       canvas: {
         isOpen: false,
         content: '',
@@ -46,6 +52,9 @@ export const useChatStore = create(
       setHasAttachments: (val) => set({ hasAttachments: val }),
       setHasImageGenActive: (val) => set({ hasImageGenActive: val }),
       setHasVideoGenActive: (val) => set({ hasVideoGenActive: val }),
+      setVideoOptions: (updates) => set((state) => ({
+        videoOptions: typeof updates === 'function' ? updates(state.videoOptions) : { ...state.videoOptions, ...updates }
+      })),
 
       createNewChat: () => {
         const id = uuidv4();

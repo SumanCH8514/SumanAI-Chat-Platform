@@ -270,6 +270,48 @@ function isImageGenerationIntent(text) {
   return false;
 }
 
+function resolveVideoParameters(videoOpts) {
+  const opts = videoOpts && typeof videoOpts === 'object' ? videoOpts : {};
+  let duration = 2.0;
+  if (opts.duration && opts.duration !== 'auto') {
+    const d = parseFloat(opts.duration);
+    if (!isNaN(d) && d >= 0.5 && d <= 8.0) {
+      duration = d;
+    }
+  }
+
+  let height = 512;
+  let width = 704;
+  if (opts.aspectRatio === '16:9') {
+    height = 384;
+    width = 704;
+  } else if (opts.aspectRatio === '9:16') {
+    height = 704;
+    width = 384;
+  } else if (opts.aspectRatio === '1:1') {
+    height = 512;
+    width = 512;
+  } else if (opts.aspectRatio === '4:3') {
+    height = 480;
+    width = 640;
+  }
+
+  let guidance = 3.0;
+  let texture = true;
+  if (opts.quality === 'fast') {
+    guidance = 2.0;
+    texture = false;
+  } else if (opts.quality === 'high') {
+    guidance = 3.5;
+    texture = true;
+  } else if (opts.quality === 'standard') {
+    guidance = 3.0;
+    texture = true;
+  }
+
+  return { duration, height, width, guidance, texture };
+}
+
 export default {
   async fetch(request, env) {
     const corsHeaders = getCorsHeaders(request);
@@ -626,6 +668,8 @@ export default {
           const hfHeaders = { "Content-Type": "application/json" };
           if (hfToken) hfHeaders["Authorization"] = `Bearer ${hfToken}`;
 
+          const vParams = resolveVideoParameters(body?.videoOptions || body?.options);
+
           try {
             const callRes = await fetch("https://lightricks-ltx-video-distilled.hf.space/gradio_api/call/text_to_video", {
               method: "POST",
@@ -636,15 +680,15 @@ export default {
                   body?.negativePrompt || "worst quality, inconsistent motion, blurry, jittery, distorted",
                   null,
                   null,
-                  512,
-                  704,
+                  vParams.height,
+                  vParams.width,
                   "text-to-video",
-                  65,
-                  25,
+                  vParams.duration,
+                  9,
                   Math.floor(Math.random() * 1000000),
                   true,
-                  3.0,
-                  true
+                  vParams.guidance,
+                  vParams.texture
                 ]
               })
             });
@@ -1058,6 +1102,8 @@ export default {
         const hfHeaders = { 'Content-Type': 'application/json' };
         if (hfToken) hfHeaders['Authorization'] = `Bearer ${hfToken}`;
 
+        const vParams = resolveVideoParameters(options?.videoOptions || options);
+
         try {
           const callRes = await fetch('https://lightricks-ltx-video-distilled.hf.space/gradio_api/call/text_to_video', {
             method: 'POST',
@@ -1068,15 +1114,15 @@ export default {
                 "worst quality, inconsistent motion, blurry, jittery, distorted",
                 null,
                 null,
-                512,
-                704,
+                vParams.height,
+                vParams.width,
                 "text-to-video",
-                65,
-                25,
+                vParams.duration,
+                9,
                 Math.floor(Math.random() * 1000000),
                 true,
-                3.0,
-                true
+                vParams.guidance,
+                vParams.texture
               ]
             })
           });
