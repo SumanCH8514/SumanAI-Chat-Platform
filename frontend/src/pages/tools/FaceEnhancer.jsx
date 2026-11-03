@@ -1,41 +1,34 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Layers, ArrowLeft, Upload, Link as LinkIcon, Download, RotateCcw,
-  Sliders, Eye, Image as ImageIcon, ExternalLink, Check
+  Home, BookOpen, ExternalLink, Image as ImageIcon,
+  Download, Maximize2, Trash2, Layers, ShieldCheck, Zap, Clock,
+  ArrowRight, Upload, X, RotateCcw, Link as LinkIcon
 } from 'lucide-react';
 import { isValidImageUrl } from '../../utils/imageUtils';
 import './ToolAppShared.css';
 import './FaceEnhancer.css';
 
-const SAMPLE_IMAGES = [
-  {
-    id: 'sample-portrait',
-    label: 'Studio Portrait',
-    url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'sample-street',
-    label: 'Low Light Street',
-    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'sample-arch',
-    label: 'Urban Architecture',
-    url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80'
-  }
+const SAMPLE_PRESETS = [
+  { text: 'Studio portrait', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80' },
+  { text: 'Low light street', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80' },
+  { text: 'Urban architecture', url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80' }
+];
+
+const DEFAULT_RECENT_IMAGES = [
+  { url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80', prompt: 'Studio portrait' },
+  { url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80', prompt: 'Street portrait' },
+  { url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=300&q=80', prompt: 'Architecture' }
 ];
 
 export const FaceEnhancer = () => {
   const navigate = useNavigate();
-  const [imageSrc, setImageSrc] = useState(SAMPLE_IMAGES[0].url);
+  const [imageSrc, setImageSrc] = useState(SAMPLE_PRESETS[0].url);
+  const [mode, setMode] = useState('upload');
   const [urlInput, setUrlInput] = useState('');
   const [urlError, setUrlError] = useState('');
   const [sliderPosition, setSliderPosition] = useState(50);
   const [viewMode, setViewMode] = useState('split');
-  const [isHoldingOriginal, setIsHoldingOriginal] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [hasProcessed, setHasProcessed] = useState(false);
 
   const [sharpness, setSharpness] = useState(45);
   const [contrast, setContrast] = useState(30);
@@ -58,43 +51,41 @@ export const FaceEnhancer = () => {
   const applyEnhancements = useCallback(() => {
     const orig = originalCanvasRef.current;
     const enh = enhancedCanvasRef.current;
-    if (!orig || !enh) return;
+    if (!orig || !enh || !orig.width || !orig.height) return;
+
+    enh.width = orig.width;
+    enh.height = orig.height;
 
     const ctxOrig = orig.getContext('2d');
     const ctxEnh = enh.getContext('2d');
     if (!ctxOrig || !ctxEnh) return;
 
-    const w = orig.width;
-    const h = orig.height;
-    if (w === 0 || h === 0) return;
+    const srcData = ctxOrig.getImageData(0, 0, orig.width, orig.height);
+    const dstData = ctxEnh.createImageData(orig.width, orig.height);
 
-    enh.width = w;
-    enh.height = h;
-
-    const srcData = ctxOrig.getImageData(0, 0, w, h);
-    const dstData = ctxEnh.createImageData(w, h);
     const src = srcData.data;
     const dst = dstData.data;
-
-    const contrastFactor = (259 * (contrast * 1.5 + 255)) / (255 * (259 - contrast * 1.5));
-    const satFactor = 1 + (vibrance / 100);
-    const warmR = 1 + (warmth * 0.003);
-    const warmB = 1 - (warmth * 0.003);
+    const w = orig.width;
+    const h = orig.height;
 
     const sharpWeight = sharpness / 100;
+    const contrastFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+    const satFactor = 1 + (vibrance / 100) * 1.5;
+    const warmR = 1 + (warmth / 100) * 0.15;
+    const warmB = 1 - (warmth / 100) * 0.15;
+
     const kernelCenter = 1 + 4 * sharpWeight;
     const kernelEdge = -sharpWeight;
 
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const idx = (y * w + x) * 4;
-
         let r = src[idx];
         let g = src[idx + 1];
         let b = src[idx + 2];
         const a = src[idx + 3];
 
-        if (sharpness > 5 && x > 0 && x < w - 1 && y > 0 && y < h - 1) {
+        if (x > 0 && x < w - 1 && y > 0 && y < h - 1 && sharpWeight > 0) {
           const up = ((y - 1) * w + x) * 4;
           const down = ((y + 1) * w + x) * 4;
           const left = (y * w + (x - 1)) * 4;
@@ -125,8 +116,6 @@ export const FaceEnhancer = () => {
     }
 
     ctxEnh.putImageData(dstData, 0, 0);
-    setHasProcessed(true);
-    setIsProcessing(false);
   }, [sharpness, contrast, vibrance, warmth]);
 
   useEffect(() => {
@@ -144,10 +133,6 @@ export const FaceEnhancer = () => {
       const ctx = orig.getContext('2d');
       ctx.drawImage(img, 0, 0);
       applyEnhancements();
-    };
-    img.onerror = () => {
-      if (isCancelled) return;
-      setIsProcessing(false);
     };
     return () => {
       isCancelled = true;
@@ -167,7 +152,7 @@ export const FaceEnhancer = () => {
     e.preventDefault();
     if (!urlInput.trim()) return;
     if (!isValidImageUrl(urlInput.trim())) {
-      setUrlError('Please enter a valid image URL (jpg, png, webp)');
+      setUrlError('Please enter a valid image URL');
       return;
     }
     setImageSrc(urlInput.trim());
@@ -210,103 +195,176 @@ export const FaceEnhancer = () => {
 
   return (
     <div
-      className="tool-app-wrapper"
+      className="uncensored-page-wrapper"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
-      <header className="tool-app-header">
-        <nav className="tool-nav-breadcrumb">
+      <div className="uncensored-top-nav">
+        <div className="uncensored-breadcrumb">
           <button
             type="button"
-            className="tool-nav-back-btn"
+            className="breadcrumb-home-btn"
+            onClick={() => navigate('/')}
+            title="Home"
+          >
+            <Home size={13} />
+          </button>
+          <span className="breadcrumb-sep">&gt;</span>
+          <button
+            type="button"
+            className="breadcrumb-link"
             onClick={() => navigate('/tools/view')}
           >
-            <ArrowLeft size={13} />
-            <span>Utilities</span>
+            Tools
           </button>
-          <span className="tool-nav-sep">/</span>
-          <span className="tool-nav-current">Face & Image Enhancer</span>
-        </nav>
+          <span className="breadcrumb-sep">&gt;</span>
+          <span className="breadcrumb-link">Image Processing</span>
+          <span className="breadcrumb-sep">&gt;</span>
+          <span className="breadcrumb-current">Face & Image Enhancer</span>
+        </div>
 
-        <div className="tool-header-content">
-          <div className="tool-title-row">
-            <h1 className="tool-app-heading">Face & Image Enhancer</h1>
-            <span className="tool-tag-pill">Neural Pixel Matrix</span>
+        <a
+          href="https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="uncensored-doc-btn"
+          title="Pixel Matrix Documentation"
+        >
+          <BookOpen size={13} />
+          <span>Documentation</span>
+          <ExternalLink size={11} className="doc-ext-icon" />
+        </a>
+      </div>
+
+      <header className="uncensored-title-section">
+        <div className="uncensored-title-left">
+          <div className="uncensored-avatar-icon">
+            <Layers size={22} />
           </div>
-          <p className="tool-app-subheading">
-            Restore facial clarity, boost resolution, and balance contrast with high-fidelity pixel matrix filters.
-          </p>
+          <div className="uncensored-title-texts">
+            <h1 className="uncensored-main-title">Face & Image Enhancer</h1>
+            <p className="uncensored-main-desc">
+              Restore facial clarity, boost resolution, and balance contrast with high-fidelity pixel matrix filters.
+            </p>
+          </div>
+        </div>
+
+        <div className="uncensored-chips-row">
+          <span className="chip-badge chip-qwen">
+            <Layers size={12} />
+            <span>Neural Clarity</span>
+          </span>
+          <span className="chip-badge chip-uncensored">
+            <Zap size={12} />
+            <span>Bilinear Matrix</span>
+          </span>
+          <span className="chip-badge chip-zerogpu">
+            <ShieldCheck size={12} />
+            <span>Zero Telemetry</span>
+          </span>
         </div>
       </header>
 
-      <main className="tool-app-body">
-        <section className="tool-config-panel">
-          <div className="tool-input-group">
-            <label className="tool-label">Source Photo</label>
-            <div className="enhancer-source-actions">
-              <button
-                type="button"
-                className="tool-btn-secondary enhancer-upload-btn"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload size={14} /> Upload Local File
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={handleFileUpload}
-              />
-            </div>
-
-            <form onSubmit={handleUrlSubmit} className="enhancer-url-row">
-              <input
-                type="url"
-                className="tool-input-text"
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="Or paste an image URL..."
-              />
-              <button type="submit" className="tool-btn-secondary" title="Load URL">
-                <LinkIcon size={14} />
-              </button>
-            </form>
-            {urlError && <span className="enhancer-error-text">{urlError}</span>}
+      <main className="uncensored-main-grid">
+        <section className="uncensored-left-card">
+          <div className="uncensored-tabs-container">
+            <button
+              type="button"
+              className={`uncensored-tab ${mode === 'upload' ? 'active' : ''}`}
+              onClick={() => setMode('upload')}
+            >
+              <Upload size={14} />
+              <span>Upload Photo</span>
+            </button>
+            <button
+              type="button"
+              className={`uncensored-tab ${mode === 'url' ? 'active' : ''}`}
+              onClick={() => setMode('url')}
+            >
+              <LinkIcon size={14} />
+              <span>Image URL</span>
+            </button>
           </div>
 
-          <div className="tool-input-group">
-            <label className="tool-label">Quick Sample Images</label>
-            <div className="enhancer-sample-row">
-              {SAMPLE_IMAGES.map((sample) => (
+          {mode === 'upload' ? (
+            <div className="uncensored-field-group">
+              <div
+                className="uncensored-upload-box"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload size={28} className="upload-arrow-icon" />
+                <span className="upload-main-text">Click to choose portrait or photo</span>
+                <span className="upload-sub-text">Supports JPG, PNG, WebP (up to 16MB)</span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={handleFileUpload}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="uncensored-field-group">
+              <form onSubmit={handleUrlSubmit} className="url-input-container">
+                <input
+                  type="url"
+                  placeholder="Paste direct https:// image URL..."
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  className="prompt-textarea"
+                  style={{ minHeight: '44px', height: '44px', padding: '0 12px' }}
+                />
                 <button
-                  key={sample.id}
-                  type="button"
-                  className={`enhancer-sample-pill ${imageSrc === sample.url ? 'active' : ''}`}
-                  onClick={() => setImageSrc(sample.url)}
+                  type="submit"
+                  disabled={!urlInput.trim()}
+                  className="url-load-btn"
                 >
-                  {sample.label}
+                  Load
+                </button>
+              </form>
+              {urlError && <span className="enhancer-error-text">{urlError}</span>}
+            </div>
+          )}
+
+          <div className="uncensored-field-group">
+            <span className="field-label-text">
+              <span>Sample Presets</span>
+            </span>
+            <div className="inspirations-grid">
+              {SAMPLE_PRESETS.map((preset) => (
+                <button
+                  key={preset.text}
+                  type="button"
+                  className="inspiration-pill"
+                  onClick={() => setImageSrc(preset.url)}
+                >
+                  <span className="pill-text">{preset.text}</span>
+                  <span className="pill-plus">+</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="tool-input-group">
-            <div className="tool-label">
-              <span>Enhancement Parameters</span>
+          <div className="uncensored-field-group">
+            <div className="field-label-line">
+              <span className="field-label-text">
+                <span>Enhancement Sliders</span>
+              </span>
               <button
                 type="button"
-                className="tool-enhance-btn"
+                className="enhance-btn"
                 onClick={resetFilters}
               >
-                <RotateCcw size={12} /> Reset
+                <RotateCcw size={11} />
+                <span>Reset</span>
               </button>
             </div>
 
-            <div className="tool-slider-container">
-              <div className="tool-slider-row">
-                <span>Super Resolution & Sharpness</span>
-                <span>{sharpness}%</span>
+            <div className="enhancer-slider-unit">
+              <div className="enhancer-slider-header">
+                <span>Sharpness & Micro-Contrast</span>
+                <span className="enhancer-val-badge">+{sharpness}%</span>
               </div>
               <input
                 type="range"
@@ -318,45 +376,45 @@ export const FaceEnhancer = () => {
               />
             </div>
 
-            <div className="tool-slider-container">
-              <div className="tool-slider-row">
-                <span>Portrait Contrast & Depth</span>
-                <span>{contrast}%</span>
+            <div className="enhancer-slider-unit">
+              <div className="enhancer-slider-header">
+                <span>Contrast Balance</span>
+                <span className="enhancer-val-badge">{contrast > 0 ? `+${contrast}` : contrast}</span>
               </div>
               <input
                 type="range"
-                min="0"
-                max="100"
+                min="-20"
+                max="60"
                 value={contrast}
                 onChange={(e) => setContrast(Number(e.target.value))}
                 className="tool-range-input"
               />
             </div>
 
-            <div className="tool-slider-container">
-              <div className="tool-slider-row">
-                <span>Color Vibrance</span>
-                <span>{vibrance}%</span>
+            <div className="enhancer-slider-unit">
+              <div className="enhancer-slider-header">
+                <span>Vibrance & Skin Tone</span>
+                <span className="enhancer-val-badge">+{vibrance}%</span>
               </div>
               <input
                 type="range"
                 min="0"
-                max="100"
+                max="60"
                 value={vibrance}
                 onChange={(e) => setVibrance(Number(e.target.value))}
                 className="tool-range-input"
               />
             </div>
 
-            <div className="tool-slider-container">
-              <div className="tool-slider-row">
-                <span>Skin Warmth & Balance</span>
-                <span>{warmth}%</span>
+            <div className="enhancer-slider-unit">
+              <div className="enhancer-slider-header">
+                <span>Warmth & Lighting Temp</span>
+                <span className="enhancer-val-badge">{warmth > 0 ? `+${warmth}` : warmth}</span>
               </div>
               <input
                 type="range"
-                min="0"
-                max="100"
+                min="-30"
+                max="40"
                 value={warmth}
                 onChange={(e) => setWarmth(Number(e.target.value))}
                 className="tool-range-input"
@@ -366,135 +424,133 @@ export const FaceEnhancer = () => {
 
           <button
             type="button"
-            className="tool-btn-primary"
-            onClick={applyEnhancements}
-            disabled={isProcessing}
+            className="uncensored-btn-generate"
+            onClick={handleDownload}
           >
-            <Layers size={16} /> Apply Filter Matrix
+            <Download size={16} />
+            <span>Export Enhanced Image</span>
           </button>
         </section>
 
-        <section className="tool-result-panel">
-          <div className="tool-result-header">
-            <div className="tool-result-title">
-              <Sliders size={16} />
-              <span>Inspection Viewport</span>
-              {hasProcessed && (
-                <span className="tool-telemetry-badge">
-                  Sharpness {sharpness}% • Contrast {contrast}%
-                </span>
-              )}
+        <section className="uncensored-right-card">
+          <div className="canvas-header-bar">
+            <div className="canvas-title-left">
+              <ImageIcon size={16} className="canvas-title-icon" />
+              <span>Comparison Canvas</span>
             </div>
-
-            <div className="tool-result-actions">
-              <div className="enhancer-view-pills">
+            <div className="canvas-actions-right">
+              <div className="view-mode-pill">
                 <button
                   type="button"
-                  className={`enhancer-view-pill ${viewMode === 'split' ? 'active' : ''}`}
+                  className={`view-pill-btn ${viewMode === 'split' ? 'active' : ''}`}
                   onClick={() => setViewMode('split')}
                 >
-                  Split Compare
+                  Split View
                 </button>
                 <button
                   type="button"
-                  className={`enhancer-view-pill ${viewMode === 'side' ? 'active' : ''}`}
-                  onClick={() => setViewMode('side')}
+                  className={`view-pill-btn ${viewMode === 'enhanced' ? 'active' : ''}`}
+                  onClick={() => setViewMode('enhanced')}
                 >
-                  Side by Side
+                  Enhanced
+                </button>
+                <button
+                  type="button"
+                  className={`view-pill-btn ${viewMode === 'original' ? 'active' : ''}`}
+                  onClick={() => setViewMode('original')}
+                >
+                  Original
                 </button>
               </div>
-
               <button
                 type="button"
-                className="tool-btn-secondary"
-                onMouseDown={() => setIsHoldingOriginal(true)}
-                onMouseUp={() => setIsHoldingOriginal(false)}
-                onTouchStart={() => setIsHoldingOriginal(true)}
-                onTouchEnd={() => setIsHoldingOriginal(false)}
-                title="Hold to view original photo"
-              >
-                <Eye size={14} /> Hold Original
-              </button>
-
-              <button
-                type="button"
-                className="tool-btn-secondary"
+                className="canvas-action-btn"
                 onClick={handleDownload}
-                disabled={!hasProcessed}
-                title="Export Enhanced Image"
+                title="Download enhanced render"
               >
-                <Download size={14} /> Download
+                <Download size={14} />
               </button>
-
               <button
                 type="button"
-                className="tool-btn-secondary"
-                onClick={() => navigate('/tools/bg-remover')}
-                title="Isolate background in BG Remover"
+                className="canvas-action-btn"
+                onClick={resetFilters}
+                title="Reset sliders"
               >
-                <ExternalLink size={14} /> BG Remover
+                <Trash2 size={14} />
               </button>
             </div>
           </div>
 
-          <div className="enhancer-canvas-viewport">
-            <canvas ref={originalCanvasRef} style={{ display: 'none' }} />
-
-            {viewMode === 'split' ? (
+          <div className="canvas-main-area">
+            <div className="enhancer-split-frame" ref={splitContainerRef} onTouchMove={handleTouchMove}>
+              <canvas
+                ref={originalCanvasRef}
+                className="enhancer-canvas original-canvas"
+                style={{
+                  display: viewMode === 'enhanced' ? 'none' : 'block'
+                }}
+              />
               <div
-                ref={splitContainerRef}
-                className="enhancer-split-wrapper"
-                onTouchMove={handleTouchMove}
+                className="enhancer-clipped-layer"
+                style={{
+                  clipPath: viewMode === 'split'
+                    ? `polygon(${sliderPosition}% 0, 100% 0, 100% 100%, ${sliderPosition}% 100%)`
+                    : viewMode === 'enhanced'
+                    ? 'none'
+                    : 'polygon(100% 0, 100% 0, 100% 100%, 100% 100%)'
+                }}
               >
-                <div className="enhancer-canvas-layer base-layer">
-                  <canvas
-                    ref={isHoldingOriginal ? originalCanvasRef : enhancedCanvasRef}
-                    className="enhancer-display-canvas"
-                  />
-                  <span className="enhancer-label-tag right">Enhanced</span>
-                </div>
-
-                {!isHoldingOriginal && (
-                  <div
-                    className="enhancer-canvas-layer clip-layer"
-                    style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
-                  >
-                    <canvas
-                      ref={originalCanvasRef}
-                      className="enhancer-display-canvas"
-                    />
-                    <span className="enhancer-label-tag left">Original</span>
-                  </div>
-                )}
-
-                {!isHoldingOriginal && (
-                  <div
-                    className="enhancer-slider-divider"
-                    style={{ left: `${sliderPosition}%` }}
-                    onMouseDown={handleMouseDown}
-                  >
-                    <div className="enhancer-slider-handle">
-                      <span className="enhancer-handle-arrows">‹ ›</span>
-                    </div>
-                  </div>
-                )}
+                <canvas ref={enhancedCanvasRef} className="enhancer-canvas enhanced-canvas" />
               </div>
-            ) : (
-              <div className="enhancer-side-wrapper">
-                <div className="enhancer-side-card">
-                  <div className="enhancer-side-card-header">Original</div>
-                  <div className="enhancer-side-canvas-box">
-                    <canvas ref={originalCanvasRef} className="enhancer-display-canvas" />
-                  </div>
+
+              {viewMode === 'split' && (
+                <div
+                  className="enhancer-splitter-divider"
+                  style={{ left: `${sliderPosition}%` }}
+                  onMouseDown={handleMouseDown}
+                  onTouchStart={handleMouseDown}
+                >
+                  <div className="enhancer-splitter-handle" />
                 </div>
-                <div className="enhancer-side-card">
-                  <div className="enhancer-side-card-header">Enhanced</div>
-                  <div className="enhancer-side-canvas-box">
-                    <canvas ref={enhancedCanvasRef} className="enhancer-display-canvas" />
-                  </div>
-                </div>
+              )}
+
+              {viewMode === 'split' && (
+                <>
+                  <span className="enhancer-badge-tag before">Before</span>
+                  <span className="enhancer-badge-tag after">After</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="recent-generations-bar">
+            <div className="recent-bar-header">
+              <div className="recent-title-wrap">
+                <Clock size={14} className="recent-clock-icon" />
+                <span>Recent Photos</span>
               </div>
-            )}
+              <button
+                type="button"
+                className="view-library-link"
+                onClick={() => navigate('/files')}
+              >
+                <span>View Library</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
+
+            <div className="recent-thumbs-row">
+              {DEFAULT_RECENT_IMAGES.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="recent-thumb-wrapper"
+                  onClick={() => setImageSrc(item.url)}
+                  title={item.prompt}
+                >
+                  <img src={item.url} alt={item.prompt} className="recent-thumb-img" />
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       </main>

@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText, ArrowLeft, Copy, Check, Download, Trash2,
-  RefreshCw, Sparkles, BookOpen, Clock, FileDown, Square
+  RefreshCw, Sparkles, BookOpen, Clock, FileDown,
+  Home, ExternalLink, Zap, ShieldCheck, Layers
 } from 'lucide-react';
 import { chatService } from '../../services/ChatService';
 import './ToolAppShared.css';
@@ -167,26 +168,69 @@ Rules:
     <div className="tool-app-wrapper">
       <header className="tool-app-header">
         <nav className="tool-nav-breadcrumb">
-          <button
-            type="button"
-            className="tool-nav-back-btn"
-            onClick={() => navigate('/tools/view')}
+          <div className="tool-breadcrumb-left">
+            <button
+              type="button"
+              className="breadcrumb-home-btn"
+              onClick={() => navigate('/')}
+              title="Home"
+            >
+              <Home size={13} />
+            </button>
+            <span className="breadcrumb-sep">&gt;</span>
+            <button
+              type="button"
+              className="breadcrumb-link"
+              onClick={() => navigate('/tools/view')}
+            >
+              Tools
+            </button>
+            <span className="breadcrumb-sep">&gt;</span>
+            <span className="breadcrumb-link">Writing & Docs</span>
+            <span className="breadcrumb-sep">&gt;</span>
+            <span className="breadcrumb-current">Executive Summarizer</span>
+          </div>
+
+          <a
+            href="https://ai.google.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tool-doc-btn"
+            title="Summarization Documentation"
           >
-            <ArrowLeft size={13} />
-            <span>Utilities</span>
-          </button>
-          <span className="tool-nav-sep">/</span>
-          <span className="tool-nav-current">Executive Summarizer</span>
+            <BookOpen size={13} />
+            <span>Documentation</span>
+            <ExternalLink size={11} className="doc-ext-icon" />
+          </a>
         </nav>
 
         <div className="tool-header-content">
           <div className="tool-title-row">
-            <h1 className="tool-app-heading">Executive Summarizer</h1>
-            <span className="tool-tag-pill">Autonomous Synthesis</span>
+            <div className="tool-avatar-icon purple">
+              <FileText size={22} />
+            </div>
+            <div className="tool-title-texts">
+              <h1 className="tool-app-heading">Executive Summarizer</h1>
+              <p className="tool-app-subheading">
+                Distill technical memos, boardroom decks, and transcripts into high-impact structured briefings.
+              </p>
+            </div>
           </div>
-          <p className="tool-app-subheading">
-            Distill technical memos, boardroom decks, and transcripts into high-impact structured briefings.
-          </p>
+
+          <div className="tool-chips-row">
+            <span className="chip-badge chip-qwen">
+              <Layers size={12} />
+              <span>Qwen-3.8-27B</span>
+            </span>
+            <span className="chip-badge chip-purple">
+              <Zap size={12} />
+              <span>Strategic Brief</span>
+            </span>
+            <span className="chip-badge chip-zerogpu">
+              <ShieldCheck size={12} />
+              <span>Zero Retention</span>
+            </span>
+          </div>
         </div>
       </header>
 
@@ -365,10 +409,41 @@ Rules:
                 <div className="tool-empty-icon-box">
                   <FileText size={28} />
                 </div>
-                <p className="tool-empty-text">Awaiting Source Material</p>
-                <p className="tool-empty-subtext">
+                <h3 className="empty-state-title">Awaiting Source Material</h3>
+                <p className="empty-state-desc">
                   Paste transcripts or documentation on the left, pick a summarization profile, and initiate synthesis.
                 </p>
+
+                <div className="empty-features-grid">
+                  <div className="feature-pill-card">
+                    <Zap size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">Strategic Density</span>
+                      <span className="feature-card-desc">C-level high impact synthesis</span>
+                    </div>
+                  </div>
+                  <div className="feature-pill-card">
+                    <Layers size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">Structured Output</span>
+                      <span className="feature-card-desc">Action items & key takeaways</span>
+                    </div>
+                  </div>
+                  <div className="feature-pill-card">
+                    <ShieldCheck size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">100% Confidential</span>
+                      <span className="feature-card-desc">Private workspace processing</span>
+                    </div>
+                  </div>
+                  <div className="feature-pill-card">
+                    <Clock size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">Streaming Delivery</span>
+                      <span className="feature-card-desc">Fast markdown response</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

@@ -3,7 +3,7 @@ export const normalizeFileKey = (file) => {
   const url = file.url;
   if (typeof url === 'string' && url.length > 0) {
     const cleanUrl = url.split('?')[0].split('#')[0].trim().toLowerCase();
-    const r2Match = cleanUrl.match(/(?:generated-images\/|generated-videos\/|img_|vid_)([a-z0-9_-]+(?:\.[a-z0-9]+)?)/i);
+    const r2Match = cleanUrl.match(/(?:generated-images\/|generated-videos\/|uncensored\/|img_|vid_|uncensored_)([a-z0-9_-]+(?:\.[a-z0-9]+)?)/i);
     if (r2Match) {
       return `r2:${r2Match[1]}`;
     }
@@ -45,7 +45,10 @@ export const deduplicateWorkspaceFiles = (chatFiles = [], customFiles = [], dele
       if (seen.has(key)) continue;
       seen.add(key);
     }
-    result.push(file);
+    result.push({
+      ...file,
+      id: file?.id || (file?.url ? `url-file-${file.url.slice(-16)}` : `file-${Math.random().toString(36).substring(2, 9)}`)
+    });
   }
 
   return result.sort((a, b) => {

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Video, ArrowLeft, Copy, Check, Download, Trash2,
-  RefreshCw, Sparkles, Film, Clock, Monitor, Camera, Music, Type
+  RefreshCw, Sparkles, Film, Clock, Monitor, Camera, Music, Type,
+  Home, BookOpen, ExternalLink, Zap, ShieldCheck, Layers
 } from 'lucide-react';
 import { chatService } from '../../services/ChatService';
 import './ToolAppShared.css';
@@ -111,26 +112,69 @@ Rules:
     <div className="tool-app-wrapper">
       <header className="tool-app-header">
         <nav className="tool-nav-breadcrumb">
-          <button
-            type="button"
-            className="tool-nav-back-btn"
-            onClick={() => navigate('/tools/view')}
+          <div className="tool-breadcrumb-left">
+            <button
+              type="button"
+              className="breadcrumb-home-btn"
+              onClick={() => navigate('/')}
+              title="Home"
+            >
+              <Home size={13} />
+            </button>
+            <span className="breadcrumb-sep">&gt;</span>
+            <button
+              type="button"
+              className="breadcrumb-link"
+              onClick={() => navigate('/tools/view')}
+            >
+              Tools
+            </button>
+            <span className="breadcrumb-sep">&gt;</span>
+            <span className="breadcrumb-link">Video & Animation</span>
+            <span className="breadcrumb-sep">&gt;</span>
+            <span className="breadcrumb-current">Video Storyboard Generator</span>
+          </div>
+
+          <a
+            href="https://ai.google.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tool-doc-btn"
+            title="Storyboard Documentation"
           >
-            <ArrowLeft size={13} />
-            <span>Utilities</span>
-          </button>
-          <span className="tool-nav-sep">/</span>
-          <span className="tool-nav-current">Video Storyboard Generator</span>
+            <BookOpen size={13} />
+            <span>Documentation</span>
+            <ExternalLink size={11} className="doc-ext-icon" />
+          </a>
         </nav>
 
         <div className="tool-header-content">
           <div className="tool-title-row">
-            <h1 className="tool-app-heading">Video Storyboard Generator</h1>
-            <span className="tool-tag-pill">Production Pre-Flight</span>
+            <div className="tool-avatar-icon pink">
+              <Video size={22} />
+            </div>
+            <div className="tool-title-texts">
+              <h1 className="tool-app-heading">Video Storyboard Generator</h1>
+              <p className="tool-app-subheading">
+                Compose shot-by-shot shooting schedules with camera directions, voiceover timings, and audio design cues.
+              </p>
+            </div>
           </div>
-          <p className="tool-app-subheading">
-            Compose shot-by-shot shooting schedules with camera directions, voiceover timings, and audio design cues.
-          </p>
+
+          <div className="tool-chips-row">
+            <span className="chip-badge chip-qwen">
+              <Layers size={12} />
+              <span>Director Pre-Flight</span>
+            </span>
+            <span className="chip-badge chip-uncensored">
+              <Zap size={12} />
+              <span>Camera & Audio Cues</span>
+            </span>
+            <span className="chip-badge chip-zerogpu">
+              <ShieldCheck size={12} />
+              <span>Zero Retention</span>
+            </span>
+          </div>
         </div>
       </header>
 
@@ -316,10 +360,41 @@ Rules:
                 <div className="tool-empty-icon-box">
                   <Film size={28} />
                 </div>
-                <p className="tool-empty-text">Storyboard Director Ready</p>
-                <p className="tool-empty-subtext">
+                <h3 className="empty-state-title">Storyboard Director Ready</h3>
+                <p className="empty-state-desc">
                   Set your video objective, duration, and visual aesthetic on the left to synthesize scene directions and voiceover cues.
                 </p>
+
+                <div className="empty-features-grid">
+                  <div className="feature-pill-card">
+                    <Zap size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">Shot Pacing</span>
+                      <span className="feature-card-desc">Duration and transition cues</span>
+                    </div>
+                  </div>
+                  <div className="feature-pill-card">
+                    <Layers size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">Audio & VO Cues</span>
+                      <span className="feature-card-desc">Dialogue and soundscape</span>
+                    </div>
+                  </div>
+                  <div className="feature-pill-card">
+                    <ShieldCheck size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">100% Confidential</span>
+                      <span className="feature-card-desc">Zero script telemetry</span>
+                    </div>
+                  </div>
+                  <div className="feature-pill-card">
+                    <Clock size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">Instant Export</span>
+                      <span className="feature-card-desc">Markdown shooting script</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

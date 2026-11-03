@@ -1,9 +1,11 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowUp, Globe, Paperclip, X, Plus,
   Camera, Image as ImageIcon, Lightbulb, PenTool, Layers, Square, Eye, Mic,
-  Maximize2, Minimize2, Palette, Film, Cpu
+  Maximize2, Minimize2, Palette, Film, Cpu,
+  Code2, FileText, BookOpen, GraduationCap, Clock, ChevronRight,
+  MoreVertical, RotateCw, Send, MessageSquare, PlaySquare, Save
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useModel } from '../hooks/useModel';
@@ -11,7 +13,7 @@ import { useChatStore } from '../store/useChatStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { chatService } from '../services/ChatService';
 import { usageService } from '../services/usageService';
-import { DEFAULT_VISION_MODEL, DEFAULT_IMAGE_GEN_MODEL, DEFAULT_VIDEO_GEN_MODEL } from '../constants/models';
+import { MODEL_LIST, DEFAULT_VISION_MODEL, DEFAULT_IMAGE_GEN_MODEL, DEFAULT_VIDEO_GEN_MODEL } from '../constants/models';
 import { compressImage, isImageGenerationIntent } from '../utils/imageUtils';
 import { parseArtifact } from '../utils/artifactUtils';
 import ModelSelector from './ModelSelector';
@@ -58,23 +60,63 @@ const mergeSpeechTranscripts = (results) => {
   return combined.trim();
 };
 
-const starterSuggestions = [
-  {
-    icon: <Palette size={16} />,
-    title: "Design a poster based on my taste",
-    prompt: "Design a modern graphic poster concept with bold typography, balanced composition, and a striking color palette based on clean contemporary design aesthetics."
-  },
-  {
-    icon: <Film size={16} />,
-    title: "Help me pick a family movie",
-    prompt: "Recommend 3 great family movies for an engaging movie night. For each, give a short synopsis, target age range, and where it is streaming."
-  },
-  {
-    icon: <Cpu size={16} />,
-    title: "Explain machine learning simply",
-    prompt: "Explain how machine learning works in simple, clear terms using real-world analogies that anyone can understand."
-  }
+const suggestionSets = [
+  [
+    {
+      icon: <BookOpen size={16} color="#7c3aed" />,
+      title: "Design a poster based on my taste",
+      prompt: "Design a modern graphic poster concept with bold typography, balanced composition, and a striking color palette based on clean contemporary design aesthetics."
+    },
+    {
+      icon: <Save size={16} color="#64748b" />,
+      title: "Help me pick a family movie",
+      prompt: "Recommend 3 great family movies for an engaging movie night. For each, give a short synopsis, target age range, and where it is streaming."
+    },
+    {
+      icon: <GraduationCap size={16} color="#7c3aed" />,
+      title: "Explain machine learning simply",
+      prompt: "Explain how machine learning works in simple, clear terms using real-world analogies that anyone can understand."
+    }
+  ],
+  [
+    {
+      icon: <BookOpen size={16} color="#7c3aed" />,
+      title: "Write a high-converting headline",
+      prompt: "Write 5 compelling, benefit-driven hero headlines for a modern SaaS product that captures attention and drives conversions."
+    },
+    {
+      icon: <Film size={16} color="#7c3aed" />,
+      title: "Plan a 3-day travel itinerary",
+      prompt: "Create a balanced 3-day travel itinerary with local recommendations, scenic spots, and must-try foods."
+    },
+    {
+      icon: <GraduationCap size={16} color="#7c3aed" />,
+      title: "Compare SQL vs NoSQL databases",
+      prompt: "Compare SQL and NoSQL databases in simple terms with pros, cons, and when to use each in production applications."
+    }
+  ]
 ];
+
+const formatRecentChatTime = (timestamp) => {
+  if (!timestamp) return 'Recently';
+  const d = new Date(timestamp);
+  if (isNaN(d.getTime())) return 'Recently';
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+
+  const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  if (isToday) {
+    return `Today, ${timeStr}`;
+  }
+  if (isYesterday) {
+    return `Yesterday, ${timeStr}`;
+  }
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + timeStr;
+};
 
 const InputBar = ({ isCentered = false }) => {
   const [text, setText] = useState('');
@@ -87,6 +129,36 @@ const InputBar = ({ isCentered = false }) => {
   const [isListening, setIsListening] = useState(false);
   const [micToast, setMicToast] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [suggestionSetIndex, setSuggestionSetIndex] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [codeMode, setCodeMode] = useState(false);
+  const [summarizeMode, setSummarizeMode] = useState(false);
+
+  const chats = useChatStore((state) => state.chats);
+  const setActiveChat = useChatStore((state) => state.setActiveChat);
+  const syncChats = useChatStore((state) => state.syncChats);
+
+  const handleRefreshSuggestions = () => {
+    setIsRefreshing(true);
+    setSuggestionSetIndex((prev) => (prev + 1) % suggestionSets.length);
+    setTimeout(() => setIsRefreshing(false), 300);
+  };
+
+  const currentSuggestions = suggestionSets[suggestionSetIndex] || suggestionSets[0];
+
+  const realRecentChats = useMemo(() => {
+    if (!Array.isArray(chats) || chats.length === 0) return [];
+    return [...chats]
+      .filter((chat) => chat && chat.id && ((chat.messages && chat.messages.length > 0) || (chat.title && chat.title !== 'New Chat')))
+      .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))
+      .slice(0, 5)
+      .map((chat) => ({
+        id: chat.id,
+        title: chat.title || 'Untitled conversation',
+        time: formatRecentChatTime(chat.updatedAt || chat.createdAt || (chat.messages?.[chat.messages.length - 1]?.timestamp)),
+        prompt: chat.messages?.[0]?.content || chat.title || ''
+      }));
+  }, [chats]);
 
   const navigate = useNavigate();
   const { selectedModel, setSelectedModel, governance, defaultModelForTier, resetToDefaultModel } = useModel();
@@ -112,6 +184,12 @@ const InputBar = ({ isCentered = false }) => {
   const setHasImageGenActive = useChatStore(state => state.setHasImageGenActive);
   const hasVideoGenActive = useChatStore(state => state.hasVideoGenActive);
   const setHasVideoGenActive = useChatStore(state => state.setHasVideoGenActive);
+
+  useEffect(() => {
+    if (user?.uid && typeof syncChats === 'function') {
+      syncChats();
+    }
+  }, [user?.uid, syncChats]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -187,6 +265,9 @@ const InputBar = ({ isCentered = false }) => {
 
       setHasImageGenActive(true);
       setHasVideoGenActive(false);
+      setCodeMode(false);
+      setSummarizeMode(false);
+      inputRef.current?.focus();
       if (DEFAULT_IMAGE_GEN_MODEL) {
         setSelectedModel(DEFAULT_IMAGE_GEN_MODEL);
         const remainingText = quota.unlimited ? 'Unlimited' : `${quota.remaining} left today`;
@@ -224,6 +305,9 @@ const InputBar = ({ isCentered = false }) => {
 
       setHasImageGenActive(false);
       setHasVideoGenActive(true);
+      setCodeMode(false);
+      setSummarizeMode(false);
+      inputRef.current?.focus();
       if (DEFAULT_VIDEO_GEN_MODEL) {
         setSelectedModel(DEFAULT_VIDEO_GEN_MODEL);
         const remainingText = quota.unlimited ? 'Unlimited' : `${quota.remaining} left today`;
@@ -238,6 +322,42 @@ const InputBar = ({ isCentered = false }) => {
         setVisionToast(`Switched back to ${fallback.name}`);
         setTimeout(() => setVisionToast(null), 3000);
       }
+    }
+  };
+
+  const handleToggleCodeMode = () => {
+    const next = !codeMode;
+    setCodeMode(next);
+    setShowActionMenu(false);
+    if (next) {
+      setHasImageGenActive(false);
+      setHasVideoGenActive(false);
+      setSummarizeMode(false);
+      const codeModel = MODEL_LIST.find(m => m.id === 'qwen/qwen3.8-27b') || MODEL_LIST.find(m => m.id?.includes('coder'));
+      if (codeModel) setSelectedModel(codeModel);
+      setVisionToast("Write Code mode active");
+      setTimeout(() => setVisionToast(null), 3000);
+      inputRef.current?.focus();
+    } else {
+      const fallback = resetToDefaultModel ? resetToDefaultModel() : defaultModelForTier;
+      if (fallback) setSelectedModel(fallback);
+    }
+  };
+
+  const handleToggleSummarizeMode = () => {
+    const next = !summarizeMode;
+    setSummarizeMode(next);
+    setShowActionMenu(false);
+    if (next) {
+      setHasImageGenActive(false);
+      setHasVideoGenActive(false);
+      setCodeMode(false);
+      setVisionToast("Summarize Text mode active");
+      setTimeout(() => setVisionToast(null), 3000);
+      inputRef.current?.focus();
+    } else {
+      const fallback = resetToDefaultModel ? resetToDefaultModel() : defaultModelForTier;
+      if (fallback) setSelectedModel(fallback);
     }
   };
 
@@ -377,7 +497,13 @@ const InputBar = ({ isCentered = false }) => {
   const handleSend = useCallback(async (cmdOrEvent = null, overrideOptions = {}) => {
     stopListening();
     const isRegenerate = Boolean(overrideOptions?.isRegenerate);
-    const promptValue = typeof cmdOrEvent === 'string' ? cmdOrEvent.trim() : text.trim();
+    let promptValue = typeof cmdOrEvent === 'string' ? cmdOrEvent.trim() : text.trim();
+
+    if (codeMode && !overrideOptions?.isVideoGen && !overrideOptions?.isImageGen) {
+      promptValue = `[Task: Write Code]\n${promptValue}`;
+    } else if (summarizeMode && !overrideOptions?.isVideoGen && !overrideOptions?.isImageGen) {
+      promptValue = `[Task: Summarize Text]\n${promptValue}`;
+    }
 
     if (isGeneratingRef.current) return;
     if (!promptValue && attachments.length === 0) return;
@@ -450,7 +576,9 @@ const InputBar = ({ isCentered = false }) => {
         setAttachments([]);
         setHasImageGenActive(false);
         setHasVideoGenActive(false);
-        if (isImageGen || isVideoGen) {
+        setCodeMode(false);
+        setSummarizeMode(false);
+        if (isImageGen || isVideoGen || codeMode || summarizeMode) {
           if (resetToDefaultModel) {
             resetToDefaultModel();
           } else if (defaultModelForTier) {
@@ -569,7 +697,7 @@ const InputBar = ({ isCentered = false }) => {
       setIsGenerating(false);
       useChatStore.setState({ isGenerating: false });
       abortControllerRef.current = null;
-      if (isImageGen || isVideoGen) {
+      if (isImageGen || isVideoGen || codeMode || summarizeMode) {
         if (resetToDefaultModel) {
           resetToDefaultModel();
         } else if (defaultModelForTier) {
@@ -577,7 +705,7 @@ const InputBar = ({ isCentered = false }) => {
         }
       }
     }
-  }, [text, attachments, deepThinking, smartSearch, ensureActiveChat, navigate, addMessage, selectedModel, setSelectedModel, updateLastMessage, setHasImageGenActive, setHasVideoGenActive, stopListening, governance, hasImageGenActive, hasVideoGenActive, openAuthModal, user, defaultModelForTier, resetToDefaultModel]);
+  }, [text, attachments, deepThinking, smartSearch, ensureActiveChat, navigate, addMessage, selectedModel, setSelectedModel, updateLastMessage, setHasImageGenActive, setHasVideoGenActive, stopListening, governance, hasImageGenActive, hasVideoGenActive, codeMode, summarizeMode, openAuthModal, user, defaultModelForTier, resetToDefaultModel]);
 
   useEffect(() => {
     if (isPendingGeneration) {
@@ -678,7 +806,7 @@ const InputBar = ({ isCentered = false }) => {
         <div className="input-body-row">
           <textarea
             ref={inputRef}
-            placeholder="Ask anything..."
+            placeholder={hasImageGenActive ? "Describe the image you want to generate..." : (hasVideoGenActive ? "Describe the video you want to generate..." : (codeMode ? "Describe the code or problem you want to solve..." : (summarizeMode ? "Paste text or article to summarize..." : "Ask anything...")))}
             value={text}
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}
@@ -696,6 +824,12 @@ const InputBar = ({ isCentered = false }) => {
             {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
         </div>
+
+        {hasVideoGenActive && (
+          <div className="video-options-row">
+            <VideoOptionsToolbar />
+          </div>
+        )}
 
         <div className="input-bottom-actions">
           <div className="input-bottom-left">
@@ -749,6 +883,22 @@ const InputBar = ({ isCentered = false }) => {
                     <PenTool size={16} />
                     <span>Interactive canvas</span>
                   </button>
+                  <button
+                    className={`action-item ${codeMode ? 'active' : ''}`}
+                    onClick={() => { handleToggleCodeMode(); setShowActionMenu(false); }}
+                  >
+                    <Code2 size={16} />
+                    <span>Write code</span>
+                    {codeMode && <span className="action-active-dot" />}
+                  </button>
+                  <button
+                    className={`action-item ${summarizeMode ? 'active' : ''}`}
+                    onClick={() => { handleToggleSummarizeMode(); setShowActionMenu(false); }}
+                  >
+                    <FileText size={16} />
+                    <span>Summarize text</span>
+                    {summarizeMode && <span className="action-active-dot" />}
+                  </button>
                   <button className="action-item disabled" disabled>
                     <Layers size={16} />
                     <span>Interactive quizzes</span>
@@ -757,12 +907,12 @@ const InputBar = ({ isCentered = false }) => {
               )}
             </div>
 
-            {(hasImageGenActive || hasVideoGenActive || deepThinking || smartSearch) && (
+            {(hasImageGenActive || hasVideoGenActive || codeMode || summarizeMode || deepThinking || smartSearch) && (
               <div className="active-pill-indicators">
                 {hasImageGenActive && (
                   <button
                     type="button"
-                    className="indicator-pill image-gen"
+                    className="indicator-pill image-gen active"
                     onClick={handleToggleImageGen}
                     title="Image mode active. Click or tap to turn off."
                     aria-label="Image mode active. Click or tap to turn off."
@@ -775,22 +925,49 @@ const InputBar = ({ isCentered = false }) => {
                   </button>
                 )}
                 {hasVideoGenActive && (
-                  <>
-                    <button
-                      type="button"
-                      className="indicator-pill video-gen"
-                      onClick={handleToggleVideoGen}
-                      title="Video mode active. Click or tap to turn off."
-                      aria-label="Video mode active. Click or tap to turn off."
-                    >
-                      <Film size={13} className="indicator-icon" />
-                      <span className="indicator-label">Video</span>
-                      <span className="indicator-close-btn">
-                        <X size={12} />
-                      </span>
-                    </button>
-                    <VideoOptionsToolbar />
-                  </>
+                  <button
+                    type="button"
+                    className="indicator-pill video-gen active"
+                    onClick={handleToggleVideoGen}
+                    title="Video mode active. Click or tap to turn off."
+                    aria-label="Video mode active. Click or tap to turn off."
+                  >
+                    <PlaySquare size={13} className="indicator-icon" />
+                    <span className="indicator-label">Video</span>
+                    <span className="indicator-close-btn">
+                      <X size={12} />
+                    </span>
+                  </button>
+                )}
+                {codeMode && (
+                  <button
+                    type="button"
+                    className="indicator-pill code-mode active"
+                    onClick={handleToggleCodeMode}
+                    title="Code mode active. Click or tap to turn off."
+                    aria-label="Code mode active. Click or tap to turn off."
+                  >
+                    <Code2 size={13} className="indicator-icon" />
+                    <span className="indicator-label">Code</span>
+                    <span className="indicator-close-btn">
+                      <X size={12} />
+                    </span>
+                  </button>
+                )}
+                {summarizeMode && (
+                  <button
+                    type="button"
+                    className="indicator-pill summarize-mode active"
+                    onClick={handleToggleSummarizeMode}
+                    title="Summarize mode active. Click or tap to turn off."
+                    aria-label="Summarize mode active. Click or tap to turn off."
+                  >
+                    <FileText size={13} className="indicator-icon" />
+                    <span className="indicator-label">Summarize</span>
+                    <span className="indicator-close-btn">
+                      <X size={12} />
+                    </span>
+                  </button>
                 )}
                 {deepThinking && (
                   <button
@@ -853,7 +1030,7 @@ const InputBar = ({ isCentered = false }) => {
               title={isGenerating ? "Stop generating" : "Send message"}
               aria-label={isGenerating ? "Stop generating" : "Send message"}
             >
-              {isGenerating ? <Square size={14} fill="currentColor" /> : <ArrowUp size={18} />}
+              {isGenerating ? <Square size={14} fill="currentColor" /> : <Send size={15} className="send-arrow-icon" />}
             </button>
           </div>
         </div>
@@ -877,19 +1054,161 @@ const InputBar = ({ isCentered = false }) => {
       </div>
 
       {isCentered && (
-        <div className="input-suggestions-list">
-          {starterSuggestions.map((item, idx) => (
+        <>
+          <div className="input-suggestions-list desktop-only">
+            {currentSuggestions.map((item, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className="suggestion-pill-item"
+                onClick={() => handleSend(item.prompt)}
+              >
+                <span className="suggestion-pill-icon">{item.icon}</span>
+                <span className="suggestion-pill-text">{item.title}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="home-mobile-sections mobile-only">
+          <div className="mobile-quick-tools-grid">
             <button
-              key={idx}
               type="button"
-              className="suggestion-pill-item"
-              onClick={() => handleSend(item.prompt)}
+              className={`quick-tool-card ${hasImageGenActive ? 'active' : ''}`}
+              onClick={handleToggleImageGen}
+              aria-pressed={hasImageGenActive}
             >
-              <span className="suggestion-pill-icon">{item.icon}</span>
-              <span className="suggestion-pill-text">{item.title}</span>
+              <div className="quick-tool-icon-box purple">
+                <ImageIcon size={22} color="#7c3aed" />
+              </div>
+              <span className="quick-tool-label">Create image</span>
             </button>
-          ))}
+
+            <button
+              type="button"
+              className={`quick-tool-card ${hasVideoGenActive ? 'active' : ''}`}
+              onClick={handleToggleVideoGen}
+              aria-pressed={hasVideoGenActive}
+            >
+              <div className="quick-tool-icon-box pink">
+                <PlaySquare size={22} color="#ec4899" />
+              </div>
+              <span className="quick-tool-label">Generate video</span>
+            </button>
+
+            <button
+              type="button"
+              className={`quick-tool-card ${codeMode ? 'active' : ''}`}
+              onClick={handleToggleCodeMode}
+              aria-pressed={codeMode}
+            >
+              <div className="quick-tool-icon-box blue">
+                <Code2 size={22} color="#0284c7" />
+              </div>
+              <span className="quick-tool-label">Write code</span>
+            </button>
+
+            <button
+              type="button"
+              className={`quick-tool-card ${summarizeMode ? 'active' : ''}`}
+              onClick={handleToggleSummarizeMode}
+              aria-pressed={summarizeMode}
+            >
+              <div className="quick-tool-icon-box green">
+                <FileText size={22} color="#10b981" />
+              </div>
+              <span className="quick-tool-label">Summarize text</span>
+            </button>
+          </div>
+
+          <div className="mobile-section-block">
+            <div className="mobile-section-header">
+              <span className="mobile-section-title">Suggestions</span>
+              <button
+                type="button"
+                className="mobile-refresh-btn"
+                onClick={handleRefreshSuggestions}
+              >
+                <span>Refresh</span>
+                <RotateCw size={14} className={isRefreshing ? 'spinning' : ''} />
+              </button>
+            </div>
+
+            <div className="mobile-suggestions-list">
+              {currentSuggestions.map((item, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  className="mobile-suggestion-row"
+                  onClick={() => handleSend(item.prompt)}
+                >
+                  <div className="mobile-suggestion-icon">
+                    {item.icon}
+                  </div>
+                  <span className="mobile-suggestion-text">{item.title}</span>
+                  <ChevronRight size={16} className="mobile-suggestion-arrow" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mobile-section-block">
+            <div className="mobile-section-header">
+              <div className="mobile-section-title-with-icon">
+                <Clock size={16} color="#475569" />
+                <span className="mobile-section-title">Recent chats</span>
+              </div>
+              <button
+                type="button"
+                className="mobile-view-all-btn"
+                onClick={() => navigate('/history')}
+              >
+                View all
+              </button>
+            </div>
+
+            <div className="mobile-recent-chats-list">
+              {realRecentChats.length > 0 ? (
+                realRecentChats.map((chat) => (
+                  <div
+                    key={chat.id}
+                    className="mobile-recent-chat-row"
+                    onClick={() => {
+                      setActiveChat(chat.id);
+                      navigate(`/${chat.id}`);
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className="mobile-recent-chat-icon">
+                      <MessageSquare size={16} color="#64748b" />
+                    </div>
+                    <div className="mobile-recent-chat-info">
+                      <span className="mobile-recent-chat-title">{chat.title}</span>
+                      <span className="mobile-recent-chat-time">{chat.time}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="mobile-recent-chat-more"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/history');
+                      }}
+                      aria-label="More options"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="mobile-recent-chats-empty">
+                  <MessageSquare size={16} color="#94a3b8" />
+                  <span>No recent conversations</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
+        </>
       )}
 
       <div className="footer-text">

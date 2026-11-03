@@ -4,7 +4,7 @@ import {
   Home, BookOpen, ExternalLink, Image as ImageIcon,
   Flame, Zap, Sparkles, Wand2, Info, Dices,
   Download, Maximize2, Trash2, ShieldCheck, Layers,
-  Clock, ArrowRight, X, Upload, Check, Cpu, RefreshCw
+  Clock, ArrowRight, X, Upload, Check, Cpu, RefreshCw, Copy
 } from 'lucide-react';
 import { auth } from '../../config/firebase';
 import { env } from '../../config/env';
@@ -109,6 +109,53 @@ export const UncensoredImage = () => {
     }
   };
 
+  const handleIterateInEdit = async () => {
+    if (!generatedImageUrl) return;
+    setErrorMessage('');
+    setSourceFileName(`Edited_${Date.now()}.png`);
+    setMode('edit');
+
+    if (generatedImageUrl.startsWith('data:')) {
+      setSourceImage(generatedImageUrl);
+      return;
+    }
+
+    try {
+      const res = await fetch(generatedImageUrl);
+      if (res.ok) {
+        const blob = await res.blob();
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setSourceImage(e.target.result);
+        };
+        reader.readAsDataURL(blob);
+        return;
+      }
+    } catch {
+      void 0;
+    }
+
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = generatedImageUrl;
+      await new Promise((resolve, reject) => {
+        if (img.complete) return resolve();
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Cross-origin load failed'));
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const dataUrl = canvas.toDataURL('image/png');
+      setSourceImage(dataUrl);
+    } catch {
+      setSourceImage(generatedImageUrl);
+    }
+  };
+
   const handleEnhancePrompt = async () => {
     if (!prompt.trim() || isEnhancing) return;
     setIsEnhancing(true);
@@ -193,10 +240,13 @@ export const UncensoredImage = () => {
           const raw = localStorage.getItem('sumanai_uploaded_files');
           const list = raw ? JSON.parse(raw) : [];
           list.unshift({
+            id: `upload-uncensored-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
             name: `Qwen_Uncensored_${Date.now()}.png`,
             size: '2.4 MB',
             type: 'image/png',
             url: data.imageUrl,
+            subtype: 'generated',
+            chatTitle: 'Uncensored Image Gen',
             date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
           });
           localStorage.setItem('sumanai_uploaded_files', JSON.stringify(list.slice(0, 50)));
@@ -548,11 +598,10 @@ export const UncensoredImage = () => {
 
         <div className="uncensored-right-col">
           <div className="uncensored-output-card">
-            <div className="output-card-header">
+            <div className="output-card-header" title={usedSeed !== null ? `Seed: ${usedSeed}` : undefined}>
               <div className="output-header-title">
                 <ImageIcon size={16} className="output-icon" />
                 <span>Output Canvas</span>
-                {usedSeed !== null && <span className="slider-badge">Seed: {usedSeed}</span>}
               </div>
               <div className="output-actions-cluster">
                 <button
@@ -608,11 +657,7 @@ export const UncensoredImage = () => {
                     <button
                       type="button"
                       className="floating-btn"
-                      onClick={() => {
-                        setSourceImage(generatedImageUrl);
-                        setSourceFileName(`Edited_${Date.now()}.png`);
-                        setMode('edit');
-                      }}
+                      onClick={handleIterateInEdit}
                     >
                       <ArrowRight size={13} />
                       <span>Iterate in Edit</span>

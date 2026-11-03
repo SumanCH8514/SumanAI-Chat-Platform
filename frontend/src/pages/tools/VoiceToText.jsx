@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Mic, ArrowLeft, Copy, Check, Download, Trash2,
-  RefreshCw, Sparkles, Square, Play, Pause, Upload, FileText, CheckCircle2
+  RefreshCw, Sparkles, Square, Play, Pause, Upload, FileText, CheckCircle2,
+  Home, BookOpen, ExternalLink, Zap, ShieldCheck, Layers, Clock
 } from 'lucide-react';
 import { chatService } from '../../services/ChatService';
 import './ToolAppShared.css';
@@ -212,26 +213,69 @@ Rules:
     <div className="tool-app-wrapper">
       <header className="tool-app-header">
         <nav className="tool-nav-breadcrumb">
-          <button
-            type="button"
-            className="tool-nav-back-btn"
-            onClick={() => navigate('/tools/view')}
+          <div className="tool-breadcrumb-left">
+            <button
+              type="button"
+              className="breadcrumb-home-btn"
+              onClick={() => navigate('/')}
+              title="Home"
+            >
+              <Home size={13} />
+            </button>
+            <span className="breadcrumb-sep">&gt;</span>
+            <button
+              type="button"
+              className="breadcrumb-link"
+              onClick={() => navigate('/tools/view')}
+            >
+              Tools
+            </button>
+            <span className="breadcrumb-sep">&gt;</span>
+            <span className="breadcrumb-link">Language & Voice</span>
+            <span className="breadcrumb-sep">&gt;</span>
+            <span className="breadcrumb-current">Audio Transcript Structurer</span>
+          </div>
+
+          <a
+            href="https://ai.google.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tool-doc-btn"
+            title="Speech Intelligence Documentation"
           >
-            <ArrowLeft size={13} />
-            <span>Utilities</span>
-          </button>
-          <span className="tool-nav-sep">/</span>
-          <span className="tool-nav-current">Audio Transcript Structurer</span>
+            <BookOpen size={13} />
+            <span>Documentation</span>
+            <ExternalLink size={11} className="doc-ext-icon" />
+          </a>
         </nav>
 
         <div className="tool-header-content">
           <div className="tool-title-row">
-            <h1 className="tool-app-heading">Audio Transcript Structurer</h1>
-            <span className="tool-tag-pill">Speech Intelligence</span>
+            <div className="tool-avatar-icon purple">
+              <Mic size={22} />
+            </div>
+            <div className="tool-title-texts">
+              <h1 className="tool-app-heading">Audio Transcript Structurer</h1>
+              <p className="tool-app-subheading">
+                Transform spoken audio or raw transcripts into polished meeting minutes, action items, and Q&A dialogues.
+              </p>
+            </div>
           </div>
-          <p className="tool-app-subheading">
-            Transform spoken audio or raw transcripts into polished meeting minutes, action items, and Q&A dialogues.
-          </p>
+
+          <div className="tool-chips-row">
+            <span className="chip-badge chip-qwen">
+              <Layers size={12} />
+              <span>WebSpeech API</span>
+            </span>
+            <span className="chip-badge chip-purple">
+              <Zap size={12} />
+              <span>Speech Intelligence</span>
+            </span>
+            <span className="chip-badge chip-zerogpu">
+              <ShieldCheck size={12} />
+              <span>Zero Retention</span>
+            </span>
+          </div>
         </div>
       </header>
 
@@ -406,10 +450,41 @@ Rules:
                 <div className="tool-empty-icon-box">
                   <Mic size={28} />
                 </div>
-                <p className="tool-empty-text">Audio Structurer Ready</p>
-                <p className="tool-empty-subtext">
+                <h3 className="empty-state-title">Audio Structurer Ready</h3>
+                <p className="empty-state-desc">
                   Record speech with your microphone or paste an existing meeting log to generate organized action items and executive notes.
                 </p>
+
+                <div className="empty-features-grid">
+                  <div className="feature-pill-card">
+                    <Zap size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">Live Dictation</span>
+                      <span className="feature-card-desc">Real-time WebSpeech audio</span>
+                    </div>
+                  </div>
+                  <div className="feature-pill-card">
+                    <Layers size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">Action Item Parsing</span>
+                      <span className="feature-card-desc">Assignees & deliverables</span>
+                    </div>
+                  </div>
+                  <div className="feature-pill-card">
+                    <ShieldCheck size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">100% Confidential</span>
+                      <span className="feature-card-desc">Zero telemetry retention</span>
+                    </div>
+                  </div>
+                  <div className="feature-pill-card">
+                    <Clock size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">Instant Export</span>
+                      <span className="feature-card-desc">Download markdown minutes</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

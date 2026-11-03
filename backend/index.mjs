@@ -571,6 +571,8 @@ export default {
               key = `generated-images/${targetUrl.split("/generated-images/")[1].split("?")[0]}`;
             } else if (targetUrl.includes("/generated-videos/")) {
               key = `generated-videos/${targetUrl.split("/generated-videos/")[1].split("?")[0]}`;
+            } else if (targetUrl.includes("/uncensored/")) {
+              key = `uncensored/${targetUrl.split("/uncensored/")[1].split("?")[0]}`;
             } else if (targetUrl.includes("cdn.sumanai.r2.sumanonline.com/")) {
               key = targetUrl.split("cdn.sumanai.r2.sumanonline.com/")[1].split("?")[0];
             }
@@ -815,47 +817,81 @@ export default {
             }
 
             let uploadedPath = null;
+            let imageUint8 = null;
+            let mimeType = "image/png";
+
             if (typeof inputImage === "string" && inputImage.startsWith("data:")) {
               const mimeMatch = inputImage.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
-              const mime = mimeMatch ? mimeMatch[1] : "image/png";
+              mimeType = mimeMatch ? mimeMatch[1] : "image/png";
               const cleanB64 = inputImage.replace(/^data:[^;]+;base64,/, "");
               const bin = atob(cleanB64);
-              const u8 = new Uint8Array(bin.length);
+              imageUint8 = new Uint8Array(bin.length);
               for (let i = 0; i < bin.length; i++) {
-                u8[i] = bin.charCodeAt(i);
+                imageUint8[i] = bin.charCodeAt(i);
               }
-              const blob = new Blob([u8], { type: mime });
-              const form = new FormData();
-              form.append("files", blob, `input.${mime.split('/')[1] || 'png'}`);
+            } else if (typeof inputImage === "string" && (inputImage.startsWith("http://") || inputImage.startsWith("https://"))) {
+              let r2Key = null;
+              if (inputImage.includes("cdn.sumanai.r2.sumanonline.com/")) {
+                r2Key = inputImage.split("cdn.sumanai.r2.sumanonline.com/")[1].split("?")[0];
+              } else if (inputImage.includes("/uncensored/")) {
+                r2Key = `uncensored/${inputImage.split("/uncensored/")[1].split("?")[0]}`;
+              } else if (inputImage.includes("/generated-images/")) {
+                r2Key = `generated-images/${inputImage.split("/generated-images/")[1].split("?")[0]}`;
+              }
 
-              const uploadRes = await fetch(`${hfSpace}/gradio_api/upload`, {
-                method: "POST",
-                headers: hfToken ? { "Authorization": `Bearer ${hfToken}` } : {},
-                body: form
-              });
-              if (uploadRes.ok) {
-                const uploadData = await uploadRes.json();
-                if (Array.isArray(uploadData) && uploadData[0]) {
-                  uploadedPath = uploadData[0];
+              if (r2Key && env.R2_BUCKET) {
+                try {
+                  const r2Object = await env.R2_BUCKET.get(r2Key);
+                  if (r2Object) {
+                    const arrayBuffer = await r2Object.arrayBuffer();
+                    imageUint8 = new Uint8Array(arrayBuffer);
+                    mimeType = r2Object.httpMetadata?.contentType || "image/png";
+                  }
+                } catch {
+                  imageUint8 = null;
                 }
               }
-            } else if (typeof inputImage === "string" && inputImage.startsWith("http")) {
-              const fetchImg = await fetch(inputImage);
-              if (fetchImg.ok) {
-                const blob = await fetchImg.blob();
+
+              if (!imageUint8) {
+                try {
+                  const fetchImg = await fetch(inputImage, {
+                    headers: hfToken ? { "Authorization": `Bearer ${hfToken}` } : {}
+                  });
+                  if (fetchImg.ok) {
+                    const arrayBuffer = await fetchImg.arrayBuffer();
+                    imageUint8 = new Uint8Array(arrayBuffer);
+                    mimeType = fetchImg.headers.get("content-type") || "image/png";
+                  }
+                } catch {
+                  imageUint8 = null;
+                }
+              }
+            }
+
+            if (imageUint8 && imageUint8.length > 0) {
+              try {
+                const extension = mimeType.includes("jpeg") || mimeType.includes("jpg") ? "jpg" : "png";
+                const blob = new Blob([imageUint8], { type: mimeType });
                 const form = new FormData();
-                form.append("files", blob, "input.png");
+                form.append("files", blob, `input.${extension}`);
+
+                const uploadHeaders = {};
+                if (hfToken) uploadHeaders["Authorization"] = `Bearer ${hfToken}`;
+
                 const uploadRes = await fetch(`${hfSpace}/gradio_api/upload`, {
                   method: "POST",
-                  headers: hfToken ? { "Authorization": `Bearer ${hfToken}` } : {},
+                  headers: uploadHeaders,
                   body: form
                 });
+
                 if (uploadRes.ok) {
                   const uploadData = await uploadRes.json();
                   if (Array.isArray(uploadData) && uploadData[0]) {
                     uploadedPath = uploadData[0];
                   }
                 }
+              } catch {
+                uploadedPath = null;
               }
             }
 
@@ -956,10 +992,12 @@ export default {
           let r2Key = null;
           if (env.R2_BUCKET) {
             try {
-              const imgRes = await fetch(rawImageUrl);
+              const imgRes = await fetch(rawImageUrl, {
+                headers: hfToken ? { "Authorization": `Bearer ${hfToken}` } : {}
+              });
               if (imgRes.ok) {
                 const imgBuffer = await imgRes.arrayBuffer();
-                r2Key = `generated-images/SumanAI_qwen_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.png`;
+                r2Key = `uncensored/SumanAI_uncensored_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.png`;
                 await env.R2_BUCKET.put(r2Key, imgBuffer, {
                   httpMetadata: {
                     contentType: 'image/png',

@@ -22,11 +22,11 @@ const DURATION_OPTIONS = [
 ];
 
 const ASPECT_RATIO_OPTIONS = [
-  { id: 'auto', label: 'Auto', badge: 'DEFAULT', desc: 'Widescreen (704x512)' },
+  { id: 'auto', label: 'Auto', badge: 'DEFAULT', desc: 'Widescreen (704×512)' },
   { id: '16:9', label: '16:9', desc: 'Landscape widescreen' },
-  { id: '9:16', label: '9:16', desc: 'Vertical / Story (384x704)' },
-  { id: '1:1', label: '1:1', desc: 'Square feed (512x512)' },
-  { id: '4:3', label: '4:3', desc: 'Classic TV (640x480)' }
+  { id: '9:16', label: '9:16', desc: 'Vertical / Story (384×704)' },
+  { id: '1:1', label: '1:1', desc: 'Square feed (512×512)' },
+  { id: '4:3', label: '4:3', desc: 'Classic TV (640×480)' }
 ];
 
 const QUALITY_OPTIONS = [

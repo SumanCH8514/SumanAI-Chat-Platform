@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileEdit, ArrowLeft, Copy, Check, Download, Trash2,
-  RefreshCw, Sparkles, Eye, Edit3, FileDown, BookOpen
+  RefreshCw, Sparkles, Eye, Edit3, FileDown, BookOpen,
+  Home, ExternalLink, Zap, ShieldCheck, Layers, Clock
 } from 'lucide-react';
 import { chatService } from '../../services/ChatService';
 import './ToolAppShared.css';
@@ -117,26 +118,69 @@ Rules:
     <div className="tool-app-wrapper">
       <header className="tool-app-header">
         <nav className="tool-nav-breadcrumb">
-          <button
-            type="button"
-            className="tool-nav-back-btn"
-            onClick={() => navigate('/tools/view')}
+          <div className="tool-breadcrumb-left">
+            <button
+              type="button"
+              className="breadcrumb-home-btn"
+              onClick={() => navigate('/')}
+              title="Home"
+            >
+              <Home size={13} />
+            </button>
+            <span className="breadcrumb-sep">&gt;</span>
+            <button
+              type="button"
+              className="breadcrumb-link"
+              onClick={() => navigate('/tools/view')}
+            >
+              Tools
+            </button>
+            <span className="breadcrumb-sep">&gt;</span>
+            <span className="breadcrumb-link">Writing & Docs</span>
+            <span className="breadcrumb-sep">&gt;</span>
+            <span className="breadcrumb-current">Professional Writer</span>
+          </div>
+
+          <a
+            href="https://ai.google.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tool-doc-btn"
+            title="Writing Documentation"
           >
-            <ArrowLeft size={13} />
-            <span>Utilities</span>
-          </button>
-          <span className="tool-nav-sep">/</span>
-          <span className="tool-nav-current">Professional Writer</span>
+            <BookOpen size={13} />
+            <span>Documentation</span>
+            <ExternalLink size={11} className="doc-ext-icon" />
+          </a>
         </nav>
 
         <div className="tool-header-content">
           <div className="tool-title-row">
-            <h1 className="tool-app-heading">Professional Writer</h1>
-            <span className="tool-tag-pill">Enterprise Documentation</span>
+            <div className="tool-avatar-icon purple">
+              <FileEdit size={22} />
+            </div>
+            <div className="tool-title-texts">
+              <h1 className="tool-app-heading">Professional Writer</h1>
+              <p className="tool-app-subheading">
+                Compose executive memos, technical RFCs, post-mortems, and press releases with editorial precision.
+              </p>
+            </div>
           </div>
-          <p className="tool-app-subheading">
-            Compose executive memos, technical RFCs, post-mortems, and press releases with editorial precision.
-          </p>
+
+          <div className="tool-chips-row">
+            <span className="chip-badge chip-qwen">
+              <Layers size={12} />
+              <span>Qwen-3.8-27B</span>
+            </span>
+            <span className="chip-badge chip-purple">
+              <Zap size={12} />
+              <span>Enterprise Spec</span>
+            </span>
+            <span className="chip-badge chip-zerogpu">
+              <ShieldCheck size={12} />
+              <span>Zero Retention</span>
+            </span>
+          </div>
         </div>
       </header>
 
@@ -359,10 +403,41 @@ Rules:
                 <div className="tool-empty-icon-box">
                   <FileEdit size={28} />
                 </div>
-                <p className="tool-empty-text">Drafting Canvas Ready</p>
-                <p className="tool-empty-subtext">
+                <h3 className="empty-state-title">Drafting Canvas Ready</h3>
+                <p className="empty-state-desc">
                   Specify your document topic and architecture parameters to draft comprehensive enterprise documents.
                 </p>
+
+                <div className="empty-features-grid">
+                  <div className="feature-pill-card">
+                    <Zap size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">Editorial Rigor</span>
+                      <span className="feature-card-desc">Amazon PR/FAQ & RFC structure</span>
+                    </div>
+                  </div>
+                  <div className="feature-pill-card">
+                    <Layers size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">Audience Tuning</span>
+                      <span className="feature-card-desc">C-Suite, Engineering, or Clients</span>
+                    </div>
+                  </div>
+                  <div className="feature-pill-card">
+                    <ShieldCheck size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">100% Confidential</span>
+                      <span className="feature-card-desc">Private enterprise workspace</span>
+                    </div>
+                  </div>
+                  <div className="feature-pill-card">
+                    <Clock size={14} className="feature-card-icon" />
+                    <div className="feature-card-text">
+                      <span className="feature-card-title">Instant Export</span>
+                      <span className="feature-card-desc">Markdown and text downloads</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
