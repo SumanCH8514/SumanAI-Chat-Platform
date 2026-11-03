@@ -9,8 +9,10 @@ const EmptyState = ({ userName }) => {
   return (
     <div className="empty-state">
       <div className="greeting">
-        <h1 className="hero-title">Where should we start?</h1>
-        <p className="hero-subtitle">Hello, <span className="hero-name-highlight">{displayName}</span></p>
+        <h1 className="hero-title">
+          Hello, <span className="hero-name-highlight">{displayName}</span>
+        </h1>
+        <p className="hero-subtitle">How can I help you today?</p>
       </div>
     </div>
   );

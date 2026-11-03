@@ -425,16 +425,16 @@
 
 .hero-title {
   font-family: var(--font-display);
-  font-size: clamp(28px, 4.5vw, 40px);
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  line-height: 1.2;
-  margin-bottom: 8px;
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: 10px;
   color: var(--text-primary);
 }
 
 .hero-subtitle {
-  font-size: clamp(14px, 2vw, 17px);
+  font-size: clamp(16px, 2.5vw, 22px);
   color: var(--text-secondary);
   font-weight: 500;
   letter-spacing: -0.01em;
@@ -686,6 +686,25 @@
   }
 }
 
+.input-container.is-centered .action-menu {
+  top: calc(100% + 12px);
+  bottom: auto;
+  transform-origin: top left;
+  animation: actionMenuDown 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes actionMenuDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .action-item {
   display: flex;
   align-items: center;
@@ -746,40 +765,151 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .indicator-pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 9px;
+  padding: 4px 10px;
   border-radius: var(--radius-full);
-  font-size: 11.5px;
-  font-weight: 600;
-  animation: pillPulse 2s infinite ease-in-out;
+  font-size: 12px;
+  font-weight: 550;
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.indicator-pill.image-gen {
+  background: var(--bg-hover);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+.dark .indicator-pill.image-gen {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f9fafb;
+}
+
+.light .indicator-pill.image-gen {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #111827;
+}
+
+.indicator-pill.image-gen:hover {
+  background: var(--bg-active);
+  border-color: var(--border-medium);
+}
+
+.dark .indicator-pill.image-gen:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.light .indicator-pill.image-gen:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
 }
 
 .indicator-pill.thinking {
-  background: rgba(168, 85, 247, 0.14);
-  color: var(--brand-primary);
-  border: 1px solid var(--brand-border);
+  background: rgba(168, 85, 247, 0.12);
+  color: #7c3aed;
+  border-color: rgba(168, 85, 247, 0.25);
+}
+
+.dark .indicator-pill.thinking {
+  background: rgba(168, 85, 247, 0.18);
+  color: #c084fc;
+  border-color: rgba(168, 85, 247, 0.35);
+}
+
+.light .indicator-pill.thinking {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border-color: #ddd6fe;
+}
+
+.indicator-pill.thinking:hover {
+  background: rgba(168, 85, 247, 0.22);
+}
+
+.dark .indicator-pill.thinking:hover {
+  background: rgba(168, 85, 247, 0.28);
+}
+
+.light .indicator-pill.thinking:hover {
+  background: #ede9fe;
 }
 
 .indicator-pill.search {
-  background: rgba(59, 130, 246, 0.14);
-  color: var(--brand-accent);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  border-color: rgba(59, 130, 246, 0.25);
 }
 
-@keyframes pillPulse {
+.dark .indicator-pill.search {
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.35);
+}
 
-  0%,
-  100% {
-    opacity: 0.9;
-  }
+.light .indicator-pill.search {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
 
-  50% {
-    opacity: 1;
+.indicator-pill.search:hover {
+  background: rgba(59, 130, 246, 0.22);
+}
+
+.indicator-icon {
+  flex-shrink: 0;
+}
+
+.indicator-label {
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1;
+}
+
+.indicator-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin-left: 0;
+  transition: opacity 0.15s ease, width 0.15s ease, margin 0.15s ease;
+  color: inherit;
+  flex-shrink: 0;
+}
+
+.indicator-pill:hover .indicator-close-btn,
+.indicator-pill:focus-visible .indicator-close-btn {
+  width: 14px;
+  opacity: 0.85;
+  margin-left: 4px;
+}
+
+.indicator-pill:hover .indicator-close-btn:hover {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .indicator-close-btn {
+    width: 14px;
+    opacity: 0.85;
+    margin-left: 4px;
   }
 }
 
@@ -992,6 +1122,12 @@
   .inline-model-pill {
     padding: 4px 6px;
     font-size: 12.5px;
+  }
+
+  .indicator-pill {
+    padding: 3px 8px;
+    font-size: 11px;
+    gap: 4px;
   }
 
   .footer-text {

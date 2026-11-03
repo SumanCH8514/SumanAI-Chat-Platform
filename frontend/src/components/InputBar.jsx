@@ -335,8 +335,8 @@ const InputBar = ({ isCentered = false }) => {
 
   const handleSend = useCallback(async (cmdOrEvent = null, overrideOptions = {}) => {
     stopListening();
-    const isManualSend = typeof cmdOrEvent !== 'string';
-    const promptValue = isManualSend ? text.trim() : cmdOrEvent;
+    const isRegenerate = Boolean(overrideOptions?.isRegenerate);
+    const promptValue = typeof cmdOrEvent === 'string' ? cmdOrEvent.trim() : text.trim();
 
     if (isGeneratingRef.current) return;
     if (!promptValue && attachments.length === 0) return;
@@ -386,7 +386,7 @@ const InputBar = ({ isCentered = false }) => {
       const chosenModelName = overrideOptions?.modelDisplayName 
         || (isImageGen ? activeImageModel?.name : (selectedModel?.name || 'SumanAI'));
 
-      if (isManualSend) {
+      if (!isRegenerate) {
         setText('');
         setAttachments([]);
         setHasImageGenActive(false);
@@ -409,7 +409,7 @@ const InputBar = ({ isCentered = false }) => {
         navigate(`/${chatId}`, { replace: true });
       }
 
-      if (isManualSend) {
+      if (!isRegenerate) {
         addMessage(chatId, {
           role: 'user',
           content: promptValue,
@@ -535,7 +535,7 @@ const InputBar = ({ isCentered = false }) => {
           setIsGenerating(false);
           useChatStore.setState({ isGenerating: false });
 
-          handleSend(lastMsg.content, pendingOptions);
+          handleSend(lastMsg.content, { ...pendingOptions, isRegenerate: true });
         }
       }
     }
@@ -684,26 +684,64 @@ const InputBar = ({ isCentered = false }) => {
               )}
             </div>
 
-            {(deepThinking || smartSearch) && (
+            {(hasImageGenActive || deepThinking || smartSearch) && (
               <div className="active-pill-indicators">
+                {hasImageGenActive && (
+                  <button
+                    type="button"
+                    className="indicator-pill image-gen"
+                    onClick={handleToggleImageGen}
+                    title="Image mode active. Click or tap to turn off."
+                    aria-label="Image mode active. Click or tap to turn off."
+                  >
+                    <ImageIcon size={13} className="indicator-icon" />
+                    <span className="indicator-label">Images</span>
+                    <span className="indicator-close-btn">
+                      <X size={12} />
+                    </span>
+                  </button>
+                )}
                 {deepThinking && (
-                  <div className="indicator-pill thinking" title="Deep thinking active">
-                    <Lightbulb size={13} />
+                  <button
+                    type="button"
+                    className="indicator-pill thinking"
+                    onClick={() => setDeepThinking(false)}
+                    title="Deep thinking active. Click or tap to turn off."
+                    aria-label="Deep thinking active. Click or tap to turn off."
+                  >
+                    <Lightbulb size={13} className="indicator-icon" />
                     <span className="indicator-label">Thinking</span>
-                  </div>
+                    <span className="indicator-close-btn">
+                      <X size={12} />
+                    </span>
+                  </button>
                 )}
                 {smartSearch && (
-                  <div className="indicator-pill search" title="Smart web search active">
-                    <Globe size={13} />
+                  <button
+                    type="button"
+                    className="indicator-pill search"
+                    onClick={() => setSmartSearch(false)}
+                    title="Smart web search active. Click or tap to turn off."
+                    aria-label="Smart web search active. Click or tap to turn off."
+                  >
+                    <Globe size={13} className="indicator-icon" />
                     <span className="indicator-label">Search</span>
-                  </div>
+                    <span className="indicator-close-btn">
+                      <X size={12} />
+                    </span>
+                  </button>
                 )}
               </div>
             )}
           </div>
 
           <div className="input-bottom-right">
-            <ModelSelector variant="inline" />
+            <ModelSelector
+              variant="inline"
+              isCentered={isCentered}
+              deepThinking={deepThinking}
+              onToggleThinking={() => setDeepThinking(!deepThinking)}
+            />
 
             <button
               type="button"

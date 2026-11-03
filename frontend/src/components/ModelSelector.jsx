@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Lock, ImageOff, Zap, Crown, Cpu } from 'lucide-react';
+import { ChevronDown, Lock, ImageOff, Zap, Crown, Cpu, Check, ChevronRight, Lightbulb } from 'lucide-react';
 import { useModel } from '../hooks/useModel';
 import { MODEL_LIST } from '../constants/models';
 import { useChatStore } from '../store/useChatStore';
@@ -8,7 +8,56 @@ import { useAuthStore } from '../store/useAuthStore';
 import { adminService } from '../services/adminService';
 import './ModelSelector.css';
 
-const ModelSelector = ({ variant = 'default' }) => {
+const getModelSubtitle = (model) => {
+  if (!model) return '';
+  const id = model.id?.toLowerCase() || '';
+  const badge = model.badge || '';
+
+  if (id.includes('llama-3.1-8b') || badge.toLowerCase().includes('instant') || badge.toLowerCase().includes('ultra fast')) {
+    return 'Fastest answers';
+  }
+  if (id.includes('llama-3.3-70b-instruct-fp8') || id.includes('llama-3.3-70b')) {
+    return 'All-around help';
+  }
+  if (id.includes('deepseek') || badge.toLowerCase().includes('reasoning')) {
+    return 'Advanced reasoning';
+  }
+  if (id.includes('qwen2.5-72b') || badge.toLowerCase().includes('coding')) {
+    return 'Complex tasks';
+  }
+  if (model.supportsImageGen || id.includes('flux') || id.includes('grok-imagine')) {
+    return badge || 'Image generation';
+  }
+  if (model.supportsVision || id.includes('vision') || id.includes('moondream')) {
+    return badge || 'Visual analysis';
+  }
+  return badge || 'General intelligence';
+};
+
+const getCleanModelTitle = (name) => {
+  if (!name) return 'Model';
+  return name.replace(/^SumanAI\s*/i, '').trim();
+};
+
+const getModelBadge = (model) => {
+  if (!model?.badge) return null;
+  let badgeTypeClass = 'badge-general';
+  const lowerBadge = String(model.badge || '').toLowerCase();
+  if (model.supportsImageGen || lowerBadge.includes('image') || lowerBadge.includes('art') || lowerBadge.includes('studio') || lowerBadge.includes('compact') || lowerBadge.includes('render') || lowerBadge.includes('diffusion')) {
+    badgeTypeClass = 'badge-image';
+  } else if (model.supportsVision || lowerBadge.includes('vision') || lowerBadge.includes('visual')) {
+    badgeTypeClass = 'badge-vision';
+  } else if (lowerBadge.includes('reasoning') || lowerBadge.includes('logic') || lowerBadge.includes('think')) {
+    badgeTypeClass = 'badge-reasoning';
+  } else if (lowerBadge.includes('speed') || lowerBadge.includes('fast') || lowerBadge.includes('turbo') || lowerBadge.includes('instant')) {
+    badgeTypeClass = 'badge-speed';
+  } else if (lowerBadge.includes('flagship') || lowerBadge.includes('coding') || lowerBadge.includes('analysis') || lowerBadge.includes('precision') || lowerBadge.includes('versatile')) {
+    badgeTypeClass = 'badge-flagship';
+  }
+  return <span className={`inline-model-badge ${badgeTypeClass}`}>{model.badge}</span>;
+};
+
+const ModelSelector = ({ variant = 'default', isCentered = false, deepThinking = false, onToggleThinking = null }) => {
   const { selectedModel, setSelectedModel, models, isPro: modelContextIsPro, isAdmin: modelContextIsAdmin } = useModel();
   const { openAuthModal, user } = useAuthStore();
   const isAdmin = Boolean(modelContextIsAdmin || adminService.checkIsAdmin(user));
@@ -20,7 +69,7 @@ const ModelSelector = ({ variant = 'default' }) => {
   const toastTimeoutRef = useRef(null);
   const triggerRef = useRef(null);
   const dropdownRef = useRef(null);
-  const [dropdownPos, setDropdownPos] = useState({ top: 58, left: 0, transform: 'translateX(-50%)' });
+  const [dropdownPos, setDropdownPos] = useState({ top: '58px', bottom: 'auto', left: '0px', transform: 'translateX(-50%)', maxHeight: '380px' });
 
   useEffect(() => {
     return () => {
@@ -59,30 +108,52 @@ const ModelSelector = ({ variant = 'default' }) => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     const isMobile = window.innerWidth <= 768;
+    const isCenteredContainer = Boolean(isCentered || triggerRef.current?.closest('.input-container.is-centered'));
+    const spaceAbove = rect.top;
     const spaceBelow = window.innerHeight - rect.bottom;
-    const openUpward = spaceBelow < 380 && rect.top > 300;
+    const openUpward = isCenteredContainer
+      ? (spaceBelow < 220 && spaceAbove > spaceBelow)
+      : (spaceBelow < 380 || spaceAbove > spaceBelow);
+    const availableHeight = openUpward ? spaceAbove - 24 : spaceBelow - 24;
+    const maxHeight = Math.min(Math.max(220, Math.floor(availableHeight)), 380);
 
     if (isMobile) {
       setDropdownPos({
-        top: openUpward ? Math.max(10, rect.top - 8) : Math.max(54, rect.bottom + 8),
-        left: window.innerWidth / 2,
-        transform: openUpward ? 'translateX(-50%) translateY(-100%)' : 'translateX(-50%)'
+        top: openUpward ? 'auto' : `${Math.round(rect.bottom + 8)}px`,
+        bottom: openUpward ? `${Math.round(window.innerHeight - rect.top + 8)}px` : 'auto',
+        left: `${Math.round(window.innerWidth / 2)}px`,
+        transform: 'translateX(-50%)',
+        maxHeight: `${maxHeight}px`
       });
     } else if (variant === 'inline') {
-      const rightEdge = rect.right;
+      const modalWidth = 320;
+      let leftPos = rect.right - modalWidth;
+      if (leftPos < 16) leftPos = 16;
+      if (leftPos + modalWidth > window.innerWidth - 16) leftPos = window.innerWidth - modalWidth - 16;
+
       setDropdownPos({
-        top: openUpward ? Math.max(10, rect.top - 8) : rect.bottom + 8,
-        left: Math.min(window.innerWidth - 180, rightEdge),
-        transform: openUpward ? 'translateX(-100%) translateY(-100%)' : 'translateX(-100%)'
+        top: openUpward ? 'auto' : `${Math.round(rect.bottom + 8)}px`,
+        bottom: openUpward ? `${Math.round(window.innerHeight - rect.top + 8)}px` : 'auto',
+        left: `${leftPos}px`,
+        transform: 'none',
+        maxHeight: `${maxHeight}px`
       });
     } else {
+      const dropdownWidth = 330;
+      const minCenter = dropdownWidth / 2 + 16;
+      const maxCenter = window.innerWidth - (dropdownWidth / 2) - 16;
+      const centerLeft = Math.max(minCenter, Math.min(maxCenter, rect.left + rect.width / 2));
+      const defaultMaxHeight = Math.min(500, Math.max(260, Math.floor(spaceBelow - 24)));
+
       setDropdownPos({
-        top: rect.bottom + 8,
-        left: rect.left + rect.width / 2,
-        transform: 'translateX(-50%)'
+        top: `${Math.round(rect.bottom + 8)}px`,
+        bottom: 'auto',
+        left: `${Math.round(centerLeft)}px`,
+        transform: 'translateX(-50%)',
+        maxHeight: `${defaultMaxHeight}px`
       });
     }
-  }, [variant]);
+  }, [variant, isCentered]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -231,120 +302,191 @@ const ModelSelector = ({ variant = 'default' }) => {
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
-          <div
-            className="model-dropdown"
-            ref={dropdownRef}
-            style={{
-              top: `${dropdownPos.top}px`,
-              left: `${dropdownPos.left}px`,
-              transform: dropdownPos.transform
-            }}
-          >
-            <div className="model-dropdown-sections" role="tablist" aria-label="Model Tiers">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTier === 'free'}
-                className={`model-section-tab ${activeTier === 'free' ? 'active' : ''}`}
-                onClick={() => setTierTab('free')}
-              >
-                <Zap size={13} className="section-tab-icon" />
-                <span>Free Models</span>
-                <span className="section-count-pill">{freeModels.length}</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTier === 'premium'}
-                className={`model-section-tab ${activeTier === 'premium' ? 'active' : ''} tab-premium`}
-                onClick={() => setTierTab('premium')}
-              >
-                <Crown size={13} className="section-tab-icon crown-icon" />
-                <span>Premium Models</span>
-                <span className="section-count-pill">{premiumModels.length}</span>
-              </button>
-            </div>
-
-            <div className="model-list">
-              {activeTier === 'premium' && currentModels.length === 0 ? (
-                <div className="premium-placeholder-card">
-                  <div className="premium-crown-wrap">
-                    <Crown size={22} color="#F59E0B" />
-                  </div>
-                  <div className="premium-card-title">Premium Flagship Models</div>
-                  <div className="premium-card-desc">
-                    Ultra-fast inference, deep reasoning, and high-context frontier intelligence models are arriving soon.
-                  </div>
-                  <div className="premium-perks-row">
-                    <span className="premium-perk-badge"><Cpu size={11} /> Flagship Intelligence</span>
-                    <span className="premium-perk-badge"><Zap size={11} /> Priority Compute</span>
-                    <span className="premium-perk-badge">Extended Context</span>
-                  </div>
-                </div>
-              ) : (
-                currentModels.map(model => {
+          {isInline ? (
+            <div
+              className="inline-model-dropdown"
+              ref={dropdownRef}
+              style={{
+                top: dropdownPos.top,
+                bottom: dropdownPos.bottom,
+                left: dropdownPos.left,
+                transform: dropdownPos.transform,
+                maxHeight: dropdownPos.maxHeight
+              }}
+            >
+              <div className="inline-menu-header">Model Selection</div>
+              <div className="inline-model-list">
+                {modelList.map(model => {
+                  const isSelected = model.id === selectedModel?.id;
                   const isDisabledByVision = hasAttachments && !model.supportsVision;
-                  const isDisabled = isDisabledByVision;
                   const isEffectivelyLocked = model.locked && !hasProAccess && !isAdmin;
-
-                  let badge = null;
-                  if (isDisabledByVision) {
-                    badge = <span className="model-badge no-vision-badge"><ImageOff size={10} /> No Vision</span>;
-                  } else if (isEffectivelyLocked) {
-                    const isProLock = model.lockReason === 'pro_required';
-                    badge = (
-                      <span
-                        className="model-badge"
-                        style={{
-                          background: isProLock ? 'rgba(245, 158, 11, 0.2)' : '#4285F4',
-                          color: isProLock ? '#FBBF24' : '#FFFFFF',
-                          border: isProLock ? '1px solid rgba(245, 158, 11, 0.4)' : 'none'
-                        }}
-                      >
-                        {isProLock ? 'PRO' : 'Unlock'}
-                      </span>
-                    );
-                  } else if (model.badge) {
-                    let badgeTypeClass = 'badge-general';
-                    const lowerBadge = String(model.badge || '').toLowerCase();
-                    if (model.supportsImageGen || lowerBadge.includes('image') || lowerBadge.includes('art') || lowerBadge.includes('studio') || lowerBadge.includes('compact') || lowerBadge.includes('render') || lowerBadge.includes('diffusion')) {
-                      badgeTypeClass = 'badge-image';
-                    } else if (model.supportsVision || lowerBadge.includes('vision') || lowerBadge.includes('visual')) {
-                      badgeTypeClass = 'badge-vision';
-                    } else if (lowerBadge.includes('reasoning') || lowerBadge.includes('logic') || lowerBadge.includes('think')) {
-                      badgeTypeClass = 'badge-reasoning';
-                    } else if (lowerBadge.includes('speed') || lowerBadge.includes('fast') || lowerBadge.includes('turbo') || lowerBadge.includes('instant')) {
-                      badgeTypeClass = 'badge-speed';
-                    } else if (lowerBadge.includes('flagship') || lowerBadge.includes('coding') || lowerBadge.includes('analysis') || lowerBadge.includes('precision') || lowerBadge.includes('versatile')) {
-                      badgeTypeClass = 'badge-flagship';
-                    }
-                    badge = <span className={`model-badge ${badgeTypeClass}`}>{model.badge}</span>;
-                  }
 
                   return (
                     <button
                       key={model.id}
-                      className={`model-item ${selectedModel?.id === model.id ? 'selected' : ''} ${isEffectivelyLocked ? 'locked' : ''} ${isDisabled ? 'no-vision' : ''} ${model.tier === 'premium' ? 'model-item-premium' : ''}`}
-                      onClick={() => select(model)}
-                      title={isEffectivelyLocked ? 'Click to sign in with Google and unlock this model' : isDisabled ? 'Not available in current mode' : model.name}
                       type="button"
+                      className={`inline-menu-item ${isSelected ? 'selected' : ''} ${isDisabledByVision ? 'disabled' : ''}`}
+                      onClick={() => {
+                        if (isDisabledByVision) return;
+                        select(model);
+                      }}
+                      disabled={isDisabledByVision}
                     >
-                      <span className="model-item-icon"><model.icon /></span>
-                      <span className="model-item-name">{model.name}</span>
-                      {badge}
-                      {isEffectivelyLocked && <Lock size={14} className="model-lock" />}
+                      <div className="inline-menu-icon-slot">
+                        {isSelected ? (
+                          <Check size={16} className="inline-menu-check" />
+                        ) : isEffectivelyLocked ? (
+                          <Lock size={14} className="inline-menu-lock" />
+                        ) : null}
+                      </div>
+                      <div className="inline-menu-text-col">
+                        <span className="inline-menu-title">{getCleanModelTitle(model.name)}</span>
+                        <span className="inline-menu-sub">{getModelSubtitle(model)}</span>
+                      </div>
+                      {getModelBadge(model)}
                     </button>
                   );
-                })
+                })}
+              </div>
+
+              <div className="inline-menu-divider" />
+
+              <button
+                type="button"
+                className="inline-menu-footer-item"
+                onClick={() => {
+                  if (onToggleThinking) onToggleThinking();
+                  setOpen(false);
+                }}
+              >
+                <div className="inline-menu-icon-slot">
+                  <Lightbulb size={15} className={deepThinking ? 'icon-thinking-active' : ''} />
+                </div>
+                <div className="inline-menu-text-col">
+                  <span className="inline-menu-title">Thinking level</span>
+                  <span className="inline-menu-sub">{deepThinking ? 'Deep reasoning active' : 'Standard'}</span>
+                </div>
+                <ChevronRight size={15} className="inline-menu-arrow" />
+              </button>
+            </div>
+          ) : (
+            <div
+              className="model-dropdown"
+              ref={dropdownRef}
+              style={{
+                top: dropdownPos.top,
+                bottom: dropdownPos.bottom,
+                left: dropdownPos.left,
+                transform: dropdownPos.transform,
+                maxHeight: dropdownPos.maxHeight
+              }}
+            >
+              <div className="model-dropdown-sections" role="tablist" aria-label="Model Tiers">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTier === 'free'}
+                  className={`model-section-tab ${activeTier === 'free' ? 'active' : ''}`}
+                  onClick={() => setTierTab('free')}
+                >
+                  <Zap size={13} className="section-tab-icon" />
+                  <span>Free Models</span>
+                  <span className="section-count-pill">{freeModels.length}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTier === 'premium'}
+                  className={`model-section-tab ${activeTier === 'premium' ? 'active' : ''} tab-premium`}
+                  onClick={() => setTierTab('premium')}
+                >
+                  <Crown size={13} className="section-tab-icon crown-icon" />
+                  <span>Premium Models</span>
+                  <span className="section-count-pill">{premiumModels.length}</span>
+                </button>
+              </div>
+
+              <div className="model-list">
+                {activeTier === 'premium' && currentModels.length === 0 ? (
+                  <div className="premium-placeholder-card">
+                    <div className="premium-crown-wrap">
+                      <Crown size={22} color="#F59E0B" />
+                    </div>
+                    <div className="premium-card-title">Premium Flagship Models</div>
+                    <div className="premium-card-desc">
+                      Ultra-fast inference, deep reasoning, and high-context frontier intelligence models are arriving soon.
+                    </div>
+                    <div className="premium-perks-row">
+                      <span className="premium-perk-badge"><Cpu size={11} /> Flagship Intelligence</span>
+                      <span className="premium-perk-badge"><Zap size={11} /> Priority Compute</span>
+                      <span className="premium-perk-badge">Extended Context</span>
+                    </div>
+                  </div>
+                ) : (
+                  currentModels.map(model => {
+                    const isDisabledByVision = hasAttachments && !model.supportsVision;
+                    const isDisabled = isDisabledByVision;
+                    const isEffectivelyLocked = model.locked && !hasProAccess && !isAdmin;
+
+                    let badge = null;
+                    if (isDisabledByVision) {
+                      badge = <span className="model-badge no-vision-badge"><ImageOff size={10} /> No Vision</span>;
+                    } else if (isEffectivelyLocked) {
+                      const isProLock = model.lockReason === 'pro_required';
+                      badge = (
+                        <span
+                          className="model-badge"
+                          style={{
+                            background: isProLock ? 'rgba(245, 158, 11, 0.2)' : '#4285F4',
+                            color: isProLock ? '#FBBF24' : '#FFFFFF',
+                            border: isProLock ? '1px solid rgba(245, 158, 11, 0.4)' : 'none'
+                          }}
+                        >
+                          {isProLock ? 'PRO' : 'Unlock'}
+                        </span>
+                      );
+                    } else if (model.badge) {
+                      let badgeTypeClass = 'badge-general';
+                      const lowerBadge = String(model.badge || '').toLowerCase();
+                      if (model.supportsImageGen || lowerBadge.includes('image') || lowerBadge.includes('art') || lowerBadge.includes('studio') || lowerBadge.includes('compact') || lowerBadge.includes('render') || lowerBadge.includes('diffusion')) {
+                        badgeTypeClass = 'badge-image';
+                      } else if (model.supportsVision || lowerBadge.includes('vision') || lowerBadge.includes('visual')) {
+                        badgeTypeClass = 'badge-vision';
+                      } else if (lowerBadge.includes('reasoning') || lowerBadge.includes('logic') || lowerBadge.includes('think')) {
+                        badgeTypeClass = 'badge-reasoning';
+                      } else if (lowerBadge.includes('speed') || lowerBadge.includes('fast') || lowerBadge.includes('turbo') || lowerBadge.includes('instant')) {
+                        badgeTypeClass = 'badge-speed';
+                      } else if (lowerBadge.includes('flagship') || lowerBadge.includes('coding') || lowerBadge.includes('analysis') || lowerBadge.includes('precision') || lowerBadge.includes('versatile')) {
+                        badgeTypeClass = 'badge-flagship';
+                      }
+                      badge = <span className={`model-badge ${badgeTypeClass}`}>{model.badge}</span>;
+                    }
+
+                    return (
+                      <button
+                        key={model.id}
+                        className={`model-item ${selectedModel?.id === model.id ? 'selected' : ''} ${isEffectivelyLocked ? 'locked' : ''} ${isDisabled ? 'no-vision' : ''} ${model.tier === 'premium' ? 'model-item-premium' : ''}`}
+                        onClick={() => select(model)}
+                        title={isEffectivelyLocked ? 'Click to sign in with Google and unlock this model' : isDisabled ? 'Not available in current mode' : model.name}
+                        type="button"
+                      >
+                        <span className="model-item-icon"><model.icon /></span>
+                        <span className="model-item-name">{model.name}</span>
+                        {badge}
+                        {isEffectivelyLocked && <Lock size={14} className="model-lock" />}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              {footerNote && (
+                <div className="model-vision-note">
+                  {footerNote}
+                </div>
               )}
             </div>
-
-            {footerNote && (
-              <div className="model-vision-note">
-                {footerNote}
-              </div>
-            )}
-          </div>
+          )}
         </>,
         document.body
       )}

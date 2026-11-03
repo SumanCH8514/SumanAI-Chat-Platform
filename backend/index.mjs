@@ -1174,41 +1174,76 @@ export default {
         } else {
           if (env.AI) {
             try {
-              const runOptions = { prompt: optimizedPrompt };
-              if (targetModel === '@cf/black-forest-labs/flux-1-schnell') {
-                runOptions.steps = 4;
-              }
-              const result = await env.AI.run(targetModel, runOptions);
-              imageBase64 = result?.image || result?.result?.image;
-            } catch (cfErr) {
-              const errStr = String(cfErr?.message || cfErr || '');
-              if (errStr.includes('4006') || errStr.includes('neurons') || errStr.includes('allocation') || errStr.includes('quota')) {
-                try {
-                  respondingImageModel = 'pollinations/flux';
-                  const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(optimizedPrompt)}?width=1024&height=1024&nologo=true&model=flux`;
-                  const pollRes = await fetch(pollUrl);
-                  if (pollRes.ok) {
-                    const arrayBuf = await pollRes.arrayBuffer();
-                    const bytes = new Uint8Array(arrayBuf);
-                    let binary = '';
-                    for (let i = 0; i < bytes.length; i++) {
-                      binary += String.fromCharCode(bytes[i]);
-                    }
-                    imageBase64 = btoa(binary);
-                  } else {
-                    throw cfErr;
+              if (targetModel.includes('flux-2') || targetModel.includes('flux-2-dev') || targetModel.includes('flux-2-klein')) {
+                const form = new FormData();
+                form.append('prompt', optimizedPrompt);
+                form.append('width', '1024');
+                form.append('height', '1024');
+                if (targetModel.includes('dev')) {
+                  form.append('steps', '25');
+                } else {
+                  form.append('steps', '4');
+                }
+                const formResponse = new Response(form);
+                const formStream = formResponse.body;
+                const formContentType = formResponse.headers.get('content-type') || 'multipart/form-data';
+
+                const result = await env.AI.run(targetModel, {
+                  multipart: {
+                    body: formStream,
+                    contentType: formContentType
                   }
-                } catch {
-                  throw cfErr;
+                });
+                if (result?.image) {
+                  imageBase64 = result.image;
+                } else if (result?.result?.image) {
+                  imageBase64 = result.result.image;
+                } else if (result instanceof ReadableStream) {
+                  const res = new Response(result);
+                  const buf = await res.arrayBuffer();
+                  const bytes = new Uint8Array(buf);
+                  let binary = '';
+                  for (let i = 0; i < bytes.length; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                  }
+                  imageBase64 = btoa(binary);
                 }
               } else {
-                throw cfErr;
+                const runOptions = { prompt: optimizedPrompt };
+                if (targetModel === '@cf/black-forest-labs/flux-1-schnell') {
+                  runOptions.steps = 4;
+                }
+                const result = await env.AI.run(targetModel, runOptions);
+                imageBase64 = result?.image || result?.result?.image;
+              }
+            } catch (cfErr) {
+              const errStr = String(cfErr?.message || cfErr || '');
+              if (errStr.includes('multipart') || errStr.includes('5006')) {
+                try {
+                  const form = new FormData();
+                  form.append('prompt', optimizedPrompt);
+                  const formResponse = new Response(form);
+                  const result = await env.AI.run(targetModel, {
+                    multipart: {
+                      body: formResponse.body,
+                      contentType: formResponse.headers.get('content-type') || 'multipart/form-data'
+                    }
+                  });
+                  if (result?.image) {
+                    imageBase64 = result.image;
+                  } else if (result?.result?.image) {
+                    imageBase64 = result.result.image;
+                  }
+                } catch {
+                  void 0;
+                }
               }
             }
           }
 
           if (!imageBase64) {
             try {
+              respondingImageModel = 'pollinations/flux';
               const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(optimizedPrompt)}?width=1024&height=1024&nologo=true&model=flux`;
               const pollRes = await fetch(pollUrl);
               if (pollRes.ok) {
