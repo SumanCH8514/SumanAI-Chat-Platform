@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowUp, Globe, Paperclip, X, Plus,
-  Camera, Image as ImageIcon, Lightbulb, PenTool, Layers, Square, Eye, Mic
+  Camera, Image as ImageIcon, Lightbulb, PenTool, Layers, Square, Eye, Mic,
+  Maximize2, Minimize2, Palette, Film, Cpu
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useModel } from '../hooks/useModel';
@@ -13,6 +14,7 @@ import { usageService } from '../services/usageService';
 import { DEFAULT_VISION_MODEL, DEFAULT_IMAGE_GEN_MODEL } from '../constants/models';
 import { compressImage, isImageGenerationIntent } from '../utils/imageUtils';
 import { parseArtifact } from '../utils/artifactUtils';
+import ModelSelector from './ModelSelector';
 
 const mergeSpeechTranscripts = (results) => {
   if (!results || results.length === 0) return '';
@@ -55,7 +57,25 @@ const mergeSpeechTranscripts = (results) => {
   return combined.trim();
 };
 
-const InputBar = () => {
+const starterSuggestions = [
+  {
+    icon: <Palette size={16} />,
+    title: "Design a poster based on my taste",
+    prompt: "Design a modern graphic poster concept with bold typography, balanced composition, and a striking color palette based on clean contemporary design aesthetics."
+  },
+  {
+    icon: <Film size={16} />,
+    title: "Help me pick a family movie",
+    prompt: "Recommend 3 great family movies for an engaging movie night. For each, give a short synopsis, target age range, and where it is streaming."
+  },
+  {
+    icon: <Cpu size={16} />,
+    title: "Explain machine learning simply",
+    prompt: "Explain how machine learning works in simple, clear terms using real-world analogies that anyone can understand."
+  }
+];
+
+const InputBar = ({ isCentered = false }) => {
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState([]);
   const [deepThinking, setDeepThinking] = useState(false);
@@ -65,6 +85,7 @@ const InputBar = () => {
   const [visionToast, setVisionToast] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const [micToast, setMicToast] = useState(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const navigate = useNavigate();
   const { selectedModel, setSelectedModel, governance, defaultModelForTier, resetToDefaultModel } = useModel();
@@ -527,6 +548,15 @@ const InputBar = () => {
     }
   };
 
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      const maxHeight = isExpanded ? 360 : 180;
+      const minHeight = isExpanded ? 160 : 38;
+      inputRef.current.style.height = `${Math.max(minHeight, Math.min(inputRef.current.scrollHeight, maxHeight))}px`;
+    }
+  }, [isExpanded]);
+
   const handleTextChange = (e) => {
     const val = e.target.value;
     setText(val);
@@ -537,12 +567,13 @@ const InputBar = () => {
 
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
-      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 180)}px`;
+      const maxHeight = isExpanded ? 360 : 180;
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, maxHeight)}px`;
     }
   };
 
   return (
-    <div className="input-container">
+    <div className={`input-container ${isCentered ? 'is-centered' : 'bottom-docked'}`}>
       {visionToast && typeof document !== 'undefined' && createPortal(
         <div className={`vision-toast ${hasImageGenActive ? 'image-gen' : ''}`} role="status" aria-live="polite">
           <div className="vision-toast-content">
@@ -565,7 +596,7 @@ const InputBar = () => {
         document.body
       )}
 
-      <div className="input-bar glass">
+      <div className={`input-bar ${isExpanded ? 'expanded' : ''}`}>
         {attachments.length > 0 && (
           <div className="attachment-preview-bar">
             {attachments.map((file, idx) => (
@@ -579,67 +610,80 @@ const InputBar = () => {
           </div>
         )}
 
-        <div className="main-input-wrapper">
-          <div className="action-menu-container" ref={actionMenuRef}>
-            <button
-              className={`action-trigger-btn ${showActionMenu ? 'active' : ''}`}
-              onClick={() => setShowActionMenu(!showActionMenu)}
-              title="Add tools & content"
-              aria-label="Add tools and content"
-            >
-              <Plus size={19} />
-            </button>
-
-            {showActionMenu && (
-              <div className="action-menu">
-                <button className="action-item" onClick={() => cameraRef.current?.click()}>
-                  <Camera size={16} />
-                  <span>Take photo</span>
-                </button>
-                <button className="action-item" onClick={() => fileRef.current?.click()}>
-                  <Paperclip size={16} />
-                  <span>Add photos & files</span>
-                </button>
-                <div className="action-divider" />
-                <button
-                  className={`action-item ${hasImageGenActive ? 'active' : ''}`}
-                  onClick={handleToggleImageGen}
-                >
-                  <ImageIcon size={16} />
-                  <span>Create image</span>
-                  {hasImageGenActive && <span className="action-active-dot" />}
-                </button>
-                <button
-                  className={`action-item ${deepThinking ? 'active' : ''}`}
-                  onClick={() => { setDeepThinking(!deepThinking); setShowActionMenu(false); }}
-                >
-                  <Lightbulb size={16} />
-                  <span>Deep thinking</span>
-                  {deepThinking && <span className="action-active-dot" />}
-                </button>
-                <button className="action-item" onClick={() => { toggleCanvas(); setShowActionMenu(false); }}>
-                  <PenTool size={16} />
-                  <span>Interactive canvas</span>
-                </button>
-                <button className="action-item disabled" disabled>
-                  <Layers size={16} />
-                  <span>Interactive quizzes</span>
-                </button>
-              </div>
-            )}
-          </div>
-
+        <div className="input-body-row">
           <textarea
             ref={inputRef}
             placeholder="Ask anything..."
             value={text}
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}
-            rows={1}
+            rows={isExpanded ? 6 : 1}
             className="input-textarea"
           />
 
-          <div className="input-actions-primary">
+          <button
+            type="button"
+            className={`expand-toggle-btn ${isExpanded ? 'active' : ''}`}
+            onClick={() => setIsExpanded(!isExpanded)}
+            title={isExpanded ? "Collapse input" : "Expand input"}
+            aria-label={isExpanded ? "Collapse input" : "Expand input"}
+          >
+            {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          </button>
+        </div>
+
+        <div className="input-bottom-actions">
+          <div className="input-bottom-left">
+            <div className="action-menu-container" ref={actionMenuRef}>
+              <button
+                type="button"
+                className={`action-trigger-btn ${showActionMenu ? 'active' : ''}`}
+                onClick={() => setShowActionMenu(!showActionMenu)}
+                title="Add tools & content"
+                aria-label="Add tools and content"
+              >
+                <Plus size={19} />
+              </button>
+
+              {showActionMenu && (
+                <div className="action-menu">
+                  <button className="action-item" onClick={() => cameraRef.current?.click()}>
+                    <Camera size={16} />
+                    <span>Take photo</span>
+                  </button>
+                  <button className="action-item" onClick={() => fileRef.current?.click()}>
+                    <Paperclip size={16} />
+                    <span>Add photos & files</span>
+                  </button>
+                  <div className="action-divider" />
+                  <button
+                    className={`action-item ${hasImageGenActive ? 'active' : ''}`}
+                    onClick={handleToggleImageGen}
+                  >
+                    <ImageIcon size={16} />
+                    <span>Create image</span>
+                    {hasImageGenActive && <span className="action-active-dot" />}
+                  </button>
+                  <button
+                    className={`action-item ${deepThinking ? 'active' : ''}`}
+                    onClick={() => { setDeepThinking(!deepThinking); setShowActionMenu(false); }}
+                  >
+                    <Lightbulb size={16} />
+                    <span>Deep thinking</span>
+                    {deepThinking && <span className="action-active-dot" />}
+                  </button>
+                  <button className="action-item" onClick={() => { toggleCanvas(); setShowActionMenu(false); }}>
+                    <PenTool size={16} />
+                    <span>Interactive canvas</span>
+                  </button>
+                  <button className="action-item disabled" disabled>
+                    <Layers size={16} />
+                    <span>Interactive quizzes</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             {(deepThinking || smartSearch) && (
               <div className="active-pill-indicators">
                 {deepThinking && (
@@ -656,6 +700,10 @@ const InputBar = () => {
                 )}
               </div>
             )}
+          </div>
+
+          <div className="input-bottom-right">
+            <ModelSelector variant="inline" />
 
             <button
               type="button"
@@ -669,6 +717,7 @@ const InputBar = () => {
             </button>
 
             <button
+              type="button"
               className={`send-btn ${isGenerating ? 'stop' : ''}`}
               onClick={isGenerating ? handleStop : () => handleSend()}
               disabled={!text.trim() && attachments.length === 0 && !isGenerating}
@@ -697,6 +746,22 @@ const InputBar = () => {
           onChange={handleFileChange}
         />
       </div>
+
+      {isCentered && (
+        <div className="input-suggestions-list">
+          {starterSuggestions.map((item, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className="suggestion-pill-item"
+              onClick={() => handleSend(item.prompt)}
+            >
+              <span className="suggestion-pill-icon">{item.icon}</span>
+              <span className="suggestion-pill-text">{item.title}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="footer-text">
         <span className="footer-disclaimer">SumanAI may produce inaccurate info. Verify key facts.</span>

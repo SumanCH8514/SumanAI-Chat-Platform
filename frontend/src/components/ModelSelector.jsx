@@ -8,7 +8,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { adminService } from '../services/adminService';
 import './ModelSelector.css';
 
-const ModelSelector = () => {
+const ModelSelector = ({ variant = 'default' }) => {
   const { selectedModel, setSelectedModel, models, isPro: modelContextIsPro, isAdmin: modelContextIsAdmin } = useModel();
   const { openAuthModal, user } = useAuthStore();
   const isAdmin = Boolean(modelContextIsAdmin || adminService.checkIsAdmin(user));
@@ -59,11 +59,21 @@ const ModelSelector = () => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     const isMobile = window.innerWidth <= 768;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUpward = spaceBelow < 380 && rect.top > 300;
+
     if (isMobile) {
       setDropdownPos({
-        top: Math.max(54, rect.bottom + 8),
+        top: openUpward ? Math.max(10, rect.top - 8) : Math.max(54, rect.bottom + 8),
         left: window.innerWidth / 2,
-        transform: 'translateX(-50%)'
+        transform: openUpward ? 'translateX(-50%) translateY(-100%)' : 'translateX(-50%)'
+      });
+    } else if (variant === 'inline') {
+      const rightEdge = rect.right;
+      setDropdownPos({
+        top: openUpward ? Math.max(10, rect.top - 8) : rect.bottom + 8,
+        left: Math.min(window.innerWidth - 180, rightEdge),
+        transform: openUpward ? 'translateX(-100%) translateY(-100%)' : 'translateX(-100%)'
       });
     } else {
       setDropdownPos({
@@ -72,7 +82,7 @@ const ModelSelector = () => {
         transform: 'translateX(-50%)'
       });
     }
-  }, []);
+  }, [variant]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -164,29 +174,55 @@ const ModelSelector = () => {
   }
 
   const isSelectedPremium = selectedModel?.tier === 'premium';
+  const isInline = variant === 'inline';
+
+  const shortModelName = useMemo(() => {
+    if (!selectedModel?.name) return 'Model';
+    const clean = selectedModel.name.replace(/^SumanAI\s*/i, '').trim();
+    if (clean.length > 18) {
+      return clean.slice(0, 16) + '…';
+    }
+    return clean;
+  }, [selectedModel?.name]);
 
   return (
-    <div className="model-selector-wrapper">
-      <button
-        ref={triggerRef}
-        className={`version-selector model-selector-trigger ${isSingle ? 'single' : ''} ${isSelectedPremium ? 'trigger-premium' : ''}`}
-        onClick={handleToggle}
-        style={{ cursor: isSingle ? 'default' : 'pointer' }}
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-      >
-        {isSelectedPremium ? (
-          <Crown size={14} color="#D97706" className="model-trigger-icon" />
-        ) : (
-          <Cpu size={14} className="model-trigger-icon" />
-        )}
-        <span className="model-trigger-text">
-          <span className="model-brand-prefix">SumanAI </span>
-          <span className="model-name-label">{selectedModel?.name || 'Model'}</span>
-        </span>
-        {!isSingle && <ChevronDown size={14} className={`chevron ${open ? 'rotated' : ''}`} />}
-      </button>
+    <div className={`model-selector-wrapper ${isInline ? 'wrapper-inline' : ''}`}>
+      {isInline ? (
+        <button
+          ref={triggerRef}
+          className={`inline-model-pill ${isSingle ? 'single' : ''} ${open ? 'active' : ''}`}
+          onClick={handleToggle}
+          style={{ cursor: isSingle ? 'default' : 'pointer' }}
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          title={`Current model: ${selectedModel?.name || 'Model'}. Click to switch.`}
+        >
+          <span className="inline-model-name">{shortModelName}</span>
+          {!isSingle && <ChevronDown size={14} className={`chevron ${open ? 'rotated' : ''}`} />}
+        </button>
+      ) : (
+        <button
+          ref={triggerRef}
+          className={`version-selector model-selector-trigger ${isSingle ? 'single' : ''} ${isSelectedPremium ? 'trigger-premium' : ''}`}
+          onClick={handleToggle}
+          style={{ cursor: isSingle ? 'default' : 'pointer' }}
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+        >
+          {isSelectedPremium ? (
+            <Crown size={14} color="#D97706" className="model-trigger-icon" />
+          ) : (
+            <Cpu size={14} className="model-trigger-icon" />
+          )}
+          <span className="model-trigger-text">
+            <span className="model-brand-prefix">SumanAI </span>
+            <span className="model-name-label">{selectedModel?.name || 'Model'}</span>
+          </span>
+          {!isSingle && <ChevronDown size={14} className={`chevron ${open ? 'rotated' : ''}`} />}
+        </button>
+      )}
 
       {open && typeof document !== 'undefined' && createPortal(
         <>

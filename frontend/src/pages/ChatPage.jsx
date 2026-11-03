@@ -25,7 +25,7 @@ export const ChatPage = ({ onSettingsClick, onLoginClick }) => {
   }, [chatId, setActiveChat]);
 
   const activeChat = chats.find((c) => c.id === chatId);
-  const hasMessages = activeChat && activeChat.messages.length > 0;
+  const hasMessages = Boolean(activeChat && activeChat.messages.length > 0);
   const pageTitle = hasMessages
     ? `${activeChat.title} | SumanAI`
     : 'SumanAI Chat Platform | Smart AI - SumanOnline';
@@ -43,8 +43,10 @@ export const ChatPage = ({ onSettingsClick, onLoginClick }) => {
           />
         )}
       </Helmet>
-      {hasMessages ? <ChatThread /> : <EmptyState userName={userName} />}
-      <InputBar key={chatId || 'new'} />
+      <div className={`chat-viewport ${hasMessages ? 'has-chat' : 'is-empty'}`}>
+        {hasMessages ? <ChatThread /> : <EmptyState userName={userName} />}
+        <InputBar key={chatId || 'active'} isCentered={!hasMessages} />
+      </div>
     </MainLayout>
   );
 };
