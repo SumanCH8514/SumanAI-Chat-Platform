@@ -9,6 +9,7 @@ import AppSkeleton from '../components/AppSkeleton';
 const ToolsView = lazy(() => import('../pages/ToolsView'));
 const BGRemover = lazy(() => import('../pages/BGRemover'));
 const TextToImage = lazy(() => import('../pages/tools/TextToImage'));
+const UncensoredImage = lazy(() => import('../pages/tools/UncensoredImage'));
 const ImageGenerator = lazy(() => import('../pages/tools/ImageGenerator'));
 const FaceEnhancer = lazy(() => import('../pages/tools/FaceEnhancer'));
 const TextSummarizer = lazy(() => import('../pages/tools/TextSummarizer'));
@@ -122,6 +123,17 @@ export const AppRoutes = ({ onSettingsClick, onLoginClick }) => {
             <ProtectedRoute>
               <MainLayout onSettingsClick={onSettingsClick} onLoginClick={onLoginClick}>
                 <TextToImage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/tools/uncensored-image"
+          element={
+            <ProtectedRoute>
+              <MainLayout onSettingsClick={onSettingsClick} onLoginClick={onLoginClick}>
+                <UncensoredImage />
               </MainLayout>
             </ProtectedRoute>
           }

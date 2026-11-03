@@ -11,6 +11,7 @@ export { default as LibraryPage } from './LibraryPage';
 export { default as FilesPage } from './FilesPage';
 export { default as HistoryPage } from './HistoryPage';
 export { default as TextToImage } from './tools/TextToImage';
+export { default as UncensoredImage } from './tools/UncensoredImage';
 export { default as ImageGenerator } from './tools/ImageGenerator';
 export { default as FaceEnhancer } from './tools/FaceEnhancer';
 export { default as TextSummarizer } from './tools/TextSummarizer';

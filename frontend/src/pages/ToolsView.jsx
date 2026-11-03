@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Wrench, Image, Wand2, Eraser, Video, FileText,
   Code2, Languages, Mic, Layers, Star, ExternalLink,
-  Search, Bookmark, BookmarkCheck
+  Search, Bookmark, BookmarkCheck, Sparkles
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './ToolsView.css';
@@ -27,6 +27,16 @@ const TOOL_DEFINITIONS = [
     badge: 'New',
     type: 'dedicated',
     route: '/tools/text-to-image'
+  },
+  {
+    id: 'uncensored-image',
+    category: 'image',
+    name: 'Uncensored Image Gen',
+    desc: 'Generate text-to-image or modify photos with Qwen 2.1 uncensored diffusion model and image-to-image editing.',
+    icon: <Sparkles size={22} />,
+    badge: 'Qwen 2.1',
+    type: 'dedicated',
+    route: '/tools/uncensored-image'
   },
   {
     id: 'image-generator',

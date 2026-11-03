@@ -771,6 +771,229 @@ export default {
         }
       }
 
+      if (url.pathname === "/api/generate-uncensored-image") {
+        try {
+          const isGoogleAuth = await isGoogleAuthenticated(request, env);
+          if (!isGoogleAuth) {
+            return new Response(JSON.stringify({
+              error: "Please sign in with Google to use Uncensored Image Gen."
+            }), {
+              status: 401,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
+          if (!prompt) {
+            return new Response(JSON.stringify({ error: "Prompt is required." }), {
+              status: 400,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          const mode = body?.mode === "edit" ? "edit" : "generate";
+          const size = typeof body?.size === "string" ? body.size : "1024x1024 (1:1)";
+          const steps = typeof body?.steps === "number" ? Math.min(Math.max(body.steps, 8), 50) : 28;
+          const seed = typeof body?.seed === "number" ? Math.floor(body.seed) : 0;
+          const randomizeSeed = body?.randomizeSeed !== false;
+          const loraScale = typeof body?.loraScale === "number" ? Math.min(Math.max(body.loraScale, 0), 1.5) : 1.0;
+
+          const hfSpace = "https://a-test-user-in-the-wrold-qwen-image-21-uncensored.hf.space";
+          const hfToken = env.HF_TOKEN;
+          const hfHeaders = { "Content-Type": "application/json" };
+          if (hfToken) hfHeaders["Authorization"] = `Bearer ${hfToken}`;
+
+          let payloadData = [];
+
+          if (mode === "edit") {
+            const inputImage = body?.image;
+            if (!inputImage) {
+              return new Response(JSON.stringify({ error: "Source image is required for editing mode." }), {
+                status: 400,
+                headers: { "Content-Type": "application/json", ...corsHeaders }
+              });
+            }
+
+            let uploadedPath = null;
+            if (typeof inputImage === "string" && inputImage.startsWith("data:")) {
+              const mimeMatch = inputImage.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
+              const mime = mimeMatch ? mimeMatch[1] : "image/png";
+              const cleanB64 = inputImage.replace(/^data:[^;]+;base64,/, "");
+              const bin = atob(cleanB64);
+              const u8 = new Uint8Array(bin.length);
+              for (let i = 0; i < bin.length; i++) {
+                u8[i] = bin.charCodeAt(i);
+              }
+              const blob = new Blob([u8], { type: mime });
+              const form = new FormData();
+              form.append("files", blob, `input.${mime.split('/')[1] || 'png'}`);
+
+              const uploadRes = await fetch(`${hfSpace}/gradio_api/upload`, {
+                method: "POST",
+                headers: hfToken ? { "Authorization": `Bearer ${hfToken}` } : {},
+                body: form
+              });
+              if (uploadRes.ok) {
+                const uploadData = await uploadRes.json();
+                if (Array.isArray(uploadData) && uploadData[0]) {
+                  uploadedPath = uploadData[0];
+                }
+              }
+            } else if (typeof inputImage === "string" && inputImage.startsWith("http")) {
+              const fetchImg = await fetch(inputImage);
+              if (fetchImg.ok) {
+                const blob = await fetchImg.blob();
+                const form = new FormData();
+                form.append("files", blob, "input.png");
+                const uploadRes = await fetch(`${hfSpace}/gradio_api/upload`, {
+                  method: "POST",
+                  headers: hfToken ? { "Authorization": `Bearer ${hfToken}` } : {},
+                  body: form
+                });
+                if (uploadRes.ok) {
+                  const uploadData = await uploadRes.json();
+                  if (Array.isArray(uploadData) && uploadData[0]) {
+                    uploadedPath = uploadData[0];
+                  }
+                }
+              }
+            }
+
+            if (!uploadedPath) {
+              return new Response(JSON.stringify({ error: "Failed to upload input image to synthesis engine." }), {
+                status: 400,
+                headers: { "Content-Type": "application/json", ...corsHeaders }
+              });
+            }
+
+            payloadData = [
+              prompt,
+              { path: uploadedPath, meta: { _type: "gradio.FileData" } },
+              [],
+              steps,
+              seed,
+              randomizeSeed,
+              loraScale
+            ];
+          } else {
+            payloadData = [
+              prompt,
+              size,
+              steps,
+              seed,
+              randomizeSeed,
+              loraScale
+            ];
+          }
+
+          const callRes = await fetch(`${hfSpace}/gradio_api/call/${mode}`, {
+            method: "POST",
+            headers: hfHeaders,
+            body: JSON.stringify({ data: payloadData })
+          });
+
+          if (!callRes.ok) {
+            const errText = await callRes.text();
+            return new Response(JSON.stringify({ error: "Synthesis call rejected: " + errText }), {
+              status: callRes.status,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          const callData = await callRes.json();
+          const eventId = callData?.event_id;
+          if (!eventId) {
+            return new Response(JSON.stringify({ error: "Missing event_id from synthesis Space." }), {
+              status: 502,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          let rawImageUrl = null;
+          let usedSeed = seed;
+
+          const sseRes = await fetch(`${hfSpace}/gradio_api/call/${mode}/${eventId}`, {
+            headers: hfHeaders
+          });
+
+          if (sseRes.ok) {
+            const sseText = await sseRes.text();
+            const lines = sseText.split("\n");
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (line.startsWith("data: ")) {
+                const dataStr = line.slice(6).trim();
+                try {
+                  const parsed = JSON.parse(dataStr);
+                  if (parsed?.error) {
+                    throw new Error(parsed.error);
+                  }
+                  if (Array.isArray(parsed) && parsed[0]) {
+                    const imgObj = parsed[0];
+                    rawImageUrl = imgObj.url || (imgObj.path ? `${hfSpace}/gradio_api/file=${imgObj.path}` : null);
+                    if (typeof parsed[1] === "number") {
+                      usedSeed = parsed[1];
+                    }
+                    if (rawImageUrl) break;
+                  }
+                } catch (e) {
+                  if (e.message && !e.message.startsWith("Unexpected")) {
+                    throw e;
+                  }
+                }
+              }
+            }
+          }
+
+          if (!rawImageUrl) {
+            return new Response(JSON.stringify({ error: "Unable to synthesize image at this moment. The ZeroGPU space may be queuing; please try again shortly." }), {
+              status: 503,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          let permanentUrl = null;
+          let r2Key = null;
+          if (env.R2_BUCKET) {
+            try {
+              const imgRes = await fetch(rawImageUrl);
+              if (imgRes.ok) {
+                const imgBuffer = await imgRes.arrayBuffer();
+                r2Key = `generated-images/SumanAI_qwen_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.png`;
+                await env.R2_BUCKET.put(r2Key, imgBuffer, {
+                  httpMetadata: {
+                    contentType: 'image/png',
+                    cacheControl: 'public, max-age=31536000'
+                  }
+                });
+                permanentUrl = `https://cdn.sumanai.r2.sumanonline.com/${r2Key}`;
+              }
+            } catch {
+              void 0;
+            }
+          }
+
+          const finalUrl = permanentUrl || rawImageUrl;
+
+          return new Response(JSON.stringify({
+            success: true,
+            imageUrl: finalUrl,
+            r2Key,
+            seed: usedSeed,
+            mode,
+            prompt
+          }), {
+            status: 200,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        } catch (err) {
+          return new Response(JSON.stringify({ error: err.message || "Uncensored image generation failed." }), {
+            status: 500,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+      }
+
       if (url.pathname === "/api/tts") {
         try {
           const text = typeof body?.text === "string" ? body.text.trim() : "";
