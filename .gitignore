@@ -105,12 +105,9 @@ $RECYCLE.BIN/
 
 instructions.md
 
-.agents/*
-
+.agents
+.agents/
 tests
-
-graphify-out/cache/
-graphify-out/.*
-graphify-out/20*/
-graphify-out/*.tmp
-graphify-out/*
+tests/
+graphify-out
+graphify-out/
