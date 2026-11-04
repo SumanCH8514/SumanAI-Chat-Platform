@@ -2156,7 +2156,7 @@
       "file_type": "code",
       "norm_label": "fetch()",
       "source_file": "backend/index.mjs",
-      "source_location": "L316"
+      "source_location": "L320"
     },
     {
       "id": "backend_index_fetchwithretry",
@@ -2168,7 +2168,7 @@
       "file_type": "code",
       "norm_label": "fetchwithretry()",
       "source_file": "backend/index.mjs",
-      "source_location": "L208"
+      "source_location": "L212"
     },
     {
       "id": "backend_index_getcorsheaders",
@@ -2228,7 +2228,7 @@
       "file_type": "code",
       "norm_label": "isimagegenerationintent()",
       "source_file": "backend/index.mjs",
-      "source_location": "L241"
+      "source_location": "L245"
     },
     {
       "id": "backend_index_isprivateip",
@@ -2276,7 +2276,7 @@
       "file_type": "code",
       "norm_label": "resolvevideoparameters()",
       "source_file": "backend/index.mjs",
-      "source_location": "L273"
+      "source_location": "L277"
     },
     {
       "id": "backend_index_verifyfirebasetoken",
@@ -6525,7 +6525,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "backend/index.mjs",
-      "source_location": "L1481",
+      "source_location": "L1565",
       "weight": 1.0
     },
     {
@@ -6537,7 +6537,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "backend/index.mjs",
-      "source_location": "L2297",
+      "source_location": "L2381",
       "weight": 1.0
     },
     {
@@ -6549,7 +6549,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "backend/index.mjs",
-      "source_location": "L317",
+      "source_location": "L321",
       "weight": 1.0
     },
     {
@@ -6561,7 +6561,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "backend/index.mjs",
-      "source_location": "L324",
+      "source_location": "L328",
       "weight": 1.0
     },
     {
@@ -6573,7 +6573,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "backend/index.mjs",
-      "source_location": "L364",
+      "source_location": "L368",
       "weight": 1.0
     },
     {
@@ -6585,7 +6585,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "backend/index.mjs",
-      "source_location": "L374",
+      "source_location": "L378",
       "weight": 1.0
     },
     {
@@ -6597,7 +6597,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "backend/index.mjs",
-      "source_location": "L480",
+      "source_location": "L491",
       "weight": 1.0
     },
     {
@@ -6609,7 +6609,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "backend/index.mjs",
-      "source_location": "L650",
+      "source_location": "L695",
       "weight": 1.0
     },
     {
@@ -6621,7 +6621,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "backend/index.mjs",
-      "source_location": "L673",
+      "source_location": "L718",
       "weight": 1.0
     },
     {
@@ -19074,7 +19074,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "backend/index.mjs",
-      "source_location": "L208",
+      "source_location": "L212",
       "weight": 1.0
     },
     {
@@ -19085,7 +19085,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "backend/index.mjs",
-      "source_location": "L241",
+      "source_location": "L245",
       "weight": 1.0
     },
     {
@@ -19107,18 +19107,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "backend/index.mjs",
-      "source_location": "L273",
-      "weight": 1.0
-    },
-    {
-      "source": "backend_index",
-      "target": "backend_index_fetch",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "backend/index.mjs",
-      "source_location": "L316",
+      "source_location": "L277",
       "weight": 1.0
     },
     {
@@ -19130,6 +19119,17 @@
       "confidence_score": 1.0,
       "source_file": "backend/index.mjs",
       "source_location": "L32",
+      "weight": 1.0
+    },
+    {
+      "source": "backend_index",
+      "target": "backend_index_fetch",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/index.mjs",
+      "source_location": "L320",
       "weight": 1.0
     },
     {
@@ -24015,5 +24015,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "c8af44ce39cedfa71558174a2274659689a436dd"
+  "built_at_commit": "9c202bb660ce70abdbe33e9e6d84be952fe8767c"
 }

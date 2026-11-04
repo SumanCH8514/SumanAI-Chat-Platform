@@ -184,13 +184,17 @@ async function isGoogleAuthenticated(request, env) {
 }
 
 function isPrivateIp(hostname) {
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname === '::1') {
+  const cleanHost = (hostname || "").toLowerCase().trim().replace(/^\[|\]$/g, "");
+  if (!cleanHost || cleanHost === 'localhost' || cleanHost === '127.0.0.1' || cleanHost === '0.0.0.0' || cleanHost === '::1' || cleanHost === '::' || cleanHost.startsWith('::ffff:127.')) {
     return true;
   }
-  if (hostname.endsWith('.local') || hostname.endsWith('.internal')) {
+  if (cleanHost.endsWith('.local') || cleanHost.endsWith('.internal') || cleanHost.endsWith('.lan') || cleanHost.endsWith('.home') || cleanHost.includes('metadata.google') || cleanHost === '169.254.169.254') {
     return true;
   }
-  const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (/^\d+$/.test(cleanHost) || /^0x[0-9a-f]+$/i.test(cleanHost)) {
+    return true;
+  }
+  const ipv4Match = cleanHost.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (ipv4Match) {
     const octets = ipv4Match.slice(1).map(Number);
     if (octets.some(o => o < 0 || o > 255)) return true;
@@ -425,13 +429,20 @@ export default {
             });
           }
 
+          const responseHeaders = {
+            "Content-Type": contentType || "image/png",
+            "Cache-Control": "public, max-age=86400, s-maxage=86400",
+            ...corsHeaders
+          };
+
+          if (contentType === "image/svg+xml") {
+            responseHeaders["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+            responseHeaders["Content-Disposition"] = "inline; filename=\"image.svg\"";
+          }
+
           return new Response(imageBlob, {
             status: 200,
-            headers: {
-              "Content-Type": contentType || "image/png",
-              "Cache-Control": "public, max-age=86400, s-maxage=86400",
-              ...corsHeaders
-            }
+            headers: responseHeaders
           });
         } catch (fetchErr) {
           const isTimeout = fetchErr.name === 'AbortError' || fetchErr.message?.includes('aborted');
@@ -563,6 +574,16 @@ export default {
 
       if (url.pathname === "/api/delete-image" || url.pathname === "/api/delete-video") {
         try {
+          const authHeader = request.headers.get("Authorization") || "";
+          const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+          const verifiedUser = token ? await verifyFirebaseToken(token, env?.FIREBASE_PROJECT_ID || "sumanai-sumanonline") : null;
+          if (!verifiedUser) {
+            return new Response(JSON.stringify({ error: "Authentication required to delete media" }), {
+              status: 401,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
           const targetUrl = body?.url || "";
           let key = body?.key || "";
 
@@ -578,7 +599,14 @@ export default {
             }
           }
 
-          if (key && env.R2_BUCKET) {
+          if (!key || key.includes("..") || (!key.startsWith("generated-images/") && !key.startsWith("generated-videos/") && !key.startsWith("uncensored/"))) {
+            return new Response(JSON.stringify({ error: "Invalid or unauthorized asset key" }), {
+              status: 400,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          if (env.R2_BUCKET) {
             try {
               await env.R2_BUCKET.delete(key);
             } catch {
@@ -600,6 +628,16 @@ export default {
 
       if (url.pathname === "/api/upload-watermarked-image") {
         try {
+          const authHeader = request.headers.get("Authorization") || "";
+          const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+          const verifiedUser = token ? await verifyFirebaseToken(token, env?.FIREBASE_PROJECT_ID || "sumanai-sumanonline") : null;
+          if (!verifiedUser) {
+            return new Response(JSON.stringify({ error: "Authentication required to upload media" }), {
+              status: 401,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
           let key = typeof body?.key === "string" ? body.key.trim() : "";
           const imageBase64 = typeof body?.imageBase64 === "string" ? body.imageBase64.trim() : "";
 
@@ -610,7 +648,14 @@ export default {
             });
           }
 
-          if (!key || !key.startsWith("generated-images/")) {
+          if (imageBase64.length > 15 * 1024 * 1024) {
+            return new Response(JSON.stringify({ error: "Image payload exceeds maximum allowed size (10MB)" }), {
+              status: 413,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          if (!key || !key.startsWith("generated-images/") || key.includes("..")) {
             key = `generated-images/SumanAI_img_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
           }
 
@@ -1350,6 +1395,45 @@ export default {
         }
 
         const normalizedGateway = (gateway || "").toLowerCase();
+
+        if (normalizedGateway === "razorpay" && env?.RAZORPAY_KEY_SECRET) {
+          const signature = body?.razorpay_signature || body?.signature || "";
+          if (!signature || !paymentId) {
+            return new Response(JSON.stringify({ error: "Missing required Razorpay signature or payment identifier", verified: false }), {
+              status: 400,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+
+          try {
+            const enc = new TextEncoder();
+            const hmacKey = await crypto.subtle.importKey(
+              "raw",
+              enc.encode(env.RAZORPAY_KEY_SECRET),
+              { name: "HMAC", hash: "SHA-256" },
+              false,
+              ["sign"]
+            );
+            const dataToSign = enc.encode(`${orderId}|${paymentId}`);
+            const sigBuffer = await crypto.subtle.sign("HMAC", hmacKey, dataToSign);
+            const generatedSignature = Array.from(new Uint8Array(sigBuffer))
+              .map(b => b.toString(16).padStart(2, "0"))
+              .join("");
+
+            if (generatedSignature !== signature) {
+              return new Response(JSON.stringify({ error: "Invalid payment cryptographic signature", verified: false }), {
+                status: 400,
+                headers: { "Content-Type": "application/json", ...corsHeaders }
+              });
+            }
+          } catch {
+            return new Response(JSON.stringify({ error: "Signature verification failed", verified: false }), {
+              status: 500,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
+        }
+
         const verifiedTimestamp = Date.now();
         const txnEntropy = Math.random().toString(36).substring(2, 7).toUpperCase();
         const transactionId = `TXN_${normalizedGateway.toUpperCase()}_${verifiedTimestamp}_${txnEntropy}`;
@@ -2447,10 +2531,13 @@ export default {
           })
         ];
 
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel || 'gemini-1.5-flash'}:streamGenerateContent?alt=sse&key=${API_KEY}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel || 'gemini-1.5-flash'}:streamGenerateContent?alt=sse`;
         const response = await fetchWithRetry(geminiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': API_KEY
+          },
           body: JSON.stringify({ contents, tools: smartSearch ? [{ google_search: {} }] : [] }),
           signal: request.signal
         });

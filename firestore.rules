@@ -83,14 +83,37 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create: if isValidUser(request.resource.data, userId)
         && (
-          (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role in ['user', 'pro']))
+          (
+            isOwner(userId)
+            && (!('role' in request.resource.data) || request.resource.data.role == 'user')
+            && (!('plan' in request.resource.data) || request.resource.data.plan == 'free')
+            && (!('walletBalance' in request.resource.data) || request.resource.data.walletBalance == 0)
+            && (!('credits' in request.resource.data) || (request.resource.data.credits >= 0 && request.resource.data.credits <= 100))
+            && !('proStartedAt' in request.resource.data)
+            && !('proExpiresAt' in request.resource.data)
+            && !('lastPaymentGateway' in request.resource.data)
+            && !('lastTransactionId' in request.resource.data)
+            && (!('referralCount' in request.resource.data) || request.resource.data.referralCount == 0)
+            && (!('referralCreditsEarned' in request.resource.data) || request.resource.data.referralCreditsEarned == 0)
+          )
           || isAdmin()
         );
       allow update: if isValidUser(request.resource.data, userId)
         && request.resource.data.uid == resource.data.uid
         && (!('createdAt' in resource.data) || (!('createdAt' in request.resource.data) || request.resource.data.createdAt == resource.data.createdAt))
         && (
-          (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role in ['user', 'pro'] || ('role' in resource.data && request.resource.data.role == resource.data.role)))
+          (
+            isOwner(userId)
+            && (!('role' in request.resource.data) || request.resource.data.role != 'admin')
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'displayName', 'photoURL', 'email', 'phoneNumber', 'countryCode', 'address',
+              'preferences', 'preferredCurrency', 'updatedAt', 'lastLogin', 'referralCode',
+              'referredBy', 'referredByUid', 'hasRedeemedReferral', 'referralCount',
+              'referralCreditsEarned', 'credits', 'walletBalance', 'walletUpdatedAt',
+              'plan', 'proStartedAt', 'proExpiresAt', 'lastPaymentGateway', 'lastTransactionId',
+              'role'
+            ])
+          )
           || isAdmin()
         );
       allow delete: if isOwner(userId) || isAdmin();
@@ -112,13 +135,8 @@ service cloud.firestore {
 
       match /transactions/{txnId} {
         allow read: if isOwner(userId) || isAdmin();
-        allow create: if isValidTransaction(request.resource.data, txnId)
-          && (
-            (isOwner(userId) && (!('userId' in request.resource.data) || request.resource.data.userId == userId))
-            || isAdmin()
-          );
-        allow update: if isAdmin() && isValidTransaction(request.resource.data, txnId);
-        allow delete: if isAdmin();
+        allow create: if isValidTransaction(request.resource.data, txnId) && (isOwner(userId) || isAdmin());
+        allow update, delete: if isAdmin();
       }
 
       match /referrals/{refId} {
@@ -129,14 +147,8 @@ service cloud.firestore {
     match /transactions/{txnId} {
       allow get: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow list: if isAdmin();
-      allow create: if isAuthenticated()
-        && isValidTransaction(request.resource.data, txnId)
-        && (
-          request.resource.data.userId == request.auth.uid
-          || isAdmin()
-        );
-      allow update: if isAdmin() && isValidTransaction(request.resource.data, txnId);
-      allow delete: if isAdmin();
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data, txnId) && (request.resource.data.userId == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin();
     }
 
     match /{path=**}/transactions/{txnId} {
@@ -176,8 +188,7 @@ service cloud.firestore {
     }
 
     match /system/{docId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if isAdmin();
     }
 
     match /{document=**} {
