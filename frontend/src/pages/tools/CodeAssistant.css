@@ -135,9 +135,129 @@
   color: var(--text-primary);
 }
 
+.tool-grid-options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.tool-option-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--bg-card, #ffffff);
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tool-option-card:hover {
+  border-color: #cbd5e1;
+  background: var(--bg-hover, #faf5ff);
+}
+
+.tool-option-card.active {
+  border-color: #7c3aed;
+  background: #f5f3ff;
+  box-shadow: 0 1px 4px rgba(124, 58, 237, 0.08);
+}
+
+.code-mode-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+}
+
+.tool-option-card.active .code-mode-header {
+  color: #7c3aed;
+}
+
+.tool-option-desc {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+  line-height: 1.35;
+}
+
+.tool-option-card.active .tool-option-desc {
+  color: #6b21a8;
+}
+
+[data-theme='dark'] .tool-option-card {
+  background: var(--bg-card, #1e293b);
+  border-color: var(--border-light, #334155);
+}
+
+[data-theme='dark'] .tool-option-card.active {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: #8b5cf6;
+}
+
+[data-theme='dark'] .tool-option-card.active .code-mode-header {
+  color: #c4b5fd;
+}
+
+[data-theme='dark'] .tool-option-card.active .tool-option-desc {
+  color: #ddd6fe;
+}
+
 @media (max-width: 980px) {
   .code-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .code-editor-pane {
+    min-height: auto;
+    padding: 14px;
+    gap: 14px;
+  }
+
+  .code-result-pane {
+    min-height: auto;
+    padding: 14px;
+  }
+
+  .code-result-container {
+    padding: 14px;
+    min-height: 220px;
+  }
+
+  .code-editor-textarea {
+    min-height: 140px;
+    font-size: 12px;
+    padding: 10px;
+  }
+
+  .code-lang-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tool-grid-options {
+    gap: 6px;
+  }
+
+  .tool-option-card {
+    padding: 9px 11px;
+  }
+
+  .code-mode-header {
+    font-size: 12.5px;
+  }
+
+  .tool-option-desc {
+    font-size: 10.5px;
   }
 }
 

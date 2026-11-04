@@ -36,4 +36,4 @@ export const DEFAULT_VISION_MODEL = MODEL_LIST.find(m => m.id === '@cf/meta/llam
 export const DEFAULT_IMAGE_GEN_MODEL = MODEL_LIST.find(m => m.id === '@cf/black-forest-labs/flux-1-schnell') || MODEL_LIST.find(m => m.supportsImageGen);
 export const DEFAULT_VIDEO_GEN_MODEL = MODEL_LIST.find(m => m.id === 'lightricks/ltx-video-distilled') || MODEL_LIST.find(m => m.supportsVideoGen);
 
-export { formatModelTitle, resolveModelBadge } from '../utils/modelUtils.js';
+export { formatModelTitle, resolveModelBadge, formatModelBadgeName } from '../utils/modelUtils.js';

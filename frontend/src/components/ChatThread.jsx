@@ -21,7 +21,7 @@ import remarkGfm from 'remark-gfm';
 import { useChatStore } from '../store/useChatStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useModel } from '../hooks/useModel';
-import { MODEL_LIST, formatModelTitle, resolveModelBadge } from '../constants/models';
+import { MODEL_LIST, formatModelTitle, resolveModelBadge, formatModelBadgeName } from '../constants/models';
 import { downloadImage } from '../utils/downloadUtils';
 import { ttsService } from '../services/ttsService';
 import { getVoiceById, DEFAULT_VOICE_ID } from '../constants/voices';
@@ -464,6 +464,7 @@ const ChatThread = () => {
         const rawModel = msg.model || selectedModel?.name || selectedModel?.id || 'SumanAI';
         const displayModelName = formatModelTitle(rawModel, msg.content);
         const modelBadge = resolveModelBadge(displayModelName);
+        const mobileModelBadge = formatModelBadgeName(rawModel, msg.content);
 
         return (
           <div key={messageId} className="message-wrapper ai">
@@ -471,7 +472,7 @@ const ChatThread = () => {
               <div className="mobile-ai-header-left">
                 <img src="/favicon.png" alt="SumanAI" className="mobile-ai-avatar-icon" />
                 <span className="mobile-ai-name">SumanAI</span>
-                <span className="mobile-ai-badge">AI</span>
+                <span className="mobile-ai-badge" title={mobileModelBadge}>{mobileModelBadge}</span>
               </div>
               <span className="mobile-ai-time">{formatMessageTime(msg)}</span>
             </div>
@@ -616,6 +617,52 @@ const ChatThread = () => {
 
                       <button
                         type="button"
+                        className={`msg-action-btn ${speakingIdx === idx ? 'active speaking' : ''} ${loadingTTSIdx === idx ? 'active loading-audio' : ''}`}
+                        onClick={() => handleToggleSpeakMessage(idx, msg.content)}
+                        title={speakingIdx === idx ? 'Stop listening' : loadingTTSIdx === idx ? 'Synthesizing voice...' : 'Read aloud'}
+                        aria-label="Read aloud"
+                      >
+                        {speakingIdx === idx ? (
+                          <VolumeX size={15} />
+                        ) : loadingTTSIdx === idx ? (
+                          <Loader2 size={15} className="tts-spinner" />
+                        ) : (
+                          <Volume2 size={15} />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="msg-action-btn"
+                        onClick={() => setIsVoiceModalOpen(true)}
+                        title={`Voice model (${currentVoice.name})`}
+                        aria-label={`Select AI voice model. Currently using ${currentVoice.name}`}
+                      >
+                        <Speech size={15} />
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`msg-action-btn ${sharedIdx === idx ? 'active' : ''}`}
+                        onClick={() => handleShareMessage(idx, msg.content)}
+                        title={sharedIdx === idx ? 'Link Copied!' : 'Share message'}
+                        aria-label="Share message"
+                      >
+                        <Share2 size={15} />
+                      </button>
+
+                      <button
+                        type="button"
+                        className="msg-action-btn"
+                        onClick={() => handleRegenerateMessage(idx)}
+                        title="Regenerate response"
+                        aria-label="Regenerate response"
+                      >
+                        <RotateCw size={15} />
+                      </button>
+
+                      <button
+                        type="button"
                         className={`msg-action-btn ${feedbackMap[idx] === 'like' ? 'active liked' : ''}`}
                         onClick={() => handleToggleFeedback(idx, 'like')}
                         title="Good response"
@@ -632,52 +679,6 @@ const ChatThread = () => {
                         aria-label="Thumbs down"
                       >
                         <ThumbsDown size={15} />
-                      </button>
-
-                      <button
-                        type="button"
-                        className="msg-action-btn"
-                        onClick={() => handleRegenerateMessage(idx)}
-                        title="Regenerate response"
-                        aria-label="Regenerate response"
-                      >
-                        <RotateCw size={15} />
-                      </button>
-
-                      <button
-                        type="button"
-                        className={`msg-action-btn ${sharedIdx === idx ? 'active' : ''}`}
-                        onClick={() => handleShareMessage(idx, msg.content)}
-                        title={sharedIdx === idx ? 'Link Copied!' : 'Share message'}
-                        aria-label="Share message"
-                      >
-                        <Share2 size={15} />
-                      </button>
-
-                      <button
-                        type="button"
-                        className={`msg-action-btn desktop-only-action ${speakingIdx === idx ? 'active speaking' : ''} ${loadingTTSIdx === idx ? 'active loading-audio' : ''}`}
-                        onClick={() => handleToggleSpeakMessage(idx, msg.content)}
-                        title={speakingIdx === idx ? 'Stop listening' : loadingTTSIdx === idx ? 'Synthesizing voice...' : 'Read aloud'}
-                        aria-label="Read aloud"
-                      >
-                        {speakingIdx === idx ? (
-                          <VolumeX size={15} />
-                        ) : loadingTTSIdx === idx ? (
-                          <Loader2 size={15} className="tts-spinner" />
-                        ) : (
-                          <Volume2 size={15} />
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        className="msg-action-btn desktop-only-action"
-                        onClick={() => setIsVoiceModalOpen(true)}
-                        title={`Voice model (${currentVoice.name})`}
-                        aria-label={`Select AI voice model. Currently using ${currentVoice.name}`}
-                      >
-                        <Speech size={15} />
                       </button>
                     </div>
 

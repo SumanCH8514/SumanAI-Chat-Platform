@@ -167,7 +167,6 @@ const InputBar = ({ isCentered = false }) => {
   const cameraRef = useRef(null);
   const inputRef = useRef(null);
   const actionMenuRef = useRef(null);
-  const mobileActionMenuRef = useRef(null);
   const abortControllerRef = useRef(null);
   const isGeneratingRef = useRef(false);
   const recognitionRef = useRef(null);
@@ -195,8 +194,7 @@ const InputBar = ({ isCentered = false }) => {
   useEffect(() => {
     const handleClickOutside = (e) => {
       const inDesktop = actionMenuRef.current && actionMenuRef.current.contains(e.target);
-      const inMobile = mobileActionMenuRef.current && mobileActionMenuRef.current.contains(e.target);
-      if (!inDesktop && !inMobile) {
+      if (!inDesktop) {
         setShowActionMenu(false);
       }
     };
@@ -1055,128 +1053,6 @@ const InputBar = ({ isCentered = false }) => {
           onChange={handleFileChange}
         />
       </div>
-
-      {!isCentered && (
-        <div className="input-mobile-docked-bar">
-          {attachments.length > 0 && (
-            <div className="attachment-preview-bar">
-              {attachments.map((file, idx) => (
-                <div key={idx} className="attachment-thumb">
-                  <img src={`data:${file.type};base64,${file.data}`} alt="preview" />
-                  <button className="remove-attachment" onClick={() => removeAttachment(idx)} aria-label="Remove image">
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="input-mobile-docked-row">
-            <div className="action-menu-container" ref={mobileActionMenuRef}>
-              <button
-                type="button"
-                className={`action-trigger-btn ${showActionMenu ? 'active' : ''}`}
-                onClick={() => setShowActionMenu(!showActionMenu)}
-                title="Add tools & content"
-                aria-label="Add tools and content"
-              >
-                <Plus size={19} />
-              </button>
-
-              {showActionMenu && (
-                <div className="action-menu">
-                  <button className="action-item" onClick={() => cameraRef.current?.click()}>
-                    <Camera size={16} />
-                    <span>Take photo</span>
-                  </button>
-                  <button className="action-item" onClick={() => fileRef.current?.click()}>
-                    <Paperclip size={16} />
-                    <span>Add photos & files</span>
-                  </button>
-                  <div className="action-divider" />
-                  <button
-                    className={`action-item ${hasImageGenActive ? 'active' : ''}`}
-                    onClick={handleToggleImageGen}
-                  >
-                    <ImageIcon size={16} />
-                    <span>Create image</span>
-                    {hasImageGenActive && <span className="action-active-dot" />}
-                  </button>
-                  <button
-                    className={`action-item ${hasVideoGenActive ? 'active' : ''}`}
-                    onClick={handleToggleVideoGen}
-                  >
-                    <Film size={16} />
-                    <span>Create video</span>
-                    {hasVideoGenActive && <span className="action-active-dot" />}
-                  </button>
-                  <button
-                    className={`action-item ${deepThinking ? 'active' : ''}`}
-                    onClick={() => { setDeepThinking(!deepThinking); setShowActionMenu(false); }}
-                  >
-                    <Lightbulb size={16} />
-                    <span>Deep thinking</span>
-                    {deepThinking && <span className="action-active-dot" />}
-                  </button>
-                  <button className="action-item" onClick={() => { toggleCanvas(); setShowActionMenu(false); }}>
-                    <PenTool size={16} />
-                    <span>Interactive canvas</span>
-                  </button>
-                  <button
-                    className={`action-item ${codeMode ? 'active' : ''}`}
-                    onClick={() => { handleToggleCodeMode(); setShowActionMenu(false); }}
-                  >
-                    <Code2 size={16} />
-                    <span>Write code</span>
-                    {codeMode && <span className="action-active-dot" />}
-                  </button>
-                  <button
-                    className={`action-item ${summarizeMode ? 'active' : ''}`}
-                    onClick={() => { handleToggleSummarizeMode(); setShowActionMenu(false); }}
-                  >
-                    <FileText size={16} />
-                    <span>Summarize text</span>
-                    {summarizeMode && <span className="action-active-dot" />}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="input-pill-body">
-              <textarea
-                placeholder={hasImageGenActive ? "Describe the image you want..." : (hasVideoGenActive ? "Describe the video..." : (codeMode ? "Describe code to solve..." : (summarizeMode ? "Paste text to summarize..." : "Ask anything...")))}
-                value={text}
-                onChange={handleTextChange}
-                onKeyDown={handleKeyDown}
-                rows={1}
-                className="input-textarea"
-              />
-
-              <button
-                type="button"
-                className={`mic-btn ${isListening ? 'listening' : ''}`}
-                onClick={handleToggleMic}
-                disabled={isGenerating}
-                title={isListening ? "Listening... Click to stop" : "Voice input"}
-                aria-label={isListening ? "Listening... Click to stop" : "Voice input"}
-              >
-                <Mic size={18} />
-              </button>
-
-              <button
-                type="button"
-                className={`send-btn ${isGenerating ? 'stop' : ''}`}
-                onClick={isGenerating ? handleStop : () => handleSend()}
-                disabled={!text.trim() && attachments.length === 0 && !isGenerating}
-                title={isGenerating ? "Stop generating" : "Send message"}
-                aria-label={isGenerating ? "Stop generating" : "Send message"}
-              >
-                {isGenerating ? <Square size={14} fill="currentColor" /> : <Send size={15} className="send-arrow-icon" />}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {isCentered && (
         <>

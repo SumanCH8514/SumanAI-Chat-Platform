@@ -373,7 +373,7 @@ Rules:
                 </div>
                 <h3 className="empty-state-title">Review Pipeline Ready</h3>
                 <p className="empty-state-desc">
-                  Choose an audit focus on the left, paste your source code, and run diagnostics to receive line-by-line optimizations.
+                  Select an audit focus above, paste your source code, and run diagnostics to receive line-by-line optimizations.
                 </p>
 
                 <div className="empty-features-grid">

@@ -372,8 +372,7 @@
 .mobile-chat-brand,
 .mobile-chat-header-left,
 .mobile-chat-subbar,
-.mobile-chat-header-actions,
-.input-mobile-docked-bar {
+.mobile-chat-header-actions {
   display: none !important;
 }
 
@@ -1801,125 +1800,6 @@
   .dark .input-container.bottom-docked {
     background: var(--bg-sidebar) !important;
     border-top-color: var(--border-light) !important;
-  }
-
-  .input-container.bottom-docked .input-bar.standard-bar {
-    display: none !important;
-  }
-
-  .input-mobile-docked-bar {
-    display: flex !important;
-    flex-direction: column;
-    width: 100%;
-    gap: 8px;
-  }
-
-  .input-mobile-docked-row {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    gap: 8px;
-  }
-
-  .input-mobile-docked-row .action-trigger-btn {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #64748b;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-    flex-shrink: 0;
-  }
-
-  [data-theme="dark"] .input-mobile-docked-row .action-trigger-btn,
-  .dark .input-mobile-docked-row .action-trigger-btn {
-    background: var(--bg-card);
-    border-color: var(--border-light);
-    color: #9ca3af;
-  }
-
-  .input-pill-body {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 24px;
-    padding: 4px 6px 4px 14px;
-    min-height: 42px;
-    min-width: 0;
-    gap: 6px;
-    transition: border-color 0.15s ease, background 0.15s ease;
-  }
-
-  [data-theme="dark"] .input-pill-body,
-  .dark .input-pill-body {
-    background: var(--bg-input, rgba(255, 255, 255, 0.04));
-    border-color: var(--border-light);
-  }
-
-  .input-pill-body:focus-within {
-    border-color: #7c3aed;
-    background: #ffffff;
-  }
-
-  [data-theme="dark"] .input-pill-body:focus-within,
-  .dark .input-pill-body:focus-within {
-    background: var(--bg-card);
-  }
-
-  .input-pill-body .input-textarea {
-    flex: 1;
-    min-height: 24px;
-    height: 24px;
-    max-height: 120px;
-    padding: 2px 0;
-    font-size: 14px;
-    line-height: 1.4;
-    border: none;
-    outline: none;
-    background: transparent;
-    color: var(--text-primary);
-    resize: none;
-  }
-
-  .input-pill-body .mic-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: transparent;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #64748b;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: color 0.15s ease;
-  }
-
-  .input-pill-body .send-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-    background: #7c3aed;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ffffff;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background 0.15s ease, opacity 0.15s ease;
-  }
-
-  .input-pill-body .send-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
   }
 
   .input-container.is-centered {

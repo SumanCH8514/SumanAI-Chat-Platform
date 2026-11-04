@@ -795,17 +795,47 @@ export default {
 
           const mode = body?.mode === "edit" ? "edit" : "generate";
           const size = typeof body?.size === "string" ? body.size : "1024x1024 (1:1)";
-          const steps = typeof body?.steps === "number" ? Math.min(Math.max(body.steps, 8), 50) : 28;
+          const steps = typeof body?.steps === "number" ? Math.min(Math.max(body.steps, 4), 40) : 28;
           const seed = typeof body?.seed === "number" ? Math.floor(body.seed) : 0;
           const randomizeSeed = body?.randomizeSeed !== false;
           const loraScale = typeof body?.loraScale === "number" ? Math.min(Math.max(body.loraScale, 0), 1.5) : 1.0;
 
-          const hfSpace = "https://a-test-user-in-the-wrold-qwen-image-21-uncensored.hf.space";
+          let mappedAspectRatio = "Square \u00b7 1:1 (1024x1024)";
+          let targetWidth = 1024;
+          let targetHeight = 1024;
+          if (typeof size === "string") {
+            if (size.includes("16:9")) {
+              mappedAspectRatio = "Landscape \u00b7 16:9 (1344x768)";
+              targetWidth = 1344;
+              targetHeight = 768;
+            } else if (size.includes("9:16")) {
+              mappedAspectRatio = "Portrait \u00b7 9:16 (768x1344)";
+              targetWidth = 768;
+              targetHeight = 1344;
+            } else if (size.includes("4:3")) {
+              mappedAspectRatio = "Landscape \u00b7 4:3 (1152x864)";
+              targetWidth = 1152;
+              targetHeight = 864;
+            } else if (size.includes("3:4")) {
+              mappedAspectRatio = "Portrait \u00b7 3:4 (864x1152)";
+              targetWidth = 864;
+              targetHeight = 1152;
+            }
+          }
+
+          const candidateSpaces = [
+            "https://a-test-user-in-the-wrold-qwen-image-2-1-uncensor-a9bf7a3.hf.space",
+            "https://guaryn-qwen-image-2-1-uncensored-aio-loras.hf.space",
+            "https://daankular-qwen-image-2-1-uncensored-aio-loras.hf.space",
+            "https://anygork-qwen-image-2-1-uncensored-aio-loras-2.hf.space"
+          ];
+
           const hfToken = env.HF_TOKEN;
           const hfHeaders = { "Content-Type": "application/json" };
           if (hfToken) hfHeaders["Authorization"] = `Bearer ${hfToken}`;
 
-          let payloadData = [];
+          let imageUint8 = null;
+          let mimeType = "image/png";
 
           if (mode === "edit") {
             const inputImage = body?.image;
@@ -816,18 +846,18 @@ export default {
               });
             }
 
-            let uploadedPath = null;
-            let imageUint8 = null;
-            let mimeType = "image/png";
-
             if (typeof inputImage === "string" && inputImage.startsWith("data:")) {
               const mimeMatch = inputImage.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
               mimeType = mimeMatch ? mimeMatch[1] : "image/png";
               const cleanB64 = inputImage.replace(/^data:[^;]+;base64,/, "");
-              const bin = atob(cleanB64);
-              imageUint8 = new Uint8Array(bin.length);
-              for (let i = 0; i < bin.length; i++) {
-                imageUint8[i] = bin.charCodeAt(i);
+              try {
+                const bin = atob(cleanB64);
+                imageUint8 = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) {
+                  imageUint8[i] = bin.charCodeAt(i);
+                }
+              } catch {
+                imageUint8 = null;
               }
             } else if (typeof inputImage === "string" && (inputImage.startsWith("http://") || inputImage.startsWith("https://"))) {
               let r2Key = null;
@@ -868,8 +898,23 @@ export default {
               }
             }
 
-            if (imageUint8 && imageUint8.length > 0) {
-              try {
+            if (!imageUint8 || imageUint8.length === 0) {
+              return new Response(JSON.stringify({ error: "Source image could not be loaded or parsed." }), {
+                status: 400,
+                headers: { "Content-Type": "application/json", ...corsHeaders }
+              });
+            }
+          }
+
+          let rawImageUrl = null;
+          let usedSeed = seed;
+          let activeSpaceUrl = null;
+
+          for (const space of candidateSpaces) {
+            try {
+              let uploadedPath = null;
+
+              if (mode === "edit") {
                 const extension = mimeType.includes("jpeg") || mimeType.includes("jpg") ? "jpg" : "png";
                 const blob = new Blob([imageUint8], { type: mimeType });
                 const form = new FormData();
@@ -878,130 +923,235 @@ export default {
                 const uploadHeaders = {};
                 if (hfToken) uploadHeaders["Authorization"] = `Bearer ${hfToken}`;
 
-                const uploadRes = await fetch(`${hfSpace}/gradio_api/upload`, {
+                const uploadRes = await fetch(`${space}/gradio_api/upload`, {
                   method: "POST",
                   headers: uploadHeaders,
                   body: form
                 });
 
-                if (uploadRes.ok) {
-                  const uploadData = await uploadRes.json();
-                  if (Array.isArray(uploadData) && uploadData[0]) {
-                    uploadedPath = uploadData[0];
-                  }
+                if (!uploadRes.ok) {
+                  continue;
                 }
-              } catch {
-                uploadedPath = null;
-              }
-            }
 
-            if (!uploadedPath) {
-              return new Response(JSON.stringify({ error: "Failed to upload input image to synthesis engine." }), {
-                status: 400,
-                headers: { "Content-Type": "application/json", ...corsHeaders }
+                const uploadData = await uploadRes.json();
+                if (!Array.isArray(uploadData) || !uploadData[0]) {
+                  continue;
+                }
+                uploadedPath = uploadData[0];
+              }
+
+              const payloadData = [
+                prompt,
+                mode === "edit" ? "Edit Image (1 Ref)" : "Text to Image",
+                mode === "edit" ? { path: uploadedPath, meta: { _type: "gradio.FileData" } } : null,
+                null,
+                "None (Base Uncensored)",
+                loraScale,
+                null,
+                null,
+                mappedAspectRatio,
+                steps,
+                seed,
+                randomizeSeed
+              ];
+
+              const callRes = await fetch(`${space}/gradio_api/call/generate`, {
+                method: "POST",
+                headers: hfHeaders,
+                body: JSON.stringify({ data: payloadData })
               });
-            }
 
-            payloadData = [
-              prompt,
-              { path: uploadedPath, meta: { _type: "gradio.FileData" } },
-              [],
-              steps,
-              seed,
-              randomizeSeed,
-              loraScale
-            ];
-          } else {
-            payloadData = [
-              prompt,
-              size,
-              steps,
-              seed,
-              randomizeSeed,
-              loraScale
-            ];
-          }
+              if (!callRes.ok) {
+                continue;
+              }
 
-          const callRes = await fetch(`${hfSpace}/gradio_api/call/${mode}`, {
-            method: "POST",
-            headers: hfHeaders,
-            body: JSON.stringify({ data: payloadData })
-          });
+              const callData = await callRes.json();
+              const eventId = callData?.event_id;
+              if (!eventId) {
+                continue;
+              }
 
-          if (!callRes.ok) {
-            const errText = await callRes.text();
-            return new Response(JSON.stringify({ error: "Synthesis call rejected: " + errText }), {
-              status: callRes.status,
-              headers: { "Content-Type": "application/json", ...corsHeaders }
-            });
-          }
+              const sseRes = await fetch(`${space}/gradio_api/call/generate/${eventId}`, {
+                headers: hfHeaders
+              });
 
-          const callData = await callRes.json();
-          const eventId = callData?.event_id;
-          if (!eventId) {
-            return new Response(JSON.stringify({ error: "Missing event_id from synthesis Space." }), {
-              status: 502,
-              headers: { "Content-Type": "application/json", ...corsHeaders }
-            });
-          }
-
-          let rawImageUrl = null;
-          let usedSeed = seed;
-
-          const sseRes = await fetch(`${hfSpace}/gradio_api/call/${mode}/${eventId}`, {
-            headers: hfHeaders
-          });
-
-          if (sseRes.ok) {
-            const sseText = await sseRes.text();
-            const lines = sseText.split("\n");
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i].trim();
-              if (line.startsWith("data: ")) {
-                const dataStr = line.slice(6).trim();
-                try {
-                  const parsed = JSON.parse(dataStr);
-                  if (parsed?.error) {
-                    throw new Error(parsed.error);
-                  }
-                  if (Array.isArray(parsed) && parsed[0]) {
-                    const imgObj = parsed[0];
-                    rawImageUrl = imgObj.url || (imgObj.path ? `${hfSpace}/gradio_api/file=${imgObj.path}` : null);
-                    if (typeof parsed[1] === "number") {
-                      usedSeed = parsed[1];
+              if (sseRes.ok) {
+                const sseText = await sseRes.text();
+                const lines = sseText.split("\n");
+                for (let i = 0; i < lines.length; i++) {
+                  const line = lines[i].trim();
+                  if (line.startsWith("data: ")) {
+                    const dataStr = line.slice(6).trim();
+                    try {
+                      const parsed = JSON.parse(dataStr);
+                      if (parsed && typeof parsed === "object" && parsed.error) {
+                        break;
+                      }
+                      if (Array.isArray(parsed) && parsed[0]) {
+                        const imgObj = parsed[0];
+                        const candidateUrl = imgObj.url || (imgObj.path ? `${space}/gradio_api/file=${imgObj.path}` : null);
+                        if (candidateUrl) {
+                          rawImageUrl = candidateUrl;
+                          activeSpaceUrl = space;
+                          if (typeof parsed[2] === "number") {
+                            usedSeed = parsed[2];
+                          } else if (typeof parsed[1] === "number") {
+                            usedSeed = parsed[1];
+                          }
+                          break;
+                        }
+                      }
+                    } catch {
+                      void 0;
                     }
-                    if (rawImageUrl) break;
-                  }
-                } catch (e) {
-                  if (e.message && !e.message.startsWith("Unexpected")) {
-                    throw e;
                   }
                 }
               }
+
+              if (rawImageUrl) {
+                break;
+              }
+            } catch {
+              continue;
             }
           }
+
+          if (!rawImageUrl && mode === "edit" && imageUint8 && imageUint8.length > 0) {
+            try {
+              const extension = mimeType.includes("jpeg") || mimeType.includes("jpg") ? "jpg" : "png";
+              const blob = new Blob([imageUint8], { type: mimeType });
+              const form = new FormData();
+              form.append("files", blob, `input.${extension}`);
+
+              const uploadRes = await fetch("https://kulkas2pintu-qwen-edit-image.hf.space/gradio_api/upload", {
+                method: "POST",
+                headers: hfToken ? { "Authorization": `Bearer ${hfToken}` } : {},
+                body: form
+              });
+
+              if (uploadRes.ok) {
+                const upData = await uploadRes.json();
+                const upPath = Array.isArray(upData) ? upData[0] : null;
+                if (upPath) {
+                  const editPayload = [
+                    { path: upPath, meta: { _type: "gradio.FileData" } },
+                    prompt,
+                    "",
+                    null,
+                    seed,
+                    randomizeSeed,
+                    loraScale,
+                    Math.min(steps, 8),
+                    true,
+                    65,
+                    1024,
+                    true,
+                    false
+                  ];
+
+                  const editCall = await fetch("https://kulkas2pintu-qwen-edit-image.hf.space/gradio_api/call/edit", {
+                    method: "POST",
+                    headers: hfHeaders,
+                    body: JSON.stringify({ data: editPayload })
+                  });
+
+                  if (editCall.ok) {
+                    const editData = await editCall.json();
+                    const eid = editData?.event_id;
+                    if (eid) {
+                      const editSse = await fetch(`https://kulkas2pintu-qwen-edit-image.hf.space/gradio_api/call/edit/${eid}`, {
+                        headers: hfHeaders
+                      });
+                      if (editSse.ok) {
+                        const text = await editSse.text();
+                        const lines = text.split("\n");
+                        for (const line of lines) {
+                          if (line.trim().startsWith("data: ")) {
+                            try {
+                              const parsed = JSON.parse(line.trim().slice(6).trim());
+                              if (Array.isArray(parsed) && parsed[0]) {
+                                const img = parsed[0];
+                                const candidate = img.url || (img.path ? `https://kulkas2pintu-qwen-edit-image.hf.space/gradio_api/file=${img.path}` : null);
+                                if (candidate) {
+                                  rawImageUrl = candidate;
+                                  activeSpaceUrl = "https://kulkas2pintu-qwen-edit-image.hf.space";
+                                  if (typeof parsed[1] === "number") usedSeed = parsed[1];
+                                  break;
+                                }
+                              }
+                            } catch {
+                              void 0;
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            } catch {
+              void 0;
+            }
+          }
+
+          let imageBuffer = null;
 
           if (!rawImageUrl) {
-            return new Response(JSON.stringify({ error: "Unable to synthesize image at this moment. The ZeroGPU space may be queuing; please try again shortly." }), {
-              status: 503,
-              headers: { "Content-Type": "application/json", ...corsHeaders }
-            });
+            if (env.AI) {
+              try {
+                const cfRes = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
+                  prompt,
+                  steps: 4
+                });
+                const b64 = cfRes?.image || cfRes?.result?.image;
+                if (b64) {
+                  const bin = atob(b64);
+                  const u8 = new Uint8Array(bin.length);
+                  for (let i = 0; i < bin.length; i++) {
+                    u8[i] = bin.charCodeAt(i);
+                  }
+                  imageBuffer = u8.buffer;
+                }
+              } catch {
+                imageBuffer = null;
+              }
+            }
+
+            if (!imageBuffer) {
+              try {
+                const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${targetWidth}&height=${targetHeight}&seed=${seed}&nologo=true&model=flux`;
+                const pollRes = await fetch(pollUrl);
+                if (pollRes.ok) {
+                  imageBuffer = await pollRes.arrayBuffer();
+                }
+              } catch {
+                imageBuffer = null;
+              }
+            }
           }
 
           let permanentUrl = null;
           let r2Key = null;
+
           if (env.R2_BUCKET) {
             try {
-              const imgRes = await fetch(rawImageUrl, {
-                headers: hfToken ? { "Authorization": `Bearer ${hfToken}` } : {}
-              });
-              if (imgRes.ok) {
-                const imgBuffer = await imgRes.arrayBuffer();
+              if (!imageBuffer && rawImageUrl) {
+                const fetchHeaders = {};
+                if (hfToken && activeSpaceUrl && rawImageUrl.startsWith(activeSpaceUrl)) {
+                  fetchHeaders["Authorization"] = `Bearer ${hfToken}`;
+                }
+                const imgRes = await fetch(rawImageUrl, { headers: fetchHeaders });
+                if (imgRes.ok) {
+                  imageBuffer = await imgRes.arrayBuffer();
+                }
+              }
+
+              if (imageBuffer) {
                 r2Key = `uncensored/SumanAI_uncensored_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.png`;
-                await env.R2_BUCKET.put(r2Key, imgBuffer, {
+                await env.R2_BUCKET.put(r2Key, imageBuffer, {
                   httpMetadata: {
-                    contentType: 'image/png',
-                    cacheControl: 'public, max-age=31536000'
+                    contentType: "image/png",
+                    cacheControl: "public, max-age=31536000"
                   }
                 });
                 permanentUrl = `https://cdn.sumanai.r2.sumanonline.com/${r2Key}`;
@@ -1012,6 +1162,15 @@ export default {
           }
 
           const finalUrl = permanentUrl || rawImageUrl;
+
+          if (!finalUrl) {
+            return new Response(JSON.stringify({
+              error: "Synthesis engines are currently queuing or waking up. Please try again shortly."
+            }), {
+              status: 503,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
+          }
 
           return new Response(JSON.stringify({
             success: true,

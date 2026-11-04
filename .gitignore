@@ -54,3 +54,8 @@ ehthumbs.db
 *.sw?
 
 instructions.md
+
+graphify-out/cache/
+graphify-out/.*
+graphify-out/20*/
+

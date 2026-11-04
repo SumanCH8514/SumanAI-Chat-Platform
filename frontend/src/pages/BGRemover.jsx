@@ -487,9 +487,9 @@ const BGRemover = () => {
 
           <div className="bg-section-group">
             <span className="group-title-text">Matting Engine</span>
-            <div className="bg-pill-options-row">
+            <div className="bg-pill-options-row matting-engine-options-row">
               <div
-                className={`format-option-duo ${selectedEngine === 'ultra' ? 'active' : ''}`}
+                className={`format-option-duo engine-duo ${selectedEngine === 'ultra' ? 'active' : ''}`}
                 onClick={() => setSelectedEngine('ultra')}
                 role="button"
                 tabIndex={0}
@@ -502,7 +502,7 @@ const BGRemover = () => {
               </div>
 
               <div
-                className={`format-option-duo ${selectedEngine === 'fast' ? 'active' : ''}`}
+                className={`format-option-duo engine-duo ${selectedEngine === 'fast' ? 'active' : ''}`}
                 onClick={() => setSelectedEngine('fast')}
                 role="button"
                 tabIndex={0}
@@ -680,122 +680,196 @@ const BGRemover = () => {
         </div>
 
         <div className="recent-table-scroll-container">
-          <table className="bg-cutouts-data-table">
-            <thead>
-              <tr>
-                <th className="th-check">
-                  <input
-                    type="checkbox"
-                    checked={selectedRowIds.length === tableRows.length && tableRows.length > 0}
-                    onChange={handleToggleSelectAll}
-                  />
-                </th>
-                <th className="th-image">IMAGE</th>
-                <th className="th-name">FILE NAME</th>
-                <th className="th-format">OUTPUT FORMAT</th>
-                <th className="th-engine">ENGINE</th>
-                <th className="th-status">STATUS</th>
-                <th className="th-date">CREATED AT</th>
-                <th className="th-actions">ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tableRows.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="td-empty-state">
-                    <div className="table-empty-wrap">
-                      <Eraser size={26} className="table-empty-icon" />
-                      <span className="table-empty-title">No recent cutouts yet</span>
-                      <span className="table-empty-desc">
-                        Images processed with background removal will automatically appear here.
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                tableRows.map((row) => {
+          {tableRows.length === 0 ? (
+            <div className="table-empty-wrap standalone">
+              <div className="empty-icon-circle">
+                <Eraser size={24} className="table-empty-icon" />
+              </div>
+              <span className="table-empty-title">No recent cutouts yet</span>
+              <span className="table-empty-desc">
+                Images processed with background removal will automatically appear here.
+              </span>
+            </div>
+          ) : (
+            <>
+              <table className="bg-cutouts-data-table desktop-only-table">
+                <thead>
+                  <tr>
+                    <th className="th-check">
+                      <input
+                        type="checkbox"
+                        checked={selectedRowIds.length === tableRows.length && tableRows.length > 0}
+                        onChange={handleToggleSelectAll}
+                      />
+                    </th>
+                    <th className="th-image">IMAGE</th>
+                    <th className="th-name">FILE NAME</th>
+                    <th className="th-format">OUTPUT FORMAT</th>
+                    <th className="th-engine">ENGINE</th>
+                    <th className="th-status">STATUS</th>
+                    <th className="th-date">CREATED AT</th>
+                    <th className="th-actions">ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableRows.map((row) => {
+                    const isSelected = selectedRowIds.includes(row.id);
+                    const isCompleted = row.status === 'Completed';
+
+                    return (
+                      <tr key={row.id} className={isSelected ? 'is-selected' : ''}>
+                        <td className="td-check">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectRow(row.id)}
+                          />
+                        </td>
+                        <td className="td-image">
+                          <img src={row.thumb} alt={row.filename} className="row-thumb-img" />
+                        </td>
+                        <td className="td-name">
+                          <span className="row-filename-text" title={row.filename}>
+                            {row.filename}
+                          </span>
+                        </td>
+                        <td className="td-format">
+                          <span className="row-format-pill">{row.format}</span>
+                        </td>
+                        <td className="td-engine">
+                          <span className="row-engine-text">{row.engine}</span>
+                        </td>
+                        <td className="td-status">
+                          {isCompleted ? (
+                            <span className="row-status-badge completed">
+                              <CheckCircle2 size={11} />
+                              <span>Completed</span>
+                            </span>
+                          ) : (
+                            <span className="row-status-badge processing">
+                              <Loader2 size={11} className="row-spin" />
+                              <span>Processing</span>
+                            </span>
+                          )}
+                        </td>
+                        <td className="td-date">
+                          <span className="row-date-text">{row.createdAt}</span>
+                        </td>
+                        <td className="td-actions">
+                          <div className="row-actions-cluster">
+                            <button
+                              type="button"
+                              className="table-action-btn"
+                              onClick={() => {
+                                setOriginalImage(row.cutout);
+                                setProcessedImage(row.cutout);
+                                setOriginalFileName(row.filename);
+                                setActiveTab('cutout');
+                              }}
+                              title="Preview cutout"
+                            >
+                              <Eye size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              className="table-action-btn"
+                              onClick={() => handleDownload(row.cutout)}
+                              disabled={!isCompleted}
+                              title="Download cutout"
+                            >
+                              <Download size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              className="table-action-btn delete-btn"
+                              onClick={() => handleDeleteRow(row.id)}
+                              title="Delete cutout"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              <div className="bg-cutouts-mobile-card-list mobile-only-card-list">
+                {tableRows.map((row) => {
                   const isSelected = selectedRowIds.includes(row.id);
                   const isCompleted = row.status === 'Completed';
 
                   return (
-                    <tr key={row.id} className={isSelected ? 'is-selected' : ''}>
-                      <td className="td-check">
+                    <div key={row.id} className={`bg-mobile-cutout-card ${isSelected ? 'is-selected' : ''}`}>
+                      <div className="mobile-cutout-card-left">
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelectRow(row.id)}
+                          className="mobile-card-checkbox"
                         />
-                      </td>
-                      <td className="td-image">
-                        <img src={row.thumb} alt={row.filename} className="row-thumb-img" />
-                      </td>
-                      <td className="td-name">
-                        <span className="row-filename-text" title={row.filename}>
+                        <img src={row.thumb} alt={row.filename} className="mobile-card-thumb" />
+                      </div>
+                      <div className="mobile-cutout-card-body">
+                        <span className="mobile-card-filename" title={row.filename}>
                           {row.filename}
                         </span>
-                      </td>
-                      <td className="td-format">
-                        <span className="row-format-pill">{row.format}</span>
-                      </td>
-                      <td className="td-engine">
-                        <span className="row-engine-text">{row.engine}</span>
-                      </td>
-                      <td className="td-status">
-                        {isCompleted ? (
-                          <span className="row-status-badge completed">
-                            <CheckCircle2 size={11} />
-                            <span>Completed</span>
-                          </span>
-                        ) : (
-                          <span className="row-status-badge processing">
-                            <Loader2 size={11} className="row-spin" />
-                            <span>Processing</span>
-                          </span>
-                        )}
-                      </td>
-                      <td className="td-date">
-                        <span className="row-date-text">{row.createdAt}</span>
-                      </td>
-                      <td className="td-actions">
-                        <div className="row-actions-cluster">
-                          <button
-                            type="button"
-                            className="table-action-btn"
-                            onClick={() => {
-                              setOriginalImage(row.cutout);
-                              setProcessedImage(row.cutout);
-                              setOriginalFileName(row.filename);
-                              setActiveTab('cutout');
-                            }}
-                            title="Preview cutout"
-                          >
-                            <Eye size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            className="table-action-btn"
-                            onClick={() => handleDownload(row.cutout)}
-                            disabled={!isCompleted}
-                            title="Download cutout"
-                          >
-                            <Download size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            className="table-action-btn delete-btn"
-                            onClick={() => handleDeleteRow(row.id)}
-                            title="Delete cutout"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                        <div className="mobile-card-badges">
+                          <span className="row-format-pill">{row.format}</span>
+                          <span className="mobile-card-engine">{row.engine}</span>
+                          {isCompleted ? (
+                            <span className="row-status-badge completed">
+                              <CheckCircle2 size={10} />
+                              <span>Done</span>
+                            </span>
+                          ) : (
+                            <span className="row-status-badge processing">
+                              <Loader2 size={10} className="row-spin" />
+                              <span>Processing</span>
+                            </span>
+                          )}
                         </div>
-                      </td>
-                    </tr>
+                        <span className="mobile-card-date">{row.createdAt}</span>
+                      </div>
+                      <div className="mobile-cutout-card-actions">
+                        <button
+                          type="button"
+                          className="table-action-btn"
+                          onClick={() => {
+                            setOriginalImage(row.cutout);
+                            setProcessedImage(row.cutout);
+                            setOriginalFileName(row.filename);
+                            setActiveTab('cutout');
+                          }}
+                          title="Preview cutout"
+                        >
+                          <Eye size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="table-action-btn"
+                          onClick={() => handleDownload(row.cutout)}
+                          disabled={!isCompleted}
+                          title="Download cutout"
+                        >
+                          <Download size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="table-action-btn delete-btn"
+                          onClick={() => handleDeleteRow(row.id)}
+                          title="Delete cutout"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
                   );
-                })
-              )}
-            </tbody>
-          </table>
+                })}
+              </div>
+            </>
+          )}
         </div>
       </section>
 
