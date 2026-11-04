@@ -5,11 +5,17 @@ dist/
 dist-ssr/
 build/
 .output/
+.cache/
+.eslintcache
+*.tsbuildinfo
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
 
 .env
 .env.*
 *.env
 *.env.local
+*.env.*.local
 !.env_example
 !.env.example
 !frontend/.env_example
@@ -21,9 +27,6 @@ backend/.dev.vars.*
 !.dev.vars.example
 !backend/.dev.vars.example
 
-.wrangler/
-**/.wrangler/
-
 *.pem
 *.key
 *.cert
@@ -31,6 +34,23 @@ backend/.dev.vars.*
 *.p12
 *.pfx
 *serviceAccountKey*.json
+*service-account*.json
+*firebase-adminsdk*.json
+google-services.json
+GoogleService-Info.plist
+credentials.json
+client_secret*.json
+
+.wrangler/
+**/.wrangler/
+.mf/
+**/.mf/
+
+.firebase/
+**/.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
 
 logs/
 *.log
@@ -40,9 +60,37 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+tmp/
+temp/
+scratch/
+*.tmp
+
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
 Thumbs.db
 ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
 
 .vscode/*
 !.vscode/extensions.json
@@ -52,10 +100,14 @@ ehthumbs.db
 *.njsproj
 *.sln
 *.sw?
+*.sublime-project
+*.sublime-workspace
 
 instructions.md
-
+.agents
+tests
 graphify-out/cache/
 graphify-out/.*
 graphify-out/20*/
-
+graphify-out/*.tmp
+graphify-out/*
