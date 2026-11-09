@@ -133,9 +133,9 @@
 }
 
 .tool-avatar-icon.purple {
-  background: #f5f3ff;
-  border-color: #ede9fe;
-  color: #7c3aed;
+  background: var(--brand-subtle);
+  border-color: var(--brand-border);
+  color: var(--brand-primary);
 }
 
 .tool-avatar-icon.green {
@@ -218,9 +218,9 @@
 }
 
 .chip-purple {
-  background: #f5f3ff;
-  border: 1px solid #ede9fe;
-  color: #7c3aed;
+  background: var(--brand-subtle);
+  border: 1px solid var(--brand-border);
+  color: var(--brand-primary);
 }
 
 .tool-app-body,

@@ -1941,10 +1941,6 @@
     background: var(--brand-hover) !important;
   }
 
-  .mobile-suggestion-row:nth-child(2) .mobile-suggestion-icon {
-    background: #f1f5f9;
-  }
-
   .home-mobile-sections {
     display: flex;
     flex-direction: column;

@@ -259,14 +259,14 @@
   cursor: pointer;
   border: none;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.28);
+  box-shadow: 0 4px 14px rgba(var(--brand-rgb), 0.28);
   margin-top: 6px;
 }
 
 .form-submit-btn:hover:not(:disabled) {
   background: var(--brand-hover);
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.38);
+  box-shadow: 0 6px 18px rgba(var(--brand-rgb), 0.38);
 }
 
 .form-submit-btn:disabled {

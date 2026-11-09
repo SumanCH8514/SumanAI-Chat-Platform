@@ -41,6 +41,11 @@ export const ThemeProvider = ({ children }) => {
     root.style.setProperty('--shadow-glow', `0 0 25px -4px rgba(${rgb}, 0.35)`);
     root.style.setProperty('--shadow-float', `0 16px 40px -8px rgba(${rgb}, 0.18)`);
     root.setAttribute('data-color-theme', activeColorTheme);
+
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', isDark ? '#0B0D13' : primary);
+    }
   }, []);
 
   useEffect(() => {

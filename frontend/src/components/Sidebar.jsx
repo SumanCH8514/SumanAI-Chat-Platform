@@ -257,7 +257,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
       action: () => { setShowUserMenu(false); onSettingsClick('general'); }
     },
     ...(adminService.checkIsAdmin(user) ? [{
-      icon: <ShieldCheck size={16} color="#8B5CF6" />,
+      icon: <ShieldCheck size={16} color="currentColor" />,
       label: 'Admin Console',
       dividerBefore: true,
       action: () => { setShowUserMenu(false); navigate('/admin'); }
@@ -373,7 +373,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
               className={`nav-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`}
               onClick={() => { if (window.innerWidth <= 640) onClose(); }}
             >
-              <ShieldCheck size={17} color="#8B5CF6" />
+              <ShieldCheck size={17} color="currentColor" />
               <span>Admin</span>
             </Link>
           )}

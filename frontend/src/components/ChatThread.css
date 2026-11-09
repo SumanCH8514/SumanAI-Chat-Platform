@@ -258,7 +258,7 @@
 
 .user-message-edit-textarea:focus {
   border-color: var(--brand-primary);
-  box-shadow: 0 0 0 2px var(--brand-subtle, rgba(124, 58, 237, 0.15));
+  box-shadow: 0 0 0 2px var(--brand-subtle);
 }
 
 .user-message-edit-error {
@@ -304,7 +304,7 @@
 }
 
 .user-edit-btn.submit:hover:not(:disabled) {
-  background: var(--brand-hover, #6d28d9);
+  background: var(--brand-hover);
 }
 
 .user-edit-btn:disabled {
@@ -728,7 +728,7 @@
   width: 100%;
   height: 100%;
   border-radius: var(--radius-full);
-  background: #8b5cf6;
+  background: var(--brand-primary);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -809,8 +809,8 @@
     font-weight: 600;
     padding: 2px 6.5px;
     border-radius: 4px;
-    background: #ede9fe;
-    color: #7c3aed;
+    background: var(--brand-subtle);
+    color: var(--brand-primary);
     line-height: 1.2;
     white-space: nowrap;
     max-width: 160px;
@@ -821,9 +821,9 @@
 
   [data-theme="dark"] .mobile-ai-badge,
   .dark .mobile-ai-badge {
-    background: rgba(124, 58, 237, 0.2);
-    color: #c4b5fd;
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    background: var(--brand-subtle);
+    color: var(--brand-primary);
+    border: 1px solid var(--brand-border);
   }
 
   .mobile-ai-time {
@@ -944,7 +944,7 @@
   .msg-action-btn.speaking,
   .msg-action-btn.loading-audio,
   .msg-action-btn.liked {
-    color: var(--brand-primary, #7c3aed) !important;
+    color: var(--brand-primary) !important;
   }
 
   .msg-action-btn.disliked {

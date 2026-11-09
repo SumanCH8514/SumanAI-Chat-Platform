@@ -38,7 +38,7 @@
 .audience-tab-pill.active {
   background: #f5f3ff;
   border-color: #ede9fe;
-  color: #7c3aed;
+  color: var(--brand-primary);
   font-weight: 600;
 }
 
@@ -282,7 +282,7 @@
 
 .cap-tag.purple {
   background: #f5f3ff;
-  color: #7c3aed;
+  color: var(--brand-primary);
 }
 
 .cap-tag.blue {

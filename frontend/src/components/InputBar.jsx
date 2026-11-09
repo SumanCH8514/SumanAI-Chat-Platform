@@ -5,7 +5,7 @@ import {
   Camera, Image as ImageIcon, Lightbulb, PenTool, Layers, Square, Eye, Mic,
   Maximize2, Minimize2, Palette, Film, Cpu,
   Code2, FileText, BookOpen, GraduationCap, Clock, ChevronRight,
-  MoreVertical, RotateCw, Send, MessageSquare, PlaySquare, Save
+  MoreVertical, RotateCw, Send, MessageSquare, PlaySquare, Save, Compass
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useModel } from '../hooks/useModel';
@@ -63,34 +63,34 @@ const mergeSpeechTranscripts = (results) => {
 const suggestionSets = [
   [
     {
-      icon: <BookOpen size={16} color="#7c3aed" />,
+      icon: <BookOpen size={16} color="currentColor" />,
       title: "Design a poster based on my taste",
       prompt: "Design a modern graphic poster concept with bold typography, balanced composition, and a striking color palette based on clean contemporary design aesthetics."
     },
     {
-      icon: <Save size={16} color="#64748b" />,
+      icon: <Film size={16} color="currentColor" />,
       title: "Help me pick a family movie",
       prompt: "Recommend 3 great family movies for an engaging movie night. For each, give a short synopsis, target age range, and where it is streaming."
     },
     {
-      icon: <GraduationCap size={16} color="#7c3aed" />,
+      icon: <GraduationCap size={16} color="currentColor" />,
       title: "Explain machine learning simply",
       prompt: "Explain how machine learning works in simple, clear terms using real-world analogies that anyone can understand."
     }
   ],
   [
     {
-      icon: <BookOpen size={16} color="#7c3aed" />,
+      icon: <BookOpen size={16} color="currentColor" />,
       title: "Write a high-converting headline",
       prompt: "Write 5 compelling, benefit-driven hero headlines for a modern SaaS product that captures attention and drives conversions."
     },
     {
-      icon: <Film size={16} color="#7c3aed" />,
+      icon: <Compass size={16} color="currentColor" />,
       title: "Plan a 3-day travel itinerary",
       prompt: "Create a balanced 3-day travel itinerary with local recommendations, scenic spots, and must-try foods."
     },
     {
-      icon: <GraduationCap size={16} color="#7c3aed" />,
+      icon: <GraduationCap size={16} color="currentColor" />,
       title: "Compare SQL vs NoSQL databases",
       prompt: "Compare SQL and NoSQL databases in simple terms with pros, cons, and when to use each in production applications."
     }
@@ -1079,7 +1079,7 @@ const InputBar = ({ isCentered = false }) => {
               aria-pressed={hasImageGenActive}
             >
               <div className="quick-tool-icon-box purple">
-                <ImageIcon size={22} color="#7c3aed" />
+                <ImageIcon size={22} color="currentColor" />
               </div>
               <span className="quick-tool-label">Create image</span>
             </button>

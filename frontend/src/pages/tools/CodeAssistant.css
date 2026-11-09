@@ -164,9 +164,9 @@
 }
 
 .tool-option-card.active {
-  border-color: #7c3aed;
-  background: #f5f3ff;
-  box-shadow: 0 1px 4px rgba(124, 58, 237, 0.08);
+  border-color: var(--brand-primary);
+  background: var(--brand-subtle);
+  box-shadow: 0 1px 4px rgba(var(--brand-rgb), 0.15);
 }
 
 .code-mode-header {
@@ -179,7 +179,7 @@
 }
 
 .tool-option-card.active .code-mode-header {
-  color: #7c3aed;
+  color: var(--brand-primary);
 }
 
 .tool-option-desc {
@@ -189,7 +189,7 @@
 }
 
 .tool-option-card.active .tool-option-desc {
-  color: #6b21a8;
+  color: var(--brand-primary);
 }
 
 [data-theme='dark'] .tool-option-card {
@@ -198,16 +198,16 @@
 }
 
 [data-theme='dark'] .tool-option-card.active {
-  background: rgba(124, 58, 237, 0.15);
-  border-color: #8b5cf6;
+  background: var(--brand-subtle);
+  border-color: var(--brand-primary);
 }
 
 [data-theme='dark'] .tool-option-card.active .code-mode-header {
-  color: #c4b5fd;
+  color: var(--brand-primary);
 }
 
 [data-theme='dark'] .tool-option-card.active .tool-option-desc {
-  color: #ddd6fe;
+  color: var(--text-secondary);
 }
 
 @media (max-width: 980px) {

@@ -7,10 +7,13 @@ import { PAYMENT_GATEWAYS, paymentService } from '../services/paymentService';
 import { firestoreService } from '../services/firestoreService';
 import { adminService } from '../services/adminService';
 import { useAuthStore } from '../store/useAuthStore';
+import { useTheme } from '../hooks/useTheme';
+import { COLOR_THEMES } from '../constants/themes';
 import './CheckoutModal.css';
 
 const CheckoutModal = ({ isOpen, onClose, checkoutData, onPaymentSuccess }) => {
   const { user, updateUserProfileData, updateUserWallet } = useAuthStore();
+  const { colorTheme } = useTheme();
 
   const [step, setStep] = useState('review');
   const [selectedGateway, setSelectedGateway] = useState(() => {
@@ -191,7 +194,7 @@ const CheckoutModal = ({ isOpen, onClose, checkoutData, onPaymentSuccess }) => {
               contact: `${countryCode}${phone.replace(/\D/g, '')}`
             },
             theme: {
-              color: '#8B5CF6'
+              color: COLOR_THEMES[colorTheme]?.primary || '#7C3AED'
             },
             handler: async function (response) {
               setStep('processing');

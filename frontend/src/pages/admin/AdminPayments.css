@@ -38,7 +38,7 @@
 .tab-pill-btn.active {
   background: #f5f3ff;
   border-color: #ede9fe;
-  color: #7c3aed;
+  color: var(--brand-primary);
   font-weight: 600;
 }
 
@@ -48,7 +48,7 @@
   padding: 1px 6px;
   border-radius: 4px;
   background: #ede9fe;
-  color: #7c3aed;
+  color: var(--brand-primary);
 }
 
 .ref-id-cell {
@@ -94,7 +94,7 @@
   height: 28px;
   border-radius: 50%;
   background: #f5f3ff;
-  color: #7c3aed;
+  color: var(--brand-primary);
   border: 1px solid #ede9fe;
   display: flex;
   align-items: center;
@@ -155,7 +155,7 @@
 
 .gateway-pill.phonepe {
   background: #f5f3ff;
-  color: #7c3aed;
+  color: var(--brand-primary);
   border: 1px solid #ede9fe;
 }
 
@@ -374,8 +374,8 @@
 }
 
 .admin-select-pill-btn.open {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.1);
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 2px rgba(var(--brand-rgb), 0.1);
 }
 
 .select-pill-label {
@@ -392,7 +392,7 @@
 
 .select-arrow-icon.rotate {
   transform: rotate(180deg);
-  color: #7c3aed;
+  color: var(--brand-primary);
 }
 
 .admin-dropdown-popover {
@@ -436,12 +436,12 @@
 
 .admin-dropdown-opt.selected {
   background: #f5f3ff;
-  color: #7c3aed;
+  color: var(--brand-primary);
   font-weight: 600;
 }
 
 .opt-check {
-  color: #7c3aed;
+  color: var(--brand-primary);
 }
 
 .row-options-wrap {

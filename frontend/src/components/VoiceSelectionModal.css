@@ -346,7 +346,7 @@
 }
 
 .voice-modal-done-btn:hover {
-  background: var(--brand-hover, #6d28d9);
+  background: var(--brand-hover);
 }
 
 @media (max-width: 768px) {

@@ -51,7 +51,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #7c3aed;
+  color: var(--brand-primary);
   flex-shrink: 0;
 }
 
@@ -71,7 +71,7 @@
 .admin-brand-tag {
   font-size: 9px;
   font-weight: 700;
-  color: #7c3aed;
+  color: var(--brand-primary);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   margin-top: 2px;
@@ -139,12 +139,12 @@
 .admin-nav-item.active {
   background: #f5f3ff;
   border: 1px solid #ede9fe;
-  color: #7c3aed;
+  color: var(--brand-primary);
   font-weight: 600;
 }
 
 .admin-nav-item.active .admin-nav-icon {
-  color: #7c3aed;
+  color: var(--brand-primary);
 }
 
 .admin-nav-icon {
@@ -206,7 +206,7 @@
 }
 
 .admin-avatar-initial {
-  background: #7c3aed;
+  background: var(--brand-primary);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -233,7 +233,7 @@
 
 .admin-user-card-role {
   font-size: 11px;
-  color: #7c3aed;
+  color: var(--brand-primary);
   font-weight: 500;
 }
 
@@ -310,7 +310,7 @@
 }
 
 .admin-crumb-home:hover {
-  color: #7c3aed;
+  color: var(--brand-primary);
 }
 
 .admin-crumb-sep {
@@ -349,7 +349,7 @@
 }
 
 .admin-header-search-wrap:focus-within {
-  border-color: #7c3aed;
+  border-color: var(--brand-primary);
   background: #ffffff;
 }
 
@@ -413,7 +413,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #7c3aed;
+  background: var(--brand-primary);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -609,7 +609,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #7c3aed;
+  color: var(--brand-primary);
   flex-shrink: 0;
 }
 
@@ -709,7 +709,7 @@
 .kpi-icon-tile.purple {
   background: #f5f3ff;
   border: 1px solid #ede9fe;
-  color: #7c3aed;
+  color: var(--brand-primary);
 }
 
 .kpi-icon-tile.gold {
@@ -959,7 +959,7 @@
 .th-check input,
 .td-check input {
   cursor: pointer;
-  accent-color: #7c3aed;
+  accent-color: var(--brand-primary);
 }
 
 .status-badge {
@@ -1202,8 +1202,8 @@
 }
 
 .admin-form-input:focus {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(var(--brand-rgb), 0.12);
 }
 
 .admin-form-row-2 {
@@ -1286,8 +1286,8 @@
 }
 
 .admin-select-pill-btn.open {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.1);
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 2px rgba(var(--brand-rgb), 0.1);
 }
 
 .select-pill-label {
@@ -1304,7 +1304,7 @@
 
 .select-arrow-icon.rotate {
   transform: rotate(180deg);
-  color: #7c3aed;
+  color: var(--brand-primary);
 }
 
 .admin-dropdown-popover {
@@ -1348,15 +1348,15 @@
 
 .admin-dropdown-opt.selected {
   background: #f5f3ff;
-  color: #7c3aed;
+  color: var(--brand-primary);
   font-weight: 600;
 }
 
 .opt-check {
-  color: #7c3aed;
+  color: var(--brand-primary);
 }
 
 .time-chevron.rotate {
   transform: rotate(180deg);
-  color: #7c3aed;
+  color: var(--brand-primary);
 }

@@ -150,7 +150,7 @@
 .kpi-icon-tile.purple {
   background: #f5f3ff;
   border: 1px solid #ede9fe;
-  color: #7c3aed;
+  color: var(--brand-primary);
 }
 
 .kpi-icon-tile.gold {
@@ -230,7 +230,7 @@
 
 .kpi-tag.purple-tag {
   background: #f5f3ff;
-  color: #7c3aed;
+  color: var(--brand-primary);
 }
 
 .admin-mid-dual-grid {
@@ -304,7 +304,7 @@
 }
 
 .progress-seg.seg-purple {
-  background: #7c3aed;
+  background: var(--brand-primary);
 }
 
 .progress-seg.seg-gold {
@@ -337,7 +337,7 @@
 }
 
 .legend-dot.purple {
-  background: #7c3aed;
+  background: var(--brand-primary);
 }
 
 .legend-dot.gold {
@@ -412,7 +412,7 @@
   gap: 4px;
   font-size: 12px;
   font-weight: 600;
-  color: #7c3aed;
+  color: var(--brand-primary);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -476,7 +476,7 @@
 }
 
 .avatar-col-0 {
-  background: #7c3aed;
+  background: var(--brand-primary);
 }
 
 .avatar-col-1 {
@@ -484,7 +484,7 @@
 }
 
 .avatar-col-2 {
-  background: #8b5cf6;
+  background: var(--brand-primary);
 }
 
 .avatar-col-3 {
@@ -525,7 +525,7 @@
 
 .tier-badge.admin {
   background: #f5f3ff;
-  color: #7c3aed;
+  color: var(--brand-primary);
 }
 
 .tier-badge.user {

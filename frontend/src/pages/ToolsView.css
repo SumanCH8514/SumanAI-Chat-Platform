@@ -137,14 +137,14 @@
   height: 38px;
   padding: 0 20px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+  background: var(--brand-gradient);
   border: none;
   color: #ffffff;
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.32);
+  box-shadow: 0 4px 14px rgba(var(--brand-rgb), 0.32);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -234,7 +234,7 @@
 .hero-code-symbol {
   font-size: 15px;
   font-weight: 700;
-  color: #7c3aed;
+  color: var(--brand-primary);
   font-family: monospace;
 }
 
@@ -406,9 +406,9 @@
 }
 
 .tool-card-icon-frame.purple {
-  background: #f5f3ff;
-  border: 1px solid #ede9fe;
-  color: #7c3aed;
+  background: var(--brand-subtle);
+  border: 1px solid var(--brand-border);
+  color: var(--brand-primary);
 }
 
 .tool-card-icon-frame.blue {
@@ -625,9 +625,9 @@ html.dark .tool-card:hover,
 
 html.dark .tool-card-icon-frame.purple,
 .dark .tool-card-icon-frame.purple {
-  background: rgba(124, 58, 237, 0.18);
-  border-color: rgba(124, 58, 237, 0.35);
-  color: #c4b5fd;
+  background: var(--brand-subtle);
+  border-color: var(--brand-border);
+  color: var(--brand-primary);
 }
 
 html.dark .tool-card-icon-frame.blue,

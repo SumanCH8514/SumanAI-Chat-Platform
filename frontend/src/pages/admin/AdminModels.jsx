@@ -82,7 +82,7 @@ const ProviderLogo = ({ provider, size = 15 }) => {
   if (p.includes('google')) return <GoogleLogo size={size} />;
   if (p.includes('openai')) return <OpenAILogo size={size} />;
   if (p.includes('alibaba')) return <AlibabaLogo size={size} />;
-  return <Cpu size={size} color="#7c3aed" />;
+  return <Cpu size={size} color="var(--brand-primary)" />;
 };
 
 const ModelIcon = ({ model }) => {
@@ -131,7 +131,7 @@ const ModelIcon = ({ model }) => {
   }
   return (
     <div className="model-avatar-icon">
-      <Cpu size={14} color="#7c3aed" />
+      <Cpu size={14} color="var(--brand-primary)" />
     </div>
   );
 };
@@ -527,7 +527,7 @@ export const AdminModels = () => {
       <div className="admin-policy-settings-card">
         <div className="policy-card-info">
           <div className="policy-card-title-line">
-            <Shield size={16} color="#7c3aed" />
+            <Shield size={16} color="var(--brand-primary)" />
             <span className="policy-card-title">Pro / Premium Tier Policy</span>
           </div>
           <p className="policy-card-desc">

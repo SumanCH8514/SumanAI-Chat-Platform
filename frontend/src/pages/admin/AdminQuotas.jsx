@@ -94,7 +94,7 @@ export const AdminQuotas = () => {
         description: 'Unauthenticated public visitors (IP-tracked)',
         icon: User,
         iconBoxClass: 'quota-icon-purple',
-        iconColor: '#7c3aed',
+        iconColor: 'var(--brand-primary)',
         hourlyLimit: guest.rateLimit?.requestsPerHour ?? 20,
         dailyLimit: guest.rateLimit?.requestsPerDay ?? 50,
         imageGenLimit: guest.imageGenLimit ?? 0,
@@ -311,7 +311,7 @@ export const AdminQuotas = () => {
       <div className="admin-page-title-row">
         <div className="page-title-with-icon">
           <div className="admin-header-icon-box">
-            <Layers size={22} color="#7c3aed" />
+            <Layers size={22} color="var(--brand-primary)" />
           </div>
           <div>
             <h1 className="admin-page-heading">Tier Request Quotas & Limits</h1>
@@ -347,7 +347,7 @@ export const AdminQuotas = () => {
       <div className="admin-kpi-quad-grid">
         <div className="admin-kpi-box">
           <div className="kpi-icon-tile purple">
-            <User size={18} color="#7c3aed" />
+            <User size={18} color="var(--brand-primary)" />
           </div>
           <div className="kpi-data-block">
             <span className="kpi-value">3</span>
@@ -380,7 +380,7 @@ export const AdminQuotas = () => {
 
         <div className="admin-kpi-box">
           <div className="kpi-icon-tile purple">
-            <ImageIcon size={18} color="#7c3aed" />
+            <ImageIcon size={18} color="var(--brand-primary)" />
           </div>
           <div className="kpi-data-block">
             <span className="kpi-value">{totalImg.toLocaleString()} img/day</span>
@@ -394,7 +394,7 @@ export const AdminQuotas = () => {
         <div className="admin-quotas-card-header">
           <div className="quotas-card-title-group">
             <div className="quotas-title-icon-box">
-              <Layers size={16} color="#7c3aed" />
+              <Layers size={16} color="var(--brand-primary)" />
             </div>
             <h2 className="quotas-card-title">Tier Quotas & Limits</h2>
           </div>
@@ -560,7 +560,7 @@ export const AdminQuotas = () => {
         <div className="context-card-header">
           <div className="context-header-left">
             <div className="context-header-icon-box">
-              <MessageSquare size={16} color="#7c3aed" />
+              <MessageSquare size={16} color="var(--brand-primary)" />
             </div>
             <div>
               <h2 className="context-card-title">Conversation Context Limits</h2>
@@ -584,7 +584,7 @@ export const AdminQuotas = () => {
           <div className="context-metric-tile">
             <div className="context-metric-left">
               <div className="context-tile-icon-box">
-                <Layers size={16} color="#7c3aed" />
+                <Layers size={16} color="var(--brand-primary)" />
               </div>
               <div className="context-metric-info">
                 <span className="context-metric-title">Max History Threshold</span>
@@ -599,7 +599,7 @@ export const AdminQuotas = () => {
           <div className="context-metric-tile">
             <div className="context-metric-left">
               <div className="context-tile-icon-box">
-                <LayoutTemplate size={16} color="#7c3aed" />
+                <LayoutTemplate size={16} color="var(--brand-primary)" />
               </div>
               <div className="context-metric-info">
                 <span className="context-metric-title">Sliding Context Window</span>

@@ -283,7 +283,7 @@ export const AdminPayments = () => {
           <div className="admin-modal-card receipt-modal" onClick={(e) => e.stopPropagation()}>
             <div className="admin-modal-head">
               <div className="receipt-modal-title-group">
-                <Receipt size={17} color="#7c3aed" />
+                <Receipt size={17} color="var(--brand-primary)" />
                 <h3 className="admin-modal-title">Transaction Receipt</h3>
               </div>
               <button

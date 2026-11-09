@@ -399,14 +399,14 @@
   text-decoration: none;
   cursor: pointer;
   border: none;
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 4px 16px rgba(var(--brand-rgb), 0.3);
   transition: all 0.2s ease;
 }
 
 .about-cta-btn:hover {
   background: var(--brand-hover);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 6px 20px rgba(var(--brand-rgb), 0.4);
 }
 
 @media (max-width: 768px) {

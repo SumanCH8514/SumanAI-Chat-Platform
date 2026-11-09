@@ -30,7 +30,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #7c3aed;
+  color: var(--brand-primary);
   flex-shrink: 0;
 }
 
@@ -292,7 +292,7 @@
 .th-check input,
 .td-check input {
   cursor: pointer;
-  accent-color: #7c3aed;
+  accent-color: var(--brand-primary);
 }
 
 .user-profile-cell {
@@ -321,7 +321,7 @@
 }
 
 .user-cell-avatar.suman-badge {
-  background: #7c3aed;
+  background: var(--brand-primary);
   color: #ffffff;
 }
 
@@ -331,7 +331,7 @@
 }
 
 .user-cell-avatar.initial-badge.col-0 {
-  background: #7c3aed;
+  background: var(--brand-primary);
 }
 
 .user-cell-avatar.initial-badge.col-1 {
@@ -343,7 +343,7 @@
 }
 
 .user-cell-avatar.initial-badge.col-3 {
-  background: #8b5cf6;
+  background: var(--brand-primary);
 }
 
 .user-cell-info {
@@ -371,7 +371,7 @@
 .you-badge {
   font-size: 10px;
   font-weight: 600;
-  color: #7c3aed;
+  color: var(--brand-primary);
   background: #f5f3ff;
   border: 1px solid #ede9fe;
   padding: 1px 6px;
@@ -408,7 +408,7 @@
 
 .role-pill.admin {
   background: #f5f3ff;
-  color: #7c3aed;
+  color: var(--brand-primary);
   border: 1px solid #ede9fe;
 }
 

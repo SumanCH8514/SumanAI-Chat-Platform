@@ -41,7 +41,7 @@
 .thinking-dot.active {
   background: var(--brand-primary);
   opacity: 1;
-  box-shadow: 0 0 8px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 0 8px rgba(var(--brand-rgb), 0.4);
   animation: pulseDot 1.4s infinite ease-in-out;
 }
 

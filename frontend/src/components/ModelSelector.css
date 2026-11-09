@@ -372,7 +372,7 @@
 }
 
 .icon-thinking-active {
-  color: #a855f7;
+  color: var(--brand-primary);
 }
 
 @media (max-width: 768px) {
@@ -759,15 +759,15 @@ html.dark .model-badge.badge-speed {
 }
 
 .model-badge.badge-flagship {
-  background: rgba(124, 58, 237, 0.09);
-  color: #6d28d9;
-  border: 1px solid rgba(124, 58, 237, 0.24);
+  background: var(--brand-subtle);
+  color: var(--brand-primary);
+  border: 1px solid var(--brand-border);
 }
 
 html.dark .model-badge.badge-flagship {
-  background: rgba(168, 85, 247, 0.15);
-  color: #c084fc;
-  border: 1px solid rgba(168, 85, 247, 0.32);
+  background: var(--brand-subtle);
+  color: var(--brand-primary);
+  border: 1px solid var(--brand-border);
 }
 
 .model-badge.badge-general {

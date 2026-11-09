@@ -49,7 +49,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #7c3aed;
+  color: var(--brand-primary);
   flex-shrink: 0;
 }
 
@@ -324,7 +324,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #7c3aed;
+  color: var(--brand-primary);
   flex-shrink: 0;
 }
 
@@ -375,7 +375,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #7c3aed;
+  color: var(--brand-primary);
   flex-shrink: 0;
 }
 
@@ -613,8 +613,8 @@
 }
 
 .admin-form-input:focus {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(var(--brand-rgb), 0.12);
 }
 
 .admin-form-row-2 {

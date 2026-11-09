@@ -304,7 +304,7 @@ export const AdminDashboard = () => {
         <div className="admin-white-card user-distribution-card">
           <div className="admin-card-head-row">
             <div className="card-head-left">
-              <Megaphone size={15} color="#7c3aed" />
+              <Megaphone size={15} color="var(--brand-primary)" />
               <span className="card-head-title">User Distribution by Tier</span>
               <Info size={13} className="card-head-info" />
             </div>
@@ -345,7 +345,7 @@ export const AdminDashboard = () => {
         <div className="admin-white-card maintenance-card">
           <div className="admin-card-head-row">
             <div className="card-head-left">
-              <Wrench size={15} color="#7c3aed" />
+              <Wrench size={15} color="var(--brand-primary)" />
               <span className="card-head-title">Maintenance Window</span>
             </div>
           </div>
@@ -373,7 +373,7 @@ export const AdminDashboard = () => {
         <div className="admin-white-card registrations-table-card">
           <div className="admin-card-head-row">
             <div className="card-head-left">
-              <Users size={15} color="#7c3aed" />
+              <Users size={15} color="var(--brand-primary)" />
               <span className="card-head-title">Recent User Registrations</span>
             </div>
             <button
@@ -471,7 +471,7 @@ export const AdminDashboard = () => {
         <div className="admin-white-card tier-quota-card">
           <div className="admin-card-head-row">
             <div className="card-head-left">
-              <Layers size={15} color="#7c3aed" />
+              <Layers size={15} color="var(--brand-primary)" />
               <span className="card-head-title">Tier Quota Allocation</span>
             </div>
             <button

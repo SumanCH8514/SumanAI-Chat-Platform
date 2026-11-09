@@ -1589,8 +1589,8 @@ const SettingsModal = ({ onClose, initialTab = 'general' }) => {
                 <div className="settings-divider" />
 
                 {isAdmin && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.25)', borderRadius: '8px', marginBottom: '20px', fontSize: '13px', color: 'var(--text-primary)' }}>
-                    <ShieldCheck size={18} color="#8B5CF6" style={{ flexShrink: 0 }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'var(--brand-subtle)', border: '1px solid var(--brand-border)', borderRadius: '8px', marginBottom: '20px', fontSize: '13px', color: 'var(--text-primary)' }}>
+                    <ShieldCheck size={18} color="var(--brand-primary)" style={{ flexShrink: 0 }} />
                     <span>Super Admin privileges include full unrestricted access to all Pro flagship models, unlimited daily image generations, and platform controls.</span>
                   </div>
                 )}
