@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Settings, ChevronLeft, Pencil, MoreVertical, Share, Edit2, Pin, Trash2 } from 'lucide-react';
+import { Settings, ChevronLeft, Pencil, MoreVertical, Share, Edit2, Pin, Trash2, Bell, ChevronsRight } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import ModelSelector from '../components/ModelSelector';
 import ThemeToggle from '../components/ThemeToggle';
@@ -15,6 +15,25 @@ import { generateChatTranscript } from '../utils/formatters';
 export const MainLayout = ({ children, onSettingsClick, onLoginClick }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('sumanai_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleDesktopSidebar = useCallback(() => {
+    setIsDesktopCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('sumanai_sidebar_collapsed', String(next));
+      } catch (err) {
+        void err;
+      }
+      return next;
+    });
+  }, []);
   const [imgError, setImgError] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [showChatOptions, setShowChatOptions] = useState(false);
@@ -45,9 +64,27 @@ export const MainLayout = ({ children, onSettingsClick, onLoginClick }) => {
         setShowChatOptions(false);
       }
     };
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+        const target = e.target;
+        const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+        if (!isInput) {
+          e.preventDefault();
+          if (window.innerWidth > 768) {
+            toggleDesktopSidebar();
+          } else {
+            setSidebarOpen((v) => !v);
+          }
+        }
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [toggleDesktopSidebar]);
 
   const handleLoginClick = () => {
     setSidebarOpen(false);
@@ -79,7 +116,7 @@ export const MainLayout = ({ children, onSettingsClick, onLoginClick }) => {
   const userInitial = (user?.displayName || user?.email || 'S')[0].toUpperCase();
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${isDesktopCollapsed ? 'sidebar-collapsed' : ''}`}>
       {isSidebarVisible && (
         <div
           className="sidebar-backdrop"
@@ -92,6 +129,8 @@ export const MainLayout = ({ children, onSettingsClick, onLoginClick }) => {
         onSettingsClick={onSettingsClick}
         onLoginClick={handleLoginClick}
         isOpen={isSidebarVisible}
+        isCollapsed={isDesktopCollapsed}
+        onToggleCollapse={toggleDesktopSidebar}
         onClose={() => setSidebarOpen(false)}
       />
 
@@ -121,13 +160,65 @@ export const MainLayout = ({ children, onSettingsClick, onLoginClick }) => {
             )}
           </div>
 
-          <div className="header-model-area">
-            <ModelSelector />
+          <div className="header-left-area">
+            {isDesktopCollapsed && (
+              <button
+                type="button"
+                className="desktop-sidebar-expand-btn desktop-only"
+                onClick={toggleDesktopSidebar}
+                aria-label="Expand sidebar"
+                title="Expand sidebar (Ctrl + B)"
+              >
+                <ChevronsRight size={18} />
+              </button>
+            )}
+            <div className="header-model-area">
+              <ModelSelector />
+            </div>
           </div>
 
           <div className="header-right-actions">
-            <div className="desktop-theme-toggle">
+            <div className="desktop-header-tools">
               <ThemeToggle />
+              <button
+                type="button"
+                className="desktop-header-bell-btn"
+                aria-label="Notifications"
+                title="Notifications"
+                onClick={() => {
+                  setToastMessage('No new notifications');
+                  setTimeout(() => setToastMessage(null), 2500);
+                }}
+              >
+                <Bell size={19} />
+                <span className="desktop-header-bell-dot" />
+              </button>
+              <div
+                className="desktop-header-avatar"
+                onClick={() => onSettingsClick && onSettingsClick('profile')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (onSettingsClick) onSettingsClick('profile');
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label="User profile"
+                title={user?.displayName || 'User profile'}
+              >
+                {photoURL && !imgError ? (
+                  <img
+                    key={photoURL}
+                    src={photoURL}
+                    alt={user?.displayName || 'User profile'}
+                    referrerPolicy="no-referrer"
+                    onError={() => setImgError(true)}
+                  />
+                ) : (
+                  userInitial
+                )}
+              </div>
             </div>
 
             <div className="mobile-header-tools">

@@ -1,3 +1,5 @@
+export const DEFAULT_COLOR_THEME = 'blue';
+
 export const COLOR_THEMES = {
   purple: {
     label: 'Purple',

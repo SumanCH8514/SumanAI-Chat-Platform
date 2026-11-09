@@ -5,7 +5,8 @@ import {
   Camera, Image as ImageIcon, Lightbulb, PenTool, Layers, Square, Eye, Mic,
   Maximize2, Minimize2, Palette, Film, Cpu,
   Code2, FileText, BookOpen, GraduationCap, Clock, ChevronRight,
-  MoreVertical, RotateCw, Send, MessageSquare, PlaySquare, Save, Compass
+  MoreVertical, RotateCw, Send, MessageSquare, PlaySquare, Save, Compass,
+  Video, AlignLeft, LayoutGrid, ArrowRight, Zap
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useModel } from '../hooks/useModel';
@@ -908,6 +909,17 @@ const InputBar = ({ isCentered = false }) => {
               )}
             </div>
 
+            {isCentered && (
+              <div className="desktop-inline-model-wrap desktop-only">
+                <ModelSelector
+                  variant="inline"
+                  isCentered={isCentered}
+                  deepThinking={deepThinking}
+                  onToggleThinking={() => setDeepThinking(!deepThinking)}
+                />
+              </div>
+            )}
+
             {(hasImageGenActive || hasVideoGenActive || codeMode || summarizeMode || deepThinking || smartSearch) && (
               <div className="active-pill-indicators">
                 {hasImageGenActive && (
@@ -1005,12 +1017,23 @@ const InputBar = ({ isCentered = false }) => {
           </div>
 
           <div className="input-bottom-right">
-            <ModelSelector
-              variant="inline"
-              isCentered={isCentered}
-              deepThinking={deepThinking}
-              onToggleThinking={() => setDeepThinking(!deepThinking)}
-            />
+            {!isCentered ? (
+              <ModelSelector
+                variant="inline"
+                isCentered={isCentered}
+                deepThinking={deepThinking}
+                onToggleThinking={() => setDeepThinking(!deepThinking)}
+              />
+            ) : (
+              <div className="mobile-model-pill-wrap">
+                <ModelSelector
+                  variant="inline"
+                  isCentered={isCentered}
+                  deepThinking={deepThinking}
+                  onToggleThinking={() => setDeepThinking(!deepThinking)}
+                />
+              </div>
+            )}
 
             <button
               type="button"
@@ -1056,21 +1079,175 @@ const InputBar = ({ isCentered = false }) => {
 
       {isCentered && (
         <>
-          <div className="input-suggestions-list desktop-only">
-            {currentSuggestions.map((item, idx) => (
-              <button
-                key={idx}
-                type="button"
-                className="suggestion-pill-item"
-                onClick={() => handleSend(item.prompt)}
-              >
-                <span className="suggestion-pill-icon">{item.icon}</span>
-                <span className="suggestion-pill-text">{item.title}</span>
-              </button>
-            ))}
+          <div className="desktop-quick-actions desktop-only">
+            <button
+              type="button"
+              className={`desktop-action-card ${hasImageGenActive ? 'active' : ''}`}
+              onClick={handleToggleImageGen}
+              aria-pressed={hasImageGenActive}
+            >
+              <div className="desktop-action-icon">
+                <ImageIcon size={20} />
+              </div>
+              <span className="desktop-action-label">Generate Image</span>
+            </button>
+
+            <button
+              type="button"
+              className={`desktop-action-card ${hasVideoGenActive ? 'active' : ''}`}
+              onClick={handleToggleVideoGen}
+              aria-pressed={hasVideoGenActive}
+            >
+              <div className="desktop-action-icon">
+                <Video size={20} />
+              </div>
+              <span className="desktop-action-label">Generate Video</span>
+            </button>
+
+            <button
+              type="button"
+              className={`desktop-action-card ${codeMode ? 'active' : ''}`}
+              onClick={handleToggleCodeMode}
+              aria-pressed={codeMode}
+            >
+              <div className="desktop-action-icon">
+                <Code2 size={20} />
+              </div>
+              <span className="desktop-action-label">Write Code</span>
+            </button>
+
+            <button
+              type="button"
+              className="desktop-action-card"
+              onClick={() => fileRef.current?.click()}
+            >
+              <div className="desktop-action-icon">
+                <FileText size={20} />
+              </div>
+              <span className="desktop-action-label">Analyze File</span>
+            </button>
+
+            <button
+              type="button"
+              className={`desktop-action-card ${summarizeMode ? 'active' : ''}`}
+              onClick={handleToggleSummarizeMode}
+              aria-pressed={summarizeMode}
+            >
+              <div className="desktop-action-icon">
+                <AlignLeft size={20} />
+              </div>
+              <span className="desktop-action-label">Summarize</span>
+            </button>
+
+            <button
+              type="button"
+              className="desktop-action-card"
+              onClick={() => {
+                setText('Write a compelling, creative piece about: ');
+                inputRef.current?.focus();
+              }}
+            >
+              <div className="desktop-action-icon">
+                <PenTool size={20} />
+              </div>
+              <span className="desktop-action-label">Create Content</span>
+            </button>
+
+            <button
+              type="button"
+              className="desktop-action-card"
+              onClick={() => navigate('/tools/view')}
+            >
+              <div className="desktop-action-icon">
+                <LayoutGrid size={20} />
+              </div>
+              <span className="desktop-action-label">More Tools</span>
+            </button>
           </div>
 
-          <div className="home-mobile-sections mobile-only">
+          <div className="desktop-examples-section desktop-only">
+            <div className="desktop-examples-header">
+              <Zap size={16} className="desktop-examples-zap" />
+              <span>Try these examples</span>
+            </div>
+
+            <div className="desktop-examples-grid">
+              <button
+                type="button"
+                className="desktop-example-card"
+                onClick={() => {
+                  if (!hasVideoGenActive) handleToggleVideoGen();
+                  handleSend('A cinematic nature video with background music');
+                }}
+              >
+                <div className="example-card-icon-box purple">
+                  <Video size={18} />
+                </div>
+                <div className="example-card-text">
+                  <div className="example-card-title">Create a video</div>
+                  <div className="example-card-sub">A cinematic nature video with background music</div>
+                </div>
+                <ArrowRight size={16} className="example-card-arrow" />
+              </button>
+
+              <button
+                type="button"
+                className="desktop-example-card"
+                onClick={() => {
+                  if (!hasImageGenActive) handleToggleImageGen();
+                  handleSend('A futuristic city at sunset with flying cars');
+                }}
+              >
+                <div className="example-card-icon-box purple">
+                  <ImageIcon size={18} />
+                </div>
+                <div className="example-card-text">
+                  <div className="example-card-title">Create an image</div>
+                  <div className="example-card-sub">A futuristic city at sunset with flying cars</div>
+                </div>
+                <ArrowRight size={16} className="example-card-arrow" />
+              </button>
+
+              <button
+                type="button"
+                className="desktop-example-card"
+                onClick={() => {
+                  if (!summarizeMode) handleToggleSummarizeMode();
+                  setText('Summarize this document and extract key points: ');
+                  inputRef.current?.focus();
+                }}
+              >
+                <div className="example-card-icon-box green">
+                  <FileText size={18} />
+                </div>
+                <div className="example-card-text">
+                  <div className="example-card-title">Summarize a document</div>
+                  <div className="example-card-sub">Extract key points from a long article</div>
+                </div>
+                <ArrowRight size={16} className="example-card-arrow" />
+              </button>
+
+              <button
+                type="button"
+                className="desktop-example-card"
+                onClick={() => {
+                  if (!codeMode) handleToggleCodeMode();
+                  handleSend('Write a simple to-do app using React');
+                }}
+              >
+                <div className="example-card-icon-box blue">
+                  <Code2 size={18} />
+                </div>
+                <div className="example-card-text">
+                  <div className="example-card-title">Write code</div>
+                  <div className="example-card-sub">A simple to-do app using React</div>
+                </div>
+                <ArrowRight size={16} className="example-card-arrow" />
+              </button>
+            </div>
+          </div>
+
+          <div className="home-mobile-sections">
           <div className="mobile-quick-tools-grid">
             <button
               type="button"

@@ -194,7 +194,7 @@ const CheckoutModal = ({ isOpen, onClose, checkoutData, onPaymentSuccess }) => {
               contact: `${countryCode}${phone.replace(/\D/g, '')}`
             },
             theme: {
-              color: COLOR_THEMES[colorTheme]?.primary || '#7C3AED'
+              color: COLOR_THEMES[colorTheme]?.primary || '#2563EB'
             },
             handler: async function (response) {
               setStep('processing');

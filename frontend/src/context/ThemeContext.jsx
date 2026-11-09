@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { COLOR_THEMES } from '../constants/themes';
+import { COLOR_THEMES, DEFAULT_COLOR_THEME } from '../constants/themes';
 import { ThemeContext } from './Contexts';
 import { firestoreService } from '../services/firestoreService';
 import { useAuthStore } from '../store/useAuthStore';
@@ -7,7 +7,7 @@ import { useAuthStore } from '../store/useAuthStore';
 export const ThemeProvider = ({ children }) => {
   const { user } = useAuthStore();
   const [theme, setTheme] = useState(() => localStorage.getItem('suman_theme') || 'system');
-  const [colorTheme, setColorTheme] = useState(() => localStorage.getItem('suman_color_theme') || 'purple');
+  const [colorTheme, setColorTheme] = useState(() => localStorage.getItem('suman_color_theme') || DEFAULT_COLOR_THEME);
 
   const [prevUserPref, setPrevUserPref] = useState(user?.preferences);
   if (user?.preferences !== prevUserPref) {
@@ -22,7 +22,7 @@ export const ThemeProvider = ({ children }) => {
 
   const applyColors = useCallback((activeColorTheme, isDark) => {
     const root = window.document.documentElement;
-    const ct = COLOR_THEMES[activeColorTheme] || COLOR_THEMES.purple;
+    const ct = COLOR_THEMES[activeColorTheme] || COLOR_THEMES[DEFAULT_COLOR_THEME] || COLOR_THEMES.blue;
 
     const primary = isDark ? ct.primaryDark || ct.primary : ct.primary;
     const hover = isDark ? ct.hoverDark || ct.hover : ct.hover;

@@ -270,6 +270,7 @@ const ModelSelector = ({ variant = 'default', isCentered = false, deepThinking =
           aria-expanded={open}
           title={`Current model: ${selectedModel?.name || 'Model'}. Click to switch.`}
         >
+          <Cpu size={14} className="inline-model-icon" />
           <span className="inline-model-name">{shortModelName}</span>
           {!isSingle && <ChevronDown size={14} className={`chevron ${open ? 'rotated' : ''}`} />}
         </button>

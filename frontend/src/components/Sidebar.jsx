@@ -1,12 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Search, Compass, BookOpen, FolderHeart, Clock,
+  Compass, BookOpen, FolderHeart, Clock,
   MessageSquare, Wrench, Plus, Zap, Sliders, User,
   Settings, HelpCircle, LogOut, ChevronRight, X, PlusCircle,
   MoreHorizontal, Share, Edit2, Pin, Trash2, ShieldCheck, Wallet, Gift,
-  Home, PlusSquare, Folder, Layers, MoreVertical, MessageSquareWarning, Crown, ChevronDown
+  Home, PlusSquare, Folder, Layers, MoreVertical, MessageSquareWarning, Crown, ChevronDown,
+  LayoutGrid, ChevronsLeft
 } from 'lucide-react';
 import Skeleton from './Skeleton';
 import RenameModal from './RenameModal';
@@ -19,7 +20,7 @@ import { firestoreService } from '../services/firestoreService';
 import { adminService } from '../services/adminService';
 import './Sidebar.css';
 
-const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
+const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleCollapse, onClose }) => {
   const { user, logout } = useAuthStore();
   const isGuest = Boolean(user?.isAnonymous);
   const isAdmin = adminService.checkIsAdmin(user);
@@ -37,6 +38,52 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
     sub: userSubtitle,
     email: user?.email || (isGuest ? 'Guest Session' : 'No email')
   };
+
+  const proSubscription = useMemo(() => {
+    let expiresAt = user?.proExpiresAt;
+    if (!expiresAt && user?.uid) {
+      try {
+        const stored = localStorage.getItem(`sumanai_subscription_${user.uid}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.proExpiresAt) expiresAt = parsed.proExpiresAt;
+        }
+      } catch (err) {
+        void err;
+      }
+    }
+    const now = Date.now();
+    const hasExpiry = Boolean(expiresAt && typeof expiresAt === 'number');
+    const diffMs = hasExpiry ? expiresAt - now : null;
+    const isActive = isPro && (isAdmin || !hasExpiry || diffMs > 0);
+    const daysRemaining = diffMs && diffMs > 0 ? Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24))) : (isAdmin ? 30 : 12);
+
+    return {
+      isActive,
+      daysRemaining,
+      expiresAt,
+      statusText: isActive
+        ? `Active • Renews in ${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'}`
+        : 'Inactive • Expired'
+    };
+  }, [user?.proExpiresAt, user?.uid, isPro, isAdmin]);
+
+  const creditStats = useMemo(() => {
+    const totalCredits = 10000;
+    let used = 2840;
+    if (typeof user?.creditsUsed === 'number') {
+      used = Math.min(totalCredits, Math.max(0, user.creditsUsed));
+    } else if (typeof user?.credits === 'number') {
+      used = Math.min(totalCredits, Math.max(0, totalCredits - user.credits));
+    }
+    const percent = Math.min(100, Math.max(0, (used / totalCredits) * 100));
+    return {
+      used,
+      total: totalCredits,
+      percent,
+      formattedText: `${used.toLocaleString()} / ${totalCredits.toLocaleString()} credits used`
+    };
+  }, [user?.credits, user?.creditsUsed]);
 
   const UserAvatar = ({ className }) => {
     const [imgError, setImgError] = useState(false);
@@ -84,7 +131,6 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [menuPosition, setMenuPosition] = useState(null);
   const [activeMenuChat, setActiveMenuChat] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [renameTarget, setRenameTarget] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const location = useLocation();
@@ -145,11 +191,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
 
   const { chats, activeChatId, renameChat, togglePinChat, deleteChat, isSyncing } = useChatStore();
 
-  const filteredChats = chats.filter(chat =>
-    !searchQuery.trim() || chat.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const sortedChats = [...filteredChats].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
+  const sortedChats = [...chats].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -278,7 +320,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
   ];
 
   return (
-    <aside className={`sidebar${isOpen ? ' sidebar--open' : ''}`}>
+    <aside className={`sidebar${isOpen ? ' sidebar--open' : ''}${isCollapsed ? ' is-collapsed' : ''}`}>
       <div className="sidebar-desktop-view">
         <div className="brand">
           <div
@@ -298,38 +340,45 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
               }
             }}
           >
-            <img src="/sumanAI-logo1.png" alt="SumanAI" className="brand-logo" />
+            <img src="/favicon.png" alt="SumanAI" className="brand-logo" />
+            <div className="brand-text-col">
+              <span className="brand-title">SumanAI</span>
+              <span className="brand-subtitle">Smarter tools for a connected world</span>
+            </div>
           </div>
-          <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar">
-            <X size={18} />
+          <button
+            type="button"
+            className="sidebar-collapse-btn"
+            onClick={() => {
+              if (window.innerWidth <= 768) {
+                if (onClose) onClose();
+              } else {
+                if (onToggleCollapse) onToggleCollapse();
+              }
+            }}
+            aria-label="Collapse sidebar"
+            title="Collapse sidebar"
+          >
+            <ChevronsLeft size={16} />
           </button>
         </div>
 
-        <div className="search-bar">
-          <Search size={15} className="search-bar-icon" />
-          <input
-            type="text"
-            placeholder="Search conversations..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Search conversations"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              className="search-clear-btn"
-              onClick={() => setSearchQuery('')}
-              aria-label="Clear search"
-            >
-              <X size={13} />
-            </button>
-          )}
-        </div>
+        <button
+          type="button"
+          className="desktop-new-chat-btn"
+          onClick={() => {
+            navigate('/');
+            if (window.innerWidth <= 640 && typeof onClose === 'function') onClose();
+          }}
+        >
+          <Plus size={16} />
+          <span>New Chat</span>
+        </button>
 
         <nav className="nav-links" aria-label="Main Navigation">
           <Link
             to="/explore"
-            className={`nav-item ${location.pathname === '/explore' ? 'active' : ''}`}
+            className={`nav-item ${location.pathname === '/explore' || location.pathname === '/' ? 'active' : ''}`}
             onClick={() => { if (window.innerWidth <= 640) onClose(); }}
           >
             <Compass size={17} />
@@ -340,7 +389,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
             className={`nav-item ${location.pathname === '/library' ? 'active' : ''}`}
             onClick={() => { if (window.innerWidth <= 640) onClose(); }}
           >
-            <BookOpen size={17} />
+            <Layers size={17} />
             <span>Library</span>
           </Link>
           <Link
@@ -348,8 +397,16 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
             className={`nav-item ${location.pathname === '/files' ? 'active' : ''}`}
             onClick={() => { if (window.innerWidth <= 640) onClose(); }}
           >
-            <FolderHeart size={17} />
+            <Folder size={17} />
             <span>Files</span>
+          </Link>
+          <Link
+            to="/tools/view"
+            className={`nav-item ${location.pathname.startsWith('/tools') ? 'active' : ''}`}
+            onClick={() => { if (window.innerWidth <= 640) onClose(); }}
+          >
+            <LayoutGrid size={17} />
+            <span>Tools</span>
           </Link>
           <Link
             to="/history"
@@ -358,14 +415,6 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
           >
             <Clock size={17} />
             <span>History</span>
-          </Link>
-          <Link
-            to="/tools/view"
-            className={`nav-item ${location.pathname.startsWith('/tools') ? 'active' : ''}`}
-            onClick={() => { if (window.innerWidth <= 640) onClose(); }}
-          >
-            <Wrench size={17} />
-            <span>Tools</span>
           </Link>
           {adminService.checkIsAdmin(user) && (
             <Link
@@ -380,14 +429,16 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
         </nav>
 
         <div className="recent-chats-header">
-          <span>Recent Chats</span>
+          <span className="recent-chats-title">Recent Chats</span>
           <button
-            className="new-chat-btn"
-            onClick={() => { navigate('/'); if (window.innerWidth <= 640) onClose(); }}
-            title="Start new conversation"
-            aria-label="Start new conversation"
+            type="button"
+            className="recent-chats-see-all"
+            onClick={() => {
+              navigate('/history');
+              if (window.innerWidth <= 640 && typeof onClose === 'function') onClose();
+            }}
           >
-            <PlusCircle size={15} />
+            See All
           </button>
         </div>
 
@@ -436,8 +487,53 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
             ))
           ) : (
             <div className="chat-empty-state">
-              <span>{searchQuery ? 'No matching chats found' : 'No recent chats'}</span>
+              <span>No recent chats</span>
             </div>
+          )}
+        </div>
+
+        <div className={`desktop-pro-plan-card ${isPro ? 'is-pro' : 'is-free'}`}>
+          {isPro ? (
+            <>
+              <div className="pro-card-header">
+                <Crown size={15} className="pro-card-crown" />
+                <div className="pro-card-titles">
+                  <span className="pro-card-title">Pro Plan</span>
+                  <span className={`pro-card-status ${proSubscription.isActive ? 'active' : 'inactive'}`}>
+                    {proSubscription.statusText}
+                  </span>
+                </div>
+              </div>
+              <div className="pro-card-usage">
+                <span className="pro-card-usage-text">{creditStats.formattedText}</span>
+                <div className="pro-card-progress-bar">
+                  <div
+                    className="pro-card-progress-fill"
+                    style={{ width: `${creditStats.percent}%` }}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="pro-card-header">
+                <Crown size={15} className="pro-card-crown" />
+                <div className="pro-card-titles">
+                  <span className="pro-card-title">Upgrade Plan</span>
+                  <span className="pro-card-status">Unlock premium features</span>
+                </div>
+              </div>
+              <p className="pro-card-desc">
+                Get higher limits, 10,000 monthly credits & access to all AI models.
+              </p>
+              <button
+                type="button"
+                className="pro-card-upgrade-btn"
+                onClick={() => onSettingsClick && onSettingsClick('upgrade')}
+              >
+                Upgrade Plan
+              </button>
+            </>
           )}
         </div>
 
@@ -481,6 +577,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
                 <span className="sb-profile-name">{USER_DATA.name}</span>
                 <span className="sb-profile-sub">{USER_DATA.sub}</span>
               </div>
+              <MoreVertical size={16} className="sb-profile-more" />
             </button>
           ) : (
             <div
@@ -703,8 +800,10 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
             <Crown size={22} className="mobile-sb-upgrade-crown" />
           </div>
           <div className="mobile-sb-upgrade-text">
-            <div className="mobile-sb-upgrade-title">Upgrade Plan</div>
-            <div className="mobile-sb-upgrade-sub">Get higher limits and more features</div>
+            <div className="mobile-sb-upgrade-title">{isPro ? 'Pro Plan' : 'Upgrade Plan'}</div>
+            <div className="mobile-sb-upgrade-sub">
+              {isPro ? proSubscription.statusText : 'Get higher limits and more features'}
+            </div>
           </div>
           <ChevronRight size={18} className="mobile-sb-upgrade-chevron" />
         </div>
