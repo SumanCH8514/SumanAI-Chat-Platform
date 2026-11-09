@@ -592,6 +592,14 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
             </button>
             <button
               type="button"
+              className={`mobile-sb-nav-item ${location.pathname === '/files' ? 'active' : ''}`}
+              onClick={() => { navigate('/files'); if (onClose) onClose(); }}
+            >
+              <FolderHeart size={19} className="mobile-sb-nav-icon" />
+              <span>Files</span>
+            </button>
+            <button
+              type="button"
               className={`mobile-sb-nav-item ${location.pathname === '/explore' ? 'active' : ''}`}
               onClick={() => { navigate('/explore'); if (onClose) onClose(); }}
             >

@@ -1,50 +1,92 @@
 export const COLOR_THEMES = {
-  purple: { 
-    label: 'Purple', 
-    primary: '#7C3AED', 
+  purple: {
+    label: 'Purple',
+    primary: '#7C3AED',
+    primaryDark: '#A855F7',
     hover: '#6D28D9',
+    hoverDark: '#9333EA',
     swatch: '#7C3AED',
+    rgb: '124, 58, 237',
+    rgbDark: '168, 85, 247',
     subtle: 'rgba(124, 58, 237, 0.12)',
-    border: 'rgba(124, 58, 237, 0.3)'
+    subtleDark: 'rgba(168, 85, 247, 0.18)',
+    border: 'rgba(124, 58, 237, 0.28)',
+    borderDark: 'rgba(168, 85, 247, 0.35)',
+    gradient: 'linear-gradient(135deg, #7C3AED 0%, #9333EA 100%)'
   },
-  pink: { 
-    label: 'Pink', 
-    primary: '#DB2777', 
+  pink: {
+    label: 'Pink',
+    primary: '#DB2777',
+    primaryDark: '#F472B6',
     hover: '#BE185D',
+    hoverDark: '#EC4899',
     swatch: '#DB2777',
+    rgb: '219, 39, 119',
+    rgbDark: '244, 114, 182',
     subtle: 'rgba(219, 39, 119, 0.12)',
-    border: 'rgba(219, 39, 119, 0.3)'
+    subtleDark: 'rgba(244, 114, 182, 0.18)',
+    border: 'rgba(219, 39, 119, 0.28)',
+    borderDark: 'rgba(244, 114, 182, 0.35)',
+    gradient: 'linear-gradient(135deg, #DB2777 0%, #EC4899 100%)'
   },
-  blue: { 
-    label: 'Blue', 
-    primary: '#2563EB', 
+  blue: {
+    label: 'Blue',
+    primary: '#2563EB',
+    primaryDark: '#60A5FA',
     hover: '#1D4ED8',
+    hoverDark: '#3B82F6',
     swatch: '#2563EB',
+    rgb: '37, 99, 235',
+    rgbDark: '96, 165, 250',
     subtle: 'rgba(37, 99, 235, 0.12)',
-    border: 'rgba(37, 99, 235, 0.3)'
+    subtleDark: 'rgba(96, 165, 250, 0.18)',
+    border: 'rgba(37, 99, 235, 0.28)',
+    borderDark: 'rgba(96, 165, 250, 0.35)',
+    gradient: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)'
   },
-  green: { 
-    label: 'Green', 
-    primary: '#059669', 
+  green: {
+    label: 'Green',
+    primary: '#059669',
+    primaryDark: '#34D399',
     hover: '#047857',
+    hoverDark: '#10B981',
     swatch: '#059669',
+    rgb: '5, 150, 105',
+    rgbDark: '52, 211, 153',
     subtle: 'rgba(5, 150, 105, 0.12)',
-    border: 'rgba(5, 150, 105, 0.3)'
+    subtleDark: 'rgba(52, 211, 153, 0.18)',
+    border: 'rgba(5, 150, 105, 0.28)',
+    borderDark: 'rgba(52, 211, 153, 0.35)',
+    gradient: 'linear-gradient(135deg, #059669 0%, #10B981 100%)'
   },
-  orange: { 
-    label: 'Orange', 
-    primary: '#EA580C', 
+  orange: {
+    label: 'Orange',
+    primary: '#EA580C',
+    primaryDark: '#FB923C',
     hover: '#C2410C',
+    hoverDark: '#F97316',
     swatch: '#EA580C',
+    rgb: '234, 88, 12',
+    rgbDark: '251, 146, 60',
     subtle: 'rgba(234, 88, 12, 0.12)',
-    border: 'rgba(234, 88, 12, 0.3)'
+    subtleDark: 'rgba(251, 146, 60, 0.18)',
+    border: 'rgba(234, 88, 12, 0.28)',
+    borderDark: 'rgba(251, 146, 60, 0.35)',
+    gradient: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)'
   },
-  teal: { 
-    label: 'Teal', 
-    primary: '#0D9488', 
+  teal: {
+    label: 'Teal',
+    primary: '#0D9488',
+    primaryDark: '#2DD4BF',
     hover: '#0F766E',
+    hoverDark: '#14B8A6',
     swatch: '#0D9488',
+    rgb: '13, 148, 136',
+    rgbDark: '45, 212, 191',
     subtle: 'rgba(13, 148, 136, 0.12)',
-    border: 'rgba(13, 148, 136, 0.3)'
-  },
+    subtleDark: 'rgba(45, 212, 191, 0.18)',
+    border: 'rgba(13, 148, 136, 0.28)',
+    borderDark: 'rgba(45, 212, 191, 0.35)',
+    gradient: 'linear-gradient(135deg, #0D9488 0%, #14B8A6 100%)'
+  }
 };

@@ -49,6 +49,24 @@
     "url": "https://sumanai.sumanonline.com/"
   }
   </script>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('suman_theme') || 'system';
+        var d = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var r = document.documentElement;
+        if (d) {
+          r.classList.add('dark');
+          r.setAttribute('data-theme', 'dark');
+        } else {
+          r.classList.add('light');
+          r.setAttribute('data-theme', 'light');
+        }
+        var c = localStorage.getItem('suman_color_theme') || 'purple';
+        r.setAttribute('data-color-theme', c);
+      } catch (e) {}
+    })();
+  </script>
 </head>
 
 <body>

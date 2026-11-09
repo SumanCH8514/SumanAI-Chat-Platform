@@ -26,6 +26,8 @@ import {
   Edit2,
   Trash2,
   Copy,
+  ChevronLeft,
+  ChevronRight,
   AlertCircle
 } from 'lucide-react';
 import { useChatStore } from '../store/useChatStore';
@@ -287,6 +289,19 @@ export const HistoryPage = () => {
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
   const startIndex = (currentPage - 1) * PAGE_SIZE;
 
+  const visiblePages = useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 3) {
+      return [1, 2, 3, 4, '...', totalPages];
+    }
+    if (currentPage >= totalPages - 2) {
+      return [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+  }, [currentPage, totalPages]);
+
   const paginatedRecords = useMemo(() => {
     return filteredRecords.slice(startIndex, startIndex + PAGE_SIZE);
   }, [filteredRecords, startIndex]);
@@ -417,6 +432,9 @@ export const HistoryPage = () => {
             <span className="metric-number">{stats.totalSessions}</span>
             <span className="metric-label">Total Sessions</span>
           </div>
+          <div className="metric-corner-icon" aria-hidden="true">
+            <MessageSquare size={46} strokeWidth={1.5} />
+          </div>
         </div>
 
         <div className="history-metric-card">
@@ -427,6 +445,9 @@ export const HistoryPage = () => {
             <span className="metric-number">{stats.totalMessages}</span>
             <span className="metric-label">Total Messages</span>
           </div>
+          <div className="metric-corner-icon" aria-hidden="true">
+            <MessagesSquare size={46} strokeWidth={1.5} />
+          </div>
         </div>
 
         <div className="history-metric-card">
@@ -436,6 +457,9 @@ export const HistoryPage = () => {
           <div className="metric-texts">
             <span className="metric-number">{stats.pinnedCount}</span>
             <span className="metric-label">Pinned Records</span>
+          </div>
+          <div className="metric-corner-icon" aria-hidden="true">
+            <Bookmark size={46} strokeWidth={1.5} />
           </div>
         </div>
       </section>
@@ -787,7 +811,7 @@ export const HistoryPage = () => {
 
         <footer className="history-pagination-bar">
           <span className="pagination-info">
-            Showing {paginatedRecords.length > 0 ? startIndex + 1 : 0}–{startIndex + paginatedRecords.length} of {totalItems} conversations
+            Showing <span className="pagination-highlight">{paginatedRecords.length > 0 ? startIndex + 1 : 0}–{startIndex + paginatedRecords.length}</span> of <span className="pagination-highlight">{totalItems}</span> conversations
           </span>
           <div className="pagination-controls">
             <button
@@ -796,30 +820,24 @@ export const HistoryPage = () => {
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               title="Previous page"
+              aria-label="Previous page"
             >
-              &lt;
+              <ChevronLeft size={16} strokeWidth={2.2} />
             </button>
-            {Array.from({ length: Math.min(totalPages, 4) }, (_, i) => i + 1).map((pageNum) => (
-              <button
-                key={pageNum}
-                type="button"
-                className={`page-num-btn ${currentPage === pageNum ? 'active' : ''}`}
-                onClick={() => setCurrentPage(pageNum)}
-              >
-                {pageNum}
-              </button>
-            ))}
-            {totalPages > 4 && (
-              <>
-                <span className="page-ellipsis">...</span>
+            {visiblePages.map((item, idx) =>
+              item === '...' ? (
+                <span key={`ellipsis-${idx}`} className="page-ellipsis">...</span>
+              ) : (
                 <button
+                  key={`page-${item}`}
                   type="button"
-                  className={`page-num-btn ${currentPage === totalPages ? 'active' : ''}`}
-                  onClick={() => setCurrentPage(totalPages)}
+                  className={`page-num-btn ${currentPage === item ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(item)}
+                  aria-label={`Page ${item}`}
                 >
-                  {totalPages}
+                  {item}
                 </button>
-              </>
+              )
             )}
             <button
               type="button"
@@ -827,8 +845,9 @@ export const HistoryPage = () => {
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               title="Next page"
+              aria-label="Next page"
             >
-              &gt;
+              <ChevronRight size={16} strokeWidth={2.2} />
             </button>
           </div>
         </footer>

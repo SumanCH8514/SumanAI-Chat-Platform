@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Bell, ChevronLeft, Pencil, MoreVertical, Share, Edit2, Pin, Trash2 } from 'lucide-react';
+import { Settings, ChevronLeft, Pencil, MoreVertical, Share, Edit2, Pin, Trash2 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import ModelSelector from '../components/ModelSelector';
 import ThemeToggle from '../components/ThemeToggle';
@@ -163,12 +163,11 @@ export const MainLayout = ({ children, onSettingsClick, onLoginClick }) => {
                 <>
                   <button
                     type="button"
-                    className="mobile-header-bell"
-                    aria-label="Notifications"
-                    onClick={onSettingsClick}
+                    className="mobile-header-settings"
+                    aria-label="Settings"
+                    onClick={() => onSettingsClick && onSettingsClick('general')}
                   >
-                    <Bell size={20} />
-                    <span className="mobile-bell-dot" />
+                    <Settings size={20} strokeWidth={2} />
                   </button>
                   <div
                     className="mobile-header-avatar"

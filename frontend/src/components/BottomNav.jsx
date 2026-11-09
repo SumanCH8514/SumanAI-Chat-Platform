@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, MessageSquare, LayoutGrid, Folder } from 'lucide-react';
+import { Home, MessageSquare, Compass, Folder } from 'lucide-react';
 import './BottomNav.css';
 
 export const BottomNav = ({ onOpenChats }) => {
@@ -41,7 +41,7 @@ export const BottomNav = ({ onOpenChats }) => {
         aria-label="Home"
       >
         <div className="mobile-nav-icon-wrap">
-          <Home size={20} />
+          <Home size={20} strokeWidth={2.2} />
         </div>
         <span className="mobile-nav-label">Home</span>
       </button>
@@ -53,7 +53,7 @@ export const BottomNav = ({ onOpenChats }) => {
         aria-label="Chats"
       >
         <div className="mobile-nav-icon-wrap">
-          <MessageSquare size={20} />
+          <MessageSquare size={20} strokeWidth={2.2} />
         </div>
         <span className="mobile-nav-label">Chats</span>
       </button>
@@ -65,7 +65,7 @@ export const BottomNav = ({ onOpenChats }) => {
         aria-label="Discover"
       >
         <div className="mobile-nav-icon-wrap">
-          <LayoutGrid size={20} />
+          <Compass size={20} strokeWidth={2.2} />
         </div>
         <span className="mobile-nav-label">Discover</span>
       </button>
@@ -77,7 +77,7 @@ export const BottomNav = ({ onOpenChats }) => {
         aria-label="Library"
       >
         <div className="mobile-nav-icon-wrap">
-          <Folder size={20} />
+          <Folder size={20} strokeWidth={2.2} />
         </div>
         <span className="mobile-nav-label">Library</span>
       </button>

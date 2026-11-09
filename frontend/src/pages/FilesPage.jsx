@@ -20,6 +20,8 @@ import {
   Trash2,
   Copy,
   Check,
+  ChevronLeft,
+  ChevronRight,
   X
 } from 'lucide-react';
 import { useChatStore } from '../store/useChatStore';
@@ -377,6 +379,19 @@ export const FilesPage = () => {
   const totalPages = Math.max(1, Math.ceil(effectiveTotal / PAGE_SIZE));
   const startIndex = (currentPage - 1) * PAGE_SIZE;
 
+  const visiblePages = useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 3) {
+      return [1, 2, 3, 4, '...', totalPages];
+    }
+    if (currentPage >= totalPages - 2) {
+      return [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+  }, [currentPage, totalPages]);
+
   const paginatedFiles = useMemo(() => {
     return filteredFiles.slice(startIndex, startIndex + PAGE_SIZE);
   }, [filteredFiles, startIndex]);
@@ -677,6 +692,9 @@ export const FilesPage = () => {
             <span className="metric-number">{stats.total}</span>
             <span className="metric-label">All Files</span>
           </div>
+          <div className="metric-corner-icon" aria-hidden="true">
+            <Layers size={46} strokeWidth={1.5} />
+          </div>
         </div>
 
         <div className="files-metric-card">
@@ -686,6 +704,9 @@ export const FilesPage = () => {
           <div className="metric-texts">
             <span className="metric-number">{stats.images}</span>
             <span className="metric-label">Images</span>
+          </div>
+          <div className="metric-corner-icon" aria-hidden="true">
+            <ImageIcon size={46} strokeWidth={1.5} />
           </div>
         </div>
 
@@ -697,6 +718,9 @@ export const FilesPage = () => {
             <span className="metric-number">{stats.videos}</span>
             <span className="metric-label">Videos</span>
           </div>
+          <div className="metric-corner-icon" aria-hidden="true">
+            <Video size={46} strokeWidth={1.5} />
+          </div>
         </div>
 
         <div className="files-metric-card">
@@ -707,6 +731,9 @@ export const FilesPage = () => {
             <span className="metric-number">{stats.code}</span>
             <span className="metric-label">Code</span>
           </div>
+          <div className="metric-corner-icon" aria-hidden="true">
+            <Code2 size={46} strokeWidth={1.5} />
+          </div>
         </div>
 
         <div className="files-metric-card">
@@ -716,6 +743,9 @@ export const FilesPage = () => {
           <div className="metric-texts">
             <span className="metric-number">{stats.size}</span>
             <span className="metric-label">Total Size</span>
+          </div>
+          <div className="metric-corner-icon" aria-hidden="true">
+            <Database size={46} strokeWidth={1.5} />
           </div>
         </div>
       </section>
@@ -1034,7 +1064,7 @@ export const FilesPage = () => {
 
         <footer className="files-pagination-bar">
           <span className="pagination-info">
-            Showing {paginatedFiles.length > 0 ? startIndex + 1 : 0}–{startIndex + paginatedFiles.length} of {effectiveTotal} files
+            Showing <span className="pagination-highlight">{paginatedFiles.length > 0 ? startIndex + 1 : 0}–{startIndex + paginatedFiles.length}</span> of <span className="pagination-highlight">{effectiveTotal}</span> files
           </span>
           <div className="pagination-controls">
             <button
@@ -1043,30 +1073,24 @@ export const FilesPage = () => {
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               title="Previous page"
+              aria-label="Previous page"
             >
-              &lt;
+              <ChevronLeft size={16} strokeWidth={2.2} />
             </button>
-            {Array.from({ length: Math.min(totalPages, 4) }, (_, i) => i + 1).map((pageNum) => (
-              <button
-                key={pageNum}
-                type="button"
-                className={`page-num-btn ${currentPage === pageNum ? 'active' : ''}`}
-                onClick={() => setCurrentPage(pageNum)}
-              >
-                {pageNum}
-              </button>
-            ))}
-            {totalPages > 4 && (
-              <>
-                <span className="page-ellipsis">...</span>
+            {visiblePages.map((item, idx) =>
+              item === '...' ? (
+                <span key={`ellipsis-${idx}`} className="page-ellipsis">...</span>
+              ) : (
                 <button
+                  key={`page-${item}`}
                   type="button"
-                  className={`page-num-btn ${currentPage === totalPages ? 'active' : ''}`}
-                  onClick={() => setCurrentPage(totalPages)}
+                  className={`page-num-btn ${currentPage === item ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(item)}
+                  aria-label={`Page ${item}`}
                 >
-                  {totalPages}
+                  {item}
                 </button>
-              </>
+              )
             )}
             <button
               type="button"
@@ -1074,8 +1098,9 @@ export const FilesPage = () => {
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               title="Next page"
+              aria-label="Next page"
             >
-              &gt;
+              <ChevronRight size={16} strokeWidth={2.2} />
             </button>
           </div>
         </footer>

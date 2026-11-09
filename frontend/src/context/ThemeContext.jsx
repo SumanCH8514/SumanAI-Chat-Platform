@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { COLOR_THEMES } from '../constants/themes';
 import { ThemeContext } from './Contexts';
 import { firestoreService } from '../services/firestoreService';
@@ -20,17 +20,39 @@ export const ThemeProvider = ({ children }) => {
     }
   }
 
+  const applyColors = useCallback((activeColorTheme, isDark) => {
+    const root = window.document.documentElement;
+    const ct = COLOR_THEMES[activeColorTheme] || COLOR_THEMES.purple;
+
+    const primary = isDark ? ct.primaryDark || ct.primary : ct.primary;
+    const hover = isDark ? ct.hoverDark || ct.hover : ct.hover;
+    const subtle = isDark ? ct.subtleDark || ct.subtle : ct.subtle;
+    const border = isDark ? ct.borderDark || ct.border : ct.border;
+    const rgb = isDark ? ct.rgbDark || ct.rgb : ct.rgb;
+
+    root.style.setProperty('--brand-primary', primary);
+    root.style.setProperty('--brand-hover', hover);
+    root.style.setProperty('--brand-subtle', subtle);
+    root.style.setProperty('--brand-border', border);
+    root.style.setProperty('--brand-rgb', rgb);
+    root.style.setProperty('--brand-gradient', ct.gradient);
+    root.style.setProperty('--bg-active', subtle);
+    root.style.setProperty('--border-focus', border);
+    root.style.setProperty('--shadow-glow', `0 0 25px -4px rgba(${rgb}, 0.35)`);
+    root.style.setProperty('--shadow-float', `0 16px 40px -8px rgba(${rgb}, 0.18)`);
+    root.setAttribute('data-color-theme', activeColorTheme);
+  }, []);
+
   useEffect(() => {
     const root = window.document.documentElement;
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     const applyTheme = () => {
       root.classList.remove('light', 'dark');
-      if (theme === 'system') {
-        root.classList.add(mediaQuery.matches ? 'dark' : 'light');
-      } else {
-        root.classList.add(theme);
-      }
+      const resolved = theme === 'system' ? (mediaQuery.matches ? 'dark' : 'light') : theme;
+      root.classList.add(resolved);
+      root.setAttribute('data-theme', resolved);
+      applyColors(colorTheme, resolved === 'dark');
     };
 
     applyTheme();
@@ -51,17 +73,10 @@ export const ThemeProvider = ({ children }) => {
     return () => {
       mediaQuery.removeEventListener('change', handleMediaChange);
     };
-  }, [theme, user?.uid]);
+  }, [theme, colorTheme, applyColors, user?.uid]);
 
   useEffect(() => {
-    const root = window.document.documentElement;
-    const ct = COLOR_THEMES[colorTheme] || COLOR_THEMES.purple;
-    root.style.setProperty('--brand-primary', ct.primary);
-    root.style.setProperty('--brand-hover', ct.hover || ct.primary);
-    if (ct.subtle) root.style.setProperty('--brand-subtle', ct.subtle);
-    if (ct.border) root.style.setProperty('--brand-border', ct.border);
     localStorage.setItem('suman_color_theme', colorTheme);
-
     if (user?.uid) {
       firestoreService.updatePreferences(user.uid, { colorTheme });
     }

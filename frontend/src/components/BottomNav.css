@@ -10,14 +10,17 @@
     left: 0;
     right: 0;
     height: calc(60px + env(safe-area-inset-bottom, 0px));
-    background: #ffffff;
-    border-top: 1px solid #f1f5f9;
+    background: rgba(255, 255, 255, 0.94);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
     justify-content: space-around;
     align-items: center;
     z-index: 1000;
     padding: 0 12px env(safe-area-inset-bottom, 0px) 12px;
     box-sizing: border-box;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 -2px 14px rgba(15, 23, 42, 0.05);
+    -webkit-tap-highlight-color: transparent;
   }
 
   .mobile-nav-item {
@@ -33,8 +36,9 @@
     padding: 2px 8px;
     min-width: 60px;
     border-radius: 20px;
-    transition: all 0.15s ease;
+    transition: color 0.15s ease, transform 0.15s ease;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .mobile-nav-icon-wrap {
@@ -45,7 +49,12 @@
     height: 28px;
     padding: 0 4px;
     border-radius: 16px;
-    transition: all 0.15s ease;
+    transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease, box-shadow 0.2s ease, padding 0.2s ease;
+  }
+
+  .mobile-nav-icon-wrap svg {
+    display: block;
+    flex-shrink: 0;
   }
 
   .mobile-nav-label {
@@ -56,43 +65,85 @@
     transition: color 0.15s ease;
   }
 
+  .mobile-nav-item:hover {
+    color: #0f172a;
+  }
+
+  .mobile-nav-item:hover .mobile-nav-label {
+    color: #0f172a;
+  }
+
   .mobile-nav-item.active .mobile-nav-icon-wrap {
-    background: #f3e8ff;
-    color: #7c3aed;
+    background: var(--brand-subtle);
+    color: var(--brand-primary);
     padding: 4px 18px;
     height: 28px;
     box-sizing: border-box;
+    box-shadow: 0 2px 8px rgba(var(--brand-rgb), 0.15);
   }
 
   .mobile-nav-item.active .mobile-nav-label {
-    color: #7c3aed;
+    color: var(--brand-primary);
     font-weight: 600;
   }
 
   .mobile-nav-item:active {
-    transform: scale(0.96);
+    transform: scale(0.94);
   }
 }
 
-[data-theme='dark'] .mobile-bottom-nav {
-  background: #0f172a;
-  border-color: #1e293b;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.25);
+html.dark .mobile-bottom-nav,
+.dark .mobile-bottom-nav,
+[data-theme='dark'] .mobile-bottom-nav,
+html[data-theme='dark'] .mobile-bottom-nav {
+  background: rgba(11, 13, 19, 0.95);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.55);
 }
 
-[data-theme='dark'] .mobile-nav-item {
+html.dark .mobile-nav-item,
+.dark .mobile-nav-item,
+[data-theme='dark'] .mobile-nav-item,
+html[data-theme='dark'] .mobile-nav-item {
   color: #94a3b8;
 }
 
-[data-theme='dark'] .mobile-nav-label {
+html.dark .mobile-nav-label,
+.dark .mobile-nav-label,
+[data-theme='dark'] .mobile-nav-label,
+html[data-theme='dark'] .mobile-nav-label {
   color: #94a3b8;
 }
 
-[data-theme='dark'] .mobile-nav-item.active .mobile-nav-icon-wrap {
-  background: #2e1065;
-  color: #c4b5fd;
+html.dark .mobile-nav-item:hover,
+.dark .mobile-nav-item:hover,
+[data-theme='dark'] .mobile-nav-item:hover,
+html[data-theme='dark'] .mobile-nav-item:hover {
+  color: #f8fafc;
 }
 
-[data-theme='dark'] .mobile-nav-item.active .mobile-nav-label {
-  color: #c4b5fd;
+html.dark .mobile-nav-item:hover .mobile-nav-label,
+.dark .mobile-nav-item:hover .mobile-nav-label,
+[data-theme='dark'] .mobile-nav-item:hover .mobile-nav-label,
+html[data-theme='dark'] .mobile-nav-item:hover .mobile-nav-label {
+  color: #f8fafc;
+}
+
+html.dark .mobile-nav-item.active .mobile-nav-icon-wrap,
+.dark .mobile-nav-item.active .mobile-nav-icon-wrap,
+[data-theme='dark'] .mobile-nav-item.active .mobile-nav-icon-wrap,
+html[data-theme='dark'] .mobile-nav-item.active .mobile-nav-icon-wrap {
+  background: var(--brand-subtle);
+  color: var(--brand-primary);
+  box-shadow: 0 0 16px rgba(var(--brand-rgb), 0.35);
+}
+
+html.dark .mobile-nav-item.active .mobile-nav-label,
+.dark .mobile-nav-item.active .mobile-nav-label,
+[data-theme='dark'] .mobile-nav-item.active .mobile-nav-label,
+html[data-theme='dark'] .mobile-nav-item.active .mobile-nav-label {
+  color: var(--brand-primary);
+  font-weight: 600;
 }
