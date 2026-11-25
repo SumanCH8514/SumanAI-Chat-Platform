@@ -88,7 +88,7 @@ const copyToClipboard = async (textToCopy) => {
 };
 
 const ChatThread = () => {
-  const { chats, activeChatId } = useChatStore();
+  const { chats, activeChatId, isGenerating } = useChatStore();
   const { user } = useAuthStore();
   const { selectedModel } = useModel();
 
@@ -328,6 +328,9 @@ const ChatThread = () => {
           (msg.model && msg.model.toLowerCase().includes('video')) ||
           (msg.content && msg.content.includes('/generated-videos/'))
         );
+
+        const isLastMessage = idx === activeChat.messages.length - 1;
+        const isActivelyGenerating = Boolean(isGenerating && isLastMessage);
 
         const isImageGenMsg = !isVideoGenMsg && Boolean(
           useChatStore.getState().hasImageGenActive ||
@@ -592,7 +595,10 @@ const ChatThread = () => {
                     isVideoGenMsg ? (
                       <VideoPlaceholderCard statusText="Generating Video..." />
                     ) : isImageGenMsg ? (
-                      <ImagePlaceholderCard status="generating" />
+                      <ImagePlaceholderCard
+                        status={isActivelyGenerating ? "generating" : "interrupted"}
+                        onRegenerate={() => handleRegenerateMessage(idx)}
+                      />
                     ) : (
                       <ThinkingIndicator
                         key={`thinking-${idx}`}

@@ -417,8 +417,75 @@ export const useChatStore = create(
         set({ isSyncing: true });
         try {
           const firestoreChats = await firestoreService.loadChats(userId);
-          if (firestoreChats.length > 0) {
-            set({ chats: firestoreChats });
+          if (Array.isArray(firestoreChats) && firestoreChats.length > 0) {
+            set((state) => {
+              const localChats = state.chats || [];
+              const localMap = new Map(localChats.map(c => [c.id, c]));
+              let hasLocalUpdatesToPush = false;
+
+              const mergedChats = firestoreChats.map((cloudChat) => {
+                const localChat = localMap.get(cloudChat.id);
+                if (!localChat) return cloudChat;
+
+                localMap.delete(cloudChat.id);
+
+                const cloudMsgs = Array.isArray(cloudChat.messages) ? cloudChat.messages : [];
+                const localMsgs = Array.isArray(localChat.messages) ? localChat.messages : [];
+
+                if (localMsgs.length === 0) return cloudChat;
+                if (cloudMsgs.length === 0) {
+                  hasLocalUpdatesToPush = true;
+                  return localChat;
+                }
+
+                let chatMerged = false;
+                const mergedMessages = cloudMsgs.map((cMsg, i) => {
+                  const lMsg = localMsgs[i];
+                  if (!lMsg) return cMsg;
+
+                  const cloudContent = typeof cMsg.content === 'string' ? cMsg.content.trim() : '';
+                  const localContent = typeof lMsg.content === 'string' ? lMsg.content.trim() : '';
+
+                  if (!cloudContent && localContent) {
+                    chatMerged = true;
+                    return { ...cMsg, content: lMsg.content };
+                  }
+                  return cMsg;
+                });
+
+                if (localMsgs.length > cloudMsgs.length) {
+                  chatMerged = true;
+                  mergedMessages.push(...localMsgs.slice(cloudMsgs.length));
+                }
+
+                if (chatMerged) {
+                  hasLocalUpdatesToPush = true;
+                  return {
+                    ...cloudChat,
+                    title: localChat.title || cloudChat.title,
+                    messages: mergedMessages,
+                    updatedAt: Date.now()
+                  };
+                }
+
+                return cloudChat;
+              });
+
+              for (const remainingLocal of localMap.values()) {
+                mergedChats.push(remainingLocal);
+                hasLocalUpdatesToPush = true;
+              }
+
+              mergedChats.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+              if (hasLocalUpdatesToPush && userId) {
+                mergedChats.forEach((c) => {
+                  firestoreService.saveChat(userId, c);
+                });
+              }
+
+              return { chats: mergedChats };
+            });
           }
         } catch (error) {
           console.error("Sync error:", error);

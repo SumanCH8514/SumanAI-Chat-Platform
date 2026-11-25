@@ -561,7 +561,29 @@
 .brand-logo-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  width: 100%;
+}
+
+.brand-banner-logo {
+  height: 50px;
+  width: auto;
+  max-width: 228px;
+  object-fit: contain;
+  object-position: left center;
+  display: block;
+  user-select: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.08));
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.brand-logo-container:hover .brand-banner-logo {
+  transform: scale(1.02);
+  opacity: 0.95;
+}
+
+html.dark .brand-banner-logo,
+.dark .brand-banner-logo {
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
 }
 
 .brand-logo {
@@ -593,56 +615,6 @@
   white-space: nowrap;
 }
 
-.sidebar-collapse-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-left: auto;
-}
-
-.sidebar-collapse-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--border-light);
-}
-
-.desktop-new-chat-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  height: 42px;
-  background: var(--brand-primary);
-  color: #ffffff;
-  border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 14px var(--brand-glow);
-  margin-bottom: 18px;
-  flex-shrink: 0;
-}
-
-.desktop-new-chat-btn:hover {
-  background: var(--brand-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px var(--brand-glow);
-}
-
-.desktop-new-chat-btn:active {
-  transform: translateY(0);
-}
 
 .nav-links {
   display: flex;
@@ -681,158 +653,6 @@
   color: var(--brand-primary) !important;
 }
 
-.recent-chats-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 8px;
-  margin-bottom: 8px;
-}
-
-.recent-chats-title {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.recent-chats-see-all {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--brand-primary);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 2px 4px;
-  transition: opacity 0.2s ease;
-}
-
-.recent-chats-see-all:hover {
-  opacity: 0.8;
-  text-decoration: underline;
-}
-
-.desktop-pro-plan-card {
-  margin-top: auto;
-  margin-bottom: 12px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: var(--brand-subtle);
-  border: 1px solid var(--brand-border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
-}
-
-.desktop-pro-plan-card.is-pro {
-  padding: 13px 14px;
-  gap: 10px;
-}
-
-.desktop-pro-plan-card.is-free {
-  padding: 12px 14px 14px;
-  gap: 8px;
-}
-
-.pro-card-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.pro-card-crown {
-  color: #d97706;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.pro-card-titles {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  gap: 1px;
-}
-
-.pro-card-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1.2;
-}
-
-.pro-card-status {
-  font-size: 11px;
-  color: var(--text-muted);
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.pro-card-status.inactive {
-  color: #ef4444;
-}
-
-.pro-card-desc {
-  font-size: 11px;
-  color: var(--text-muted);
-  line-height: 1.4;
-  margin: 0;
-}
-
-.pro-card-usage {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.pro-card-usage-text {
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.pro-card-progress-bar {
-  width: 100%;
-  height: 5px;
-  background: rgba(124, 58, 237, 0.15);
-  border-radius: 9999px;
-  overflow: hidden;
-}
-
-[data-theme="dark"] .pro-card-progress-bar,
-.dark .pro-card-progress-bar {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.pro-card-progress-fill {
-  height: 100%;
-  background: var(--brand-primary);
-  border-radius: 9999px;
-  transition: width 0.3s ease;
-}
-
-.pro-card-upgrade-btn {
-  width: 100%;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-card);
-  color: var(--brand-primary);
-  border: 1px solid var(--brand-primary);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-top: 2px;
-}
-
-.pro-card-upgrade-btn:hover {
-  background: var(--brand-subtle);
-  border-color: var(--brand-hover);
-  color: var(--brand-hover);
-}
 
 .sb-profile-more {
   color: var(--text-muted);
@@ -874,7 +694,10 @@
     flex-direction: column;
     flex-shrink: 0;
     width: 100%;
-    margin-bottom: 16px;
+    margin-top: auto;
+    margin-bottom: 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-light);
   }
 
   .mobile-sb-user-bar {
@@ -883,9 +706,19 @@
     gap: 12px;
     margin-bottom: 0;
     cursor: pointer;
-    padding: 2px 0;
+    padding: 8px 10px;
+    border-radius: 12px;
     flex-shrink: 0;
     user-select: none;
+    transition: background 0.15s ease;
+  }
+
+  .mobile-sb-user-bar:hover {
+    background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+  }
+
+  .mobile-sb-user-bar:active {
+    background: var(--bg-active, rgba(0, 0, 0, 0.07));
   }
 
   .mobile-sb-avatar {
@@ -953,21 +786,27 @@
   }
 
   .mobile-sb-user-menu {
-    margin-top: 10px;
-    margin-bottom: 0;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
     padding: 6px;
-    animation: menuSlideDownMobile 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: menuSlideUpMobile 0.18s cubic-bezier(0.16, 1, 0.3, 1);
     flex-shrink: 0;
+    z-index: 100;
   }
 
-  @keyframes menuSlideDownMobile {
+  @keyframes menuSlideUpMobile {
     from {
       opacity: 0;
-      transform: translateY(-6px);
+      transform: translateY(8px);
     }
     to {
       opacity: 1;
@@ -1216,63 +1055,19 @@
     flex-shrink: 0;
   }
 
-  .mobile-sb-upgrade-card {
-    margin-top: auto;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    background: #faf5ff;
-    border: 1px solid #ede9fe;
-    border-radius: 16px;
-    cursor: pointer;
-    transition: background 0.15s ease, transform 0.15s ease;
-    flex-shrink: 0;
-    user-select: none;
+  [data-theme="dark"] .mobile-sb-user-wrapper,
+  .dark .mobile-sb-user-wrapper {
+    border-top-color: var(--border-subtle, rgba(255, 255, 255, 0.08));
   }
 
-  .mobile-sb-upgrade-card:hover {
-    background: var(--brand-subtle);
+  [data-theme="dark"] .mobile-sb-user-bar:hover,
+  .dark .mobile-sb-user-bar:hover {
+    background: rgba(255, 255, 255, 0.06);
   }
 
-  .mobile-sb-upgrade-icon-wrap {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: var(--brand-primary);
-  }
-
-  .mobile-sb-upgrade-crown {
-    color: var(--brand-primary);
-  }
-
-  .mobile-sb-upgrade-text {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .mobile-sb-upgrade-title {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: #111827;
-    letter-spacing: -0.01em;
-  }
-
-  .mobile-sb-upgrade-sub {
-    font-size: 11px;
-    color: #6b7280;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .mobile-sb-upgrade-chevron {
-    color: var(--brand-primary);
-    flex-shrink: 0;
+  [data-theme="dark"] .mobile-sb-user-bar:active,
+  .dark .mobile-sb-user-bar:active {
+    background: rgba(255, 255, 255, 0.1);
   }
 
   [data-theme="dark"] .mobile-sb-user-name,
@@ -1358,22 +1153,6 @@
 
   [data-theme="dark"] .mobile-sb-utility-icon,
   .dark .mobile-sb-utility-icon {
-    color: #9ca3af;
-  }
-
-  [data-theme="dark"] .mobile-sb-upgrade-card,
-  .dark .mobile-sb-upgrade-card {
-    background: var(--brand-subtle);
-    border-color: var(--brand-border);
-  }
-
-  [data-theme="dark"] .mobile-sb-upgrade-title,
-  .dark .mobile-sb-upgrade-title {
-    color: #f9fafb;
-  }
-
-  [data-theme="dark"] .mobile-sb-upgrade-sub,
-  .dark .mobile-sb-upgrade-sub {
     color: #9ca3af;
   }
 }

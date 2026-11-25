@@ -6,6 +6,7 @@ import { env } from '../config/env';
 import { useChatStore } from '../store/useChatStore';
 import { DEFAULT_IMAGE_GEN_MODEL } from '../constants/models';
 import { ttsService } from '../services/ttsService';
+import { getFirebaseAuth } from '../services/firebase';
 import ImageQuotaBadge from './ImageQuotaBadge';
 import './GeneratedImageCard.css';
 
@@ -18,24 +19,46 @@ const STYLE_PRESETS = [
   'Pop Art'
 ];
 
-export const ImagePlaceholderCard = ({ status = 'generating' }) => {
+export const ImagePlaceholderCard = ({ status = 'generating', onRegenerate = null }) => {
   const isRendering = status === 'rendering';
+  const isInterrupted = status === 'interrupted';
 
   return (
     <div className="generated-image-card image-placeholder-mode" role="status" aria-live="polite">
       <div className="generated-image-container placeholder-container">
-        <div className="rendering-scan-bar" />
+        {!isInterrupted && <div className="rendering-scan-bar" />}
         <div className="image-generation-status-box">
-          <div className="generation-spinner-wrapper">
-            <Loader2 className="generation-spin-icon" size={24} />
-          </div>
-          <p className="generation-status-text">
-            {isRendering ? 'Rendering image...' : 'Generating image...'}
-          </p>
-          {!isRendering && (
-            <span className="generation-status-subtext">
-              Synthesizing with Flux AI
-            </span>
+          {isInterrupted ? (
+            <div className="image-load-error-state" style={{ padding: '24px 16px' }}>
+              <AlertCircle size={26} color="#F59E0B" className="image-error-icon" />
+              <p className="image-error-title">Image generation incomplete</p>
+              <p className="image-error-subtitle">Session was interrupted or reloaded before image sync</p>
+              {typeof onRegenerate === 'function' && (
+                <button
+                  type="button"
+                  className="image-error-retry-btn"
+                  onClick={onRegenerate}
+                  style={{ marginTop: '10px' }}
+                >
+                  <RotateCw size={13} />
+                  <span>Regenerate with Flux</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="generation-spinner-wrapper">
+                <Loader2 className="generation-spin-icon" size={24} />
+              </div>
+              <p className="generation-status-text">
+                {isRendering ? 'Rendering image...' : 'Generating image...'}
+              </p>
+              {!isRendering && (
+                <span className="generation-status-subtext">
+                  Synthesizing with Flux AI
+                </span>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -126,9 +149,20 @@ const GeneratedImageCard = ({ src, alt, promptText }) => {
               r2Key = src.split('cdn.sumanai.r2.sumanonline.com/')[1]?.split('?')[0];
             }
 
+            const headers = { 'Content-Type': 'application/json' };
+            try {
+              const currentUser = getFirebaseAuth()?.currentUser;
+              if (currentUser) {
+                const token = await currentUser.getIdToken();
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+              }
+            } catch {
+              void 0;
+            }
+
             const uploadRes = await fetch(`${baseUrl}/api/upload-watermarked-image`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers,
               body: JSON.stringify({ key: r2Key, imageBase64: res })
             });
 

@@ -79,20 +79,6 @@
   transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.28s cubic-bezier(0.16, 1, 0.3, 1), padding 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
 }
 
-@media (min-width: 769px) {
-  .sidebar.is-collapsed {
-    width: 0 !important;
-    min-width: 0 !important;
-    max-width: 0 !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    border-right-color: transparent !important;
-    overflow: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-    visibility: hidden !important;
-  }
-}
 
 .brand {
   display: flex;
@@ -308,32 +294,6 @@
   min-width: 0;
 }
 
-.desktop-sidebar-expand-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  flex-shrink: 0;
-}
-
-.desktop-sidebar-expand-btn:hover {
-  background: var(--brand-subtle);
-  border-color: var(--brand-border);
-  color: var(--brand-primary);
-  transform: translateX(1px);
-}
-
-.desktop-sidebar-expand-btn:active {
-  transform: scale(0.95);
-}
 
 .hamburger-btn {
   display: none;
@@ -491,25 +451,6 @@
   max-width: 880px;
   margin: 0 auto;
   width: 100%;
-}
-
-.desktop-welcome-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  border-radius: 9999px;
-  background: var(--brand-subtle);
-  border: 1px solid var(--brand-border);
-  color: var(--brand-primary);
-  font-size: 12.5px;
-  font-weight: 600;
-  margin-bottom: 16px;
-  box-shadow: 0 1px 4px var(--brand-glow);
-}
-
-.welcome-badge-icon {
-  color: var(--brand-primary);
 }
 
 .greeting {
@@ -752,65 +693,6 @@
   gap: 12px;
 }
 
-.desktop-header-bell-btn {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.desktop-header-bell-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.desktop-header-bell-dot {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--brand-primary);
-  border: 1.5px solid var(--bg-main);
-}
-
-.desktop-header-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--brand-primary);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13.5px;
-  font-weight: 700;
-  cursor: pointer;
-  overflow: hidden;
-  border: 1.5px solid var(--border-light);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  transition: all 0.2s ease;
-}
-
-.desktop-header-avatar:hover {
-  transform: scale(1.05);
-  border-color: var(--brand-primary);
-}
-
-.desktop-header-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
 
 .desktop-theme-toggle {
   display: flex;
@@ -837,10 +719,6 @@
   display: none;
 }
 
-.mobile-model-pill-wrap {
-  display: none;
-}
-
 .desktop-only {
   display: block;
 }
@@ -852,26 +730,6 @@ button.desktop-only {
 
 .mobile-only {
   display: none;
-}
-
-.desktop-inline-model-wrap {
-  display: flex;
-  align-items: center;
-}
-
-.desktop-inline-model-wrap .inline-model-pill {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-light);
-  border-radius: 9999px;
-  padding: 5px 12px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.desktop-inline-model-wrap .inline-model-pill:hover {
-  border-color: var(--brand-border);
-  color: var(--text-primary);
 }
 
 .desktop-quick-actions {
@@ -2352,7 +2210,6 @@ button.desktop-only {
     display: flex !important;
   }
 
-  .desktop-welcome-badge,
   .desktop-hero-subtitle {
     display: none !important;
   }
@@ -2361,16 +2218,10 @@ button.desktop-only {
     display: block !important;
   }
 
-  .mobile-model-pill-wrap {
-    display: flex !important;
-    align-items: center;
-  }
-
   .desktop-quick-actions,
   .desktop-examples-section,
   .desktop-header-tools,
-  .desktop-sidebar-expand-btn,
-  .desktop-inline-model-wrap {
+  .desktop-sidebar-expand-btn {
     display: none !important;
   }
 

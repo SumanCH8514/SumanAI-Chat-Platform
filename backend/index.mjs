@@ -631,15 +631,14 @@ export default {
           const authHeader = request.headers.get("Authorization") || "";
           const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
           const verifiedUser = token ? await verifyFirebaseToken(token, env?.FIREBASE_PROJECT_ID || "sumanai-sumanonline") : null;
-          if (!verifiedUser) {
+          let key = typeof body?.key === "string" ? body.key.trim() : "";
+          const imageBase64 = typeof body?.imageBase64 === "string" ? body.imageBase64.trim() : "";
+          if (!verifiedUser && (!key || !key.startsWith("generated-images/"))) {
             return new Response(JSON.stringify({ error: "Authentication required to upload media" }), {
               status: 401,
               headers: { "Content-Type": "application/json", ...corsHeaders }
             });
           }
-
-          let key = typeof body?.key === "string" ? body.key.trim() : "";
-          const imageBase64 = typeof body?.imageBase64 === "string" ? body.imageBase64.trim() : "";
 
           if (!imageBase64) {
             return new Response(JSON.stringify({ error: "Missing image data" }), {
@@ -869,10 +868,12 @@ export default {
           }
 
           const candidateSpaces = [
-            "https://a-test-user-in-the-wrold-qwen-image-2-1-uncensor-a9bf7a3.hf.space",
+            "https://devsuman-sumanonline-qwen-image-2-1-uncensored.hf.space",
             "https://guaryn-qwen-image-2-1-uncensored-aio-loras.hf.space",
             "https://daankular-qwen-image-2-1-uncensored-aio-loras.hf.space",
-            "https://anygork-qwen-image-2-1-uncensored-aio-loras-2.hf.space"
+            "https://anygork-qwen-image-2-1-uncensored-aio-loras-2.hf.space",
+            "https://a-test-user-in-the-wrold-qwen-image-21-uncensored.hf.space",
+            "https://a-test-user-in-the-wrold-qwen-image-2-1-uncensor-a9bf7a3.hf.space"
           ];
 
           const hfToken = env.HF_TOKEN;
@@ -958,34 +959,58 @@ export default {
           for (const space of candidateSpaces) {
             try {
               let uploadedPath = null;
+              const isDevSuman = space.includes("devsuman");
 
-              if (mode === "edit") {
-                const extension = mimeType.includes("jpeg") || mimeType.includes("jpg") ? "jpg" : "png";
-                const blob = new Blob([imageUint8], { type: mimeType });
-                const form = new FormData();
-                form.append("files", blob, `input.${extension}`);
-
-                const uploadHeaders = {};
-                if (hfToken) uploadHeaders["Authorization"] = `Bearer ${hfToken}`;
-
-                const uploadRes = await fetch(`${space}/gradio_api/upload`, {
-                  method: "POST",
-                  headers: uploadHeaders,
-                  body: form
-                });
-
-                if (!uploadRes.ok) {
-                  continue;
+              if (mode === "edit" || isDevSuman) {
+                let bytesToSend = imageUint8;
+                let sendMime = mimeType;
+                if (!bytesToSend && isDevSuman) {
+                  const blankPngB64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+                  const bin = atob(blankPngB64);
+                  bytesToSend = new Uint8Array(bin.length);
+                  for (let b = 0; b < bin.length; b++) bytesToSend[b] = bin.charCodeAt(b);
+                  sendMime = "image/png";
                 }
 
-                const uploadData = await uploadRes.json();
-                if (!Array.isArray(uploadData) || !uploadData[0]) {
-                  continue;
+                if (bytesToSend) {
+                  const extension = sendMime.includes("jpeg") || sendMime.includes("jpg") ? "jpg" : "png";
+                  const blob = new Blob([bytesToSend], { type: sendMime });
+                  const form = new FormData();
+                  form.append("files", blob, `input.${extension}`);
+
+                  const uploadHeaders = {};
+                  if (hfToken) uploadHeaders["Authorization"] = `Bearer ${hfToken}`;
+
+                  const uploadRes = await fetch(`${space}/gradio_api/upload`, {
+                    method: "POST",
+                    headers: uploadHeaders,
+                    body: form
+                  });
+
+                  if (!uploadRes.ok) {
+                    continue;
+                  }
+
+                  const uploadData = await uploadRes.json();
+                  if (!Array.isArray(uploadData) || !uploadData[0]) {
+                    continue;
+                  }
+                  uploadedPath = uploadData[0];
                 }
-                uploadedPath = uploadData[0];
               }
 
-              const payloadData = [
+              const payloadData = isDevSuman ? [
+                uploadedPath ? { path: uploadedPath, meta: { _type: "gradio.FileData" } } : null,
+                prompt,
+                "None (Base Uncensored)",
+                loraScale,
+                null,
+                null,
+                mappedAspectRatio,
+                steps,
+                seed,
+                randomizeSeed
+              ] : [
                 prompt,
                 mode === "edit" ? "Edit Image (1 Ref)" : "Text to Image",
                 mode === "edit" ? { path: uploadedPath, meta: { _type: "gradio.FileData" } } : null,
@@ -1000,7 +1025,9 @@ export default {
                 randomizeSeed
               ];
 
-              const callRes = await fetch(`${space}/gradio_api/call/generate`, {
+              const callEndpoint = isDevSuman ? `${space}/gradio_api/call/edit` : `${space}/gradio_api/call/generate`;
+
+              const callRes = await fetch(callEndpoint, {
                 method: "POST",
                 headers: hfHeaders,
                 body: JSON.stringify({ data: payloadData })
@@ -1016,7 +1043,8 @@ export default {
                 continue;
               }
 
-              const sseRes = await fetch(`${space}/gradio_api/call/generate/${eventId}`, {
+              const sseEndpoint = isDevSuman ? `${space}/gradio_api/call/edit/${eventId}` : `${space}/gradio_api/call/generate/${eventId}`;
+              const sseRes = await fetch(sseEndpoint, {
                 headers: hfHeaders
               });
 
@@ -2095,6 +2123,29 @@ export default {
           throw new Error("Unable to generate image. Please try again or rephrase your prompt.");
         }
 
+        const cleanBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+        let permanentImageUrl = null;
+        if (env.R2_BUCKET) {
+          try {
+            const binaryString = atob(cleanBase64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            const r2Key = `generated-images/SumanAI_img_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
+            await env.R2_BUCKET.put(r2Key, bytes, {
+              httpMetadata: {
+                contentType: 'image/jpeg',
+                cacheControl: 'public, max-age=31536000'
+              }
+            });
+            permanentImageUrl = `https://cdn.sumanai.r2.sumanonline.com/${r2Key}`;
+          } catch (r2Err) {
+            void r2Err;
+          }
+        }
+
+        const finalImageUrl = permanentImageUrl || `data:image/jpeg;base64,${cleanBase64}`;
         const { readable, writable } = new TransformStream();
         const writer = writable.getWriter();
         const encoder = new TextEncoder();
@@ -2103,9 +2154,7 @@ export default {
           try {
             await writer.write(encoder.encode(`data: ${JSON.stringify({ meta: { model: respondingImageModel } })}\n\n`));
             const cleanTitle = (promptMsg?.content || promptText).replace(/[\[\]\(\)\n\r]/g, ' ').trim().slice(0, 70) || 'Generated Image';
-            const cleanBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-            const rawDataUrl = `data:image/jpeg;base64,${cleanBase64}`;
-            const markdown = `![${cleanTitle}](${rawDataUrl})`;
+            const markdown = `![${cleanTitle}](${finalImageUrl})`;
             const chunk = {
               candidates: [{
                 content: {

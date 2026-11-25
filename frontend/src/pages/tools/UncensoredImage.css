@@ -410,6 +410,75 @@
   text-decoration: underline;
 }
 
+.collapsible-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  user-select: none;
+  font-family: inherit;
+  text-align: left;
+}
+
+.collapsible-title-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapsible-selected-summary {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  line-height: 1.4;
+}
+
+.collapsible-chevron {
+  color: #94a3b8;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.collapsible-section-toggle:hover .collapsible-chevron {
+  color: #0f172a;
+}
+
+.collapsible-chevron.open {
+  transform: rotate(180deg);
+}
+
+.collapsible-content-fade {
+  animation: uncensoredFadeDown 0.18s ease-out;
+}
+
+.uncensored-config-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+@keyframes uncensoredFadeDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .inspirations-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1248,6 +1317,18 @@ html.dark .prompt-textarea,
   background: #0f121a;
   border-color: rgba(255, 255, 255, 0.1);
   color: #f8fafc;
+}
+
+html.dark .collapsible-section-toggle:hover .collapsible-chevron,
+.dark .collapsible-section-toggle:hover .collapsible-chevron {
+  color: #f8fafc;
+}
+
+html.dark .collapsible-selected-summary,
+.dark .collapsible-selected-summary {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(37, 99, 235, 0.4);
+  color: #93c5fd;
 }
 
 html.dark .inspiration-pill,

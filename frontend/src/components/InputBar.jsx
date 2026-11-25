@@ -909,17 +909,6 @@ const InputBar = ({ isCentered = false }) => {
               )}
             </div>
 
-            {isCentered && (
-              <div className="desktop-inline-model-wrap desktop-only">
-                <ModelSelector
-                  variant="inline"
-                  isCentered={isCentered}
-                  deepThinking={deepThinking}
-                  onToggleThinking={() => setDeepThinking(!deepThinking)}
-                />
-              </div>
-            )}
-
             {(hasImageGenActive || hasVideoGenActive || codeMode || summarizeMode || deepThinking || smartSearch) && (
               <div className="active-pill-indicators">
                 {hasImageGenActive && (
@@ -1017,23 +1006,12 @@ const InputBar = ({ isCentered = false }) => {
           </div>
 
           <div className="input-bottom-right">
-            {!isCentered ? (
-              <ModelSelector
-                variant="inline"
-                isCentered={isCentered}
-                deepThinking={deepThinking}
-                onToggleThinking={() => setDeepThinking(!deepThinking)}
-              />
-            ) : (
-              <div className="mobile-model-pill-wrap">
-                <ModelSelector
-                  variant="inline"
-                  isCentered={isCentered}
-                  deepThinking={deepThinking}
-                  onToggleThinking={() => setDeepThinking(!deepThinking)}
-                />
-              </div>
-            )}
+            <ModelSelector
+              variant="inline"
+              isCentered={isCentered}
+              deepThinking={deepThinking}
+              onToggleThinking={() => setDeepThinking(!deepThinking)}
+            />
 
             <button
               type="button"

@@ -76,8 +76,28 @@ export const firestoreService = {
     if (!db) return;
     try {
       const chatRef = doc(db, 'users', userId, 'chats', chat.id);
+      let sanitizedChat = chat;
+      if (Array.isArray(chat.messages)) {
+        let hasLargeBase64 = false;
+        const safeMessages = chat.messages.map((msg) => {
+          if (typeof msg.content === 'string' && msg.content.includes('data:image/')) {
+            if (msg.content.length > 50000) {
+              hasLargeBase64 = true;
+              return {
+                ...msg,
+                content: msg.content.replace(/data:image\/[a-zA-Z0-9._+-]+;base64,[A-Za-z0-9+/=]{1000,}/g, '[Processing image...]')
+              };
+            }
+          }
+          return msg;
+        });
+        if (hasLargeBase64) {
+          sanitizedChat = { ...chat, messages: safeMessages };
+        }
+      }
+
       await setDoc(chatRef, {
-        ...chat,
+        ...sanitizedChat,
         updatedAt: Date.now()
       });
     } catch (err) {

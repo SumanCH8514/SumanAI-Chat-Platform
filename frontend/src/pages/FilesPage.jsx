@@ -26,7 +26,8 @@ import {
 } from 'lucide-react';
 import { useChatStore } from '../store/useChatStore';
 import { env } from '../config/env';
-import { deduplicateWorkspaceFiles, findRedundantCustomFiles } from '../utils/fileUtils';
+import { auth } from '../config/firebase';
+import { deduplicateWorkspaceFiles, findRedundantCustomFiles, getFileTimestamp } from '../utils/fileUtils';
 import { downloadImage } from '../utils/downloadUtils';
 import './FilesPage.css';
 
@@ -159,21 +160,32 @@ export const FilesPage = () => {
   const sortRef = useRef(null);
   const PAGE_SIZE = 10;
 
-  const [customFiles, setCustomFiles] = useState(() => {
+  const loadNormalizedCustomFiles = () => {
     try {
       const saved = localStorage.getItem('sumanai_uploaded_files');
       if (!saved) return [];
       const parsed = JSON.parse(saved);
-      return Array.isArray(parsed)
-        ? parsed.map((item, idx) => ({
-            ...item,
-            id: item?.id || `upload-legacy-${idx}-${Date.now()}`
-          }))
-        : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((item, idx) => {
+        const timestamp = getFileTimestamp(item) || (Date.now() - idx * 1000);
+        const isImg = item?.type === 'image' || (typeof item?.type === 'string' && item.type.startsWith('image/')) || (typeof item?.url === 'string' && (item.url.includes('/generated-images/') || item.url.includes('/uncensored/') || item.url.match(/\.(png|jpe?g|webp|gif|svg)($|\?)/i)));
+        const isVid = item?.type === 'video' || (typeof item?.type === 'string' && item.type.startsWith('video/')) || (typeof item?.url === 'string' && (item.url.includes('/generated-videos/') || item.url.match(/\.(mp4|webm)($|\?)/i)));
+        const cleanType = isVid ? 'video' : (isImg ? 'image' : (item?.type || 'code'));
+
+        return {
+          ...item,
+          id: item?.id || `upload-legacy-${idx}-${timestamp}`,
+          type: cleanType,
+          createdAt: timestamp,
+          prompt: item?.prompt || item?.chatTitle || item?.name || 'Generated Media'
+        };
+      });
     } catch {
       return [];
     }
-  });
+  };
+
+  const [customFiles, setCustomFiles] = useState(loadNormalizedCustomFiles);
 
   const [deletedFileIds, setDeletedFileIds] = useState(() => {
     try {
@@ -183,6 +195,18 @@ export const FilesPage = () => {
       return [];
     }
   });
+
+  useEffect(() => {
+    const handleStorageUpdate = () => {
+      setCustomFiles(loadNormalizedCustomFiles());
+    };
+    window.addEventListener('storage', handleStorageUpdate);
+    window.addEventListener('sumanai_files_updated', handleStorageUpdate);
+    return () => {
+      window.removeEventListener('storage', handleStorageUpdate);
+      window.removeEventListener('sumanai_files_updated', handleStorageUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -324,8 +348,8 @@ export const FilesPage = () => {
   }, [customFiles, chatFiles, deletedFileIds]);
 
   const stats = useMemo(() => {
-    const images = allFiles.filter((f) => f.type === 'image').length;
-    const videos = allFiles.filter((f) => f.type === 'video').length;
+    const images = allFiles.filter((f) => f.type === 'image' || (typeof f.type === 'string' && f.type.startsWith('image/'))).length;
+    const videos = allFiles.filter((f) => f.type === 'video' || (typeof f.type === 'string' && f.type.startsWith('video/'))).length;
     const code = allFiles.filter((f) => f.type === 'code').length;
     const total = allFiles.length;
 
@@ -351,12 +375,14 @@ export const FilesPage = () => {
   const filteredFiles = useMemo(() => {
     return allFiles
       .filter((item) => {
+        const isImg = item.type === 'image' || (typeof item.type === 'string' && item.type.startsWith('image/'));
+        const isVid = item.type === 'video' || (typeof item.type === 'string' && item.type.startsWith('video/'));
         const matchType =
           selectedType === 'All' ||
-          (selectedType === 'Images' && item.type === 'image') ||
-          (selectedType === 'Videos' && item.type === 'video') ||
+          (selectedType === 'Images' && isImg) ||
+          (selectedType === 'Videos' && isVid) ||
           (selectedType === 'Code' && item.type === 'code') ||
-          (selectedType === 'Others' && item.type !== 'image' && item.type !== 'video' && item.type !== 'code');
+          (selectedType === 'Others' && !isImg && !isVid && item.type !== 'code');
         const q = searchQuery.toLowerCase().trim();
         const matchQuery =
           !q ||
@@ -366,8 +392,10 @@ export const FilesPage = () => {
         return matchType && matchQuery;
       })
       .sort((a, b) => {
-        if (sortBy === 'newest') return (b.createdAt || 0) - (a.createdAt || 0);
-        if (sortBy === 'oldest') return (a.createdAt || 0) - (b.createdAt || 0);
+        const timeA = getFileTimestamp(a);
+        const timeB = getFileTimestamp(b);
+        if (sortBy === 'newest') return timeB - timeA;
+        if (sortBy === 'oldest') return timeA - timeB;
         if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
         return 0;
       });
@@ -480,10 +508,13 @@ export const FilesPage = () => {
       try {
         const baseUrl = (env.WORKER_URL || '').replace(/\/+$/, '');
         if (baseUrl) {
+          const token = auth?.currentUser ? await auth.currentUser.getIdToken() : '';
           const endpoint = isVid ? `${baseUrl}/api/delete-video` : `${baseUrl}/api/delete-image`;
+          const headers = { 'Content-Type': 'application/json' };
+          if (token) headers['Authorization'] = `Bearer ${token}`;
           await fetch(endpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ url: fileUrl })
           });
         }
@@ -581,8 +612,8 @@ export const FilesPage = () => {
               </button>
             </div>
 
-            <div className={`files-modal-body ${previewItem.type === 'image' || previewItem.type === 'video' ? 'is-image-body' : ''}`}>
-              {previewItem.type === 'image' && (
+            <div className={`files-modal-body ${previewItem.type === 'image' || (typeof previewItem.type === 'string' && previewItem.type.startsWith('image/')) || previewItem.type === 'video' || (typeof previewItem.type === 'string' && previewItem.type.startsWith('video/')) ? 'is-image-body' : ''}`}>
+              {(previewItem.type === 'image' || (typeof previewItem.type === 'string' && previewItem.type.startsWith('image/'))) && (
                 <img
                   src={previewItem.url}
                   alt={previewItem.name || 'Preview'}
@@ -590,7 +621,7 @@ export const FilesPage = () => {
                   loading="lazy"
                 />
               )}
-              {previewItem.type === 'video' && (
+              {(previewItem.type === 'video' || (typeof previewItem.type === 'string' && previewItem.type.startsWith('video/'))) && (
                 <video
                   src={previewItem.url}
                   controls
@@ -904,8 +935,8 @@ export const FilesPage = () => {
               <tbody>
                 {paginatedFiles.map((f) => {
                   const isSelected = selectedRowIds.includes(f.id);
-                  const isVid = f.type === 'video';
-                  const isImg = f.type === 'image';
+                  const isVid = f.type === 'video' || (typeof f.type === 'string' && f.type.startsWith('video/'));
+                  const isImg = f.type === 'image' || (typeof f.type === 'string' && f.type.startsWith('image/'));
                   const isCode = f.type === 'code';
 
                   return (
@@ -1035,14 +1066,14 @@ export const FilesPage = () => {
             {paginatedFiles.map((f) => (
               <div key={f.id} className="file-grid-card" onClick={() => setPreviewItem(f)}>
                 <div className="grid-thumb-box">
-                  {f.type === 'video' ? (
+                  {f.type === 'video' || (typeof f.type === 'string' && f.type.startsWith('video/')) ? (
                     <div className="grid-video-placeholder">
                       <div className="video-play-badge">
                         <Play size={14} fill="currentColor" />
                       </div>
                       <span className="video-duration-tag">{f.duration || '00:24'}</span>
                     </div>
-                  ) : f.type === 'image' && f.url ? (
+                  ) : (f.type === 'image' || (typeof f.type === 'string' && f.type.startsWith('image/'))) && f.url ? (
                     <img src={f.thumbUrl || f.url} alt="" className="grid-thumb-img" />
                   ) : (
                     <div className="grid-generic-icon">

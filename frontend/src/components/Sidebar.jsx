@@ -1,13 +1,13 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Compass, BookOpen, FolderHeart, Clock,
+  Search, Compass, BookOpen, FolderHeart, Clock,
   MessageSquare, Wrench, Plus, Zap, Sliders, User,
   Settings, HelpCircle, LogOut, ChevronRight, X, PlusCircle,
   MoreHorizontal, Share, Edit2, Pin, Trash2, ShieldCheck, Wallet, Gift,
-  Home, PlusSquare, Folder, Layers, MoreVertical, MessageSquareWarning, Crown, ChevronDown,
-  LayoutGrid, ChevronsLeft
+  Home, PlusSquare, Folder, Layers, MoreVertical, MessageSquareWarning,
+  ChevronUp, LogIn
 } from 'lucide-react';
 import Skeleton from './Skeleton';
 import RenameModal from './RenameModal';
@@ -20,7 +20,7 @@ import { firestoreService } from '../services/firestoreService';
 import { adminService } from '../services/adminService';
 import './Sidebar.css';
 
-const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleCollapse, onClose }) => {
+const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
   const { user, logout } = useAuthStore();
   const isGuest = Boolean(user?.isAnonymous);
   const isAdmin = adminService.checkIsAdmin(user);
@@ -38,52 +38,6 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleC
     sub: userSubtitle,
     email: user?.email || (isGuest ? 'Guest Session' : 'No email')
   };
-
-  const proSubscription = useMemo(() => {
-    let expiresAt = user?.proExpiresAt;
-    if (!expiresAt && user?.uid) {
-      try {
-        const stored = localStorage.getItem(`sumanai_subscription_${user.uid}`);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed?.proExpiresAt) expiresAt = parsed.proExpiresAt;
-        }
-      } catch (err) {
-        void err;
-      }
-    }
-    const now = Date.now();
-    const hasExpiry = Boolean(expiresAt && typeof expiresAt === 'number');
-    const diffMs = hasExpiry ? expiresAt - now : null;
-    const isActive = isPro && (isAdmin || !hasExpiry || diffMs > 0);
-    const daysRemaining = diffMs && diffMs > 0 ? Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24))) : (isAdmin ? 30 : 12);
-
-    return {
-      isActive,
-      daysRemaining,
-      expiresAt,
-      statusText: isActive
-        ? `Active • Renews in ${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'}`
-        : 'Inactive • Expired'
-    };
-  }, [user?.proExpiresAt, user?.uid, isPro, isAdmin]);
-
-  const creditStats = useMemo(() => {
-    const totalCredits = 10000;
-    let used = 2840;
-    if (typeof user?.creditsUsed === 'number') {
-      used = Math.min(totalCredits, Math.max(0, user.creditsUsed));
-    } else if (typeof user?.credits === 'number') {
-      used = Math.min(totalCredits, Math.max(0, totalCredits - user.credits));
-    }
-    const percent = Math.min(100, Math.max(0, (used / totalCredits) * 100));
-    return {
-      used,
-      total: totalCredits,
-      percent,
-      formattedText: `${used.toLocaleString()} / ${totalCredits.toLocaleString()} credits used`
-    };
-  }, [user?.credits, user?.creditsUsed]);
 
   const UserAvatar = ({ className }) => {
     const [imgError, setImgError] = useState(false);
@@ -127,6 +81,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleC
     return `${monthStr}, ${timeStr}`;
   };
 
+  const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [menuPosition, setMenuPosition] = useState(null);
@@ -191,7 +146,11 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleC
 
   const { chats, activeChatId, renameChat, togglePinChat, deleteChat, isSyncing } = useChatStore();
 
-  const sortedChats = [...chats].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
+  const filteredChats = chats.filter(chat =>
+    !searchQuery.trim() || chat.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const sortedChats = [...filteredChats].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -311,16 +270,21 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleC
       hasArrow: true,
       action: () => { setShowUserMenu(false); onSettingsClick('help'); }
     },
-    {
+    ...(user && !isGuest ? [{
       icon: <LogOut size={16} />,
       label: 'Log out',
       dividerBefore: false,
       action: () => { setShowUserMenu(false); logout(); showToast('Logged out'); }
-    },
+    }] : [{
+      icon: <LogIn size={16} />,
+      label: 'Log in / Sign up',
+      dividerBefore: false,
+      action: () => { setShowUserMenu(false); handleLoginTrigger(); }
+    }]),
   ];
 
   return (
-    <aside className={`sidebar${isOpen ? ' sidebar--open' : ''}${isCollapsed ? ' is-collapsed' : ''}`}>
+    <aside className={`sidebar${isOpen ? ' sidebar--open' : ''}`}>
       <div className="sidebar-desktop-view">
         <div className="brand">
           <div
@@ -340,45 +304,42 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleC
               }
             }}
           >
-            <img src="/favicon.png" alt="SumanAI" className="brand-logo" />
-            <div className="brand-text-col">
-              <span className="brand-title">SumanAI</span>
-              <span className="brand-subtitle">Smarter tools for a connected world</span>
-            </div>
+            <img
+              src="/SumanOnlineAI-Logo-Banner.png"
+              alt="SumanOnline AI"
+              className="brand-banner-logo"
+            />
           </div>
-          <button
-            type="button"
-            className="sidebar-collapse-btn"
-            onClick={() => {
-              if (window.innerWidth <= 768) {
-                if (onClose) onClose();
-              } else {
-                if (onToggleCollapse) onToggleCollapse();
-              }
-            }}
-            aria-label="Collapse sidebar"
-            title="Collapse sidebar"
-          >
-            <ChevronsLeft size={16} />
+          <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar">
+            <X size={18} />
           </button>
         </div>
 
-        <button
-          type="button"
-          className="desktop-new-chat-btn"
-          onClick={() => {
-            navigate('/');
-            if (window.innerWidth <= 640 && typeof onClose === 'function') onClose();
-          }}
-        >
-          <Plus size={16} />
-          <span>New Chat</span>
-        </button>
+        <div className="search-bar">
+          <Search size={15} className="search-bar-icon" />
+          <input
+            type="text"
+            placeholder="Search conversations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search conversations"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="search-clear-btn"
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear search"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
 
         <nav className="nav-links" aria-label="Main Navigation">
           <Link
             to="/explore"
-            className={`nav-item ${location.pathname === '/explore' || location.pathname === '/' ? 'active' : ''}`}
+            className={`nav-item ${location.pathname === '/explore' ? 'active' : ''}`}
             onClick={() => { if (window.innerWidth <= 640) onClose(); }}
           >
             <Compass size={17} />
@@ -389,7 +350,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleC
             className={`nav-item ${location.pathname === '/library' ? 'active' : ''}`}
             onClick={() => { if (window.innerWidth <= 640) onClose(); }}
           >
-            <Layers size={17} />
+            <BookOpen size={17} />
             <span>Library</span>
           </Link>
           <Link
@@ -397,16 +358,8 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleC
             className={`nav-item ${location.pathname === '/files' ? 'active' : ''}`}
             onClick={() => { if (window.innerWidth <= 640) onClose(); }}
           >
-            <Folder size={17} />
+            <FolderHeart size={17} />
             <span>Files</span>
-          </Link>
-          <Link
-            to="/tools/view"
-            className={`nav-item ${location.pathname.startsWith('/tools') ? 'active' : ''}`}
-            onClick={() => { if (window.innerWidth <= 640) onClose(); }}
-          >
-            <LayoutGrid size={17} />
-            <span>Tools</span>
           </Link>
           <Link
             to="/history"
@@ -415,6 +368,14 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleC
           >
             <Clock size={17} />
             <span>History</span>
+          </Link>
+          <Link
+            to="/tools/view"
+            className={`nav-item ${location.pathname.startsWith('/tools') ? 'active' : ''}`}
+            onClick={() => { if (window.innerWidth <= 640) onClose(); }}
+          >
+            <Wrench size={17} />
+            <span>Tools</span>
           </Link>
           {adminService.checkIsAdmin(user) && (
             <Link
@@ -429,16 +390,15 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleC
         </nav>
 
         <div className="recent-chats-header">
-          <span className="recent-chats-title">Recent Chats</span>
+          <span>Recent Chats</span>
           <button
             type="button"
-            className="recent-chats-see-all"
-            onClick={() => {
-              navigate('/history');
-              if (window.innerWidth <= 640 && typeof onClose === 'function') onClose();
-            }}
+            className="new-chat-btn"
+            onClick={() => { navigate('/'); if (window.innerWidth <= 640) onClose(); }}
+            title="Start new conversation"
+            aria-label="Start new conversation"
           >
-            See All
+            <PlusCircle size={15} />
           </button>
         </div>
 
@@ -487,53 +447,8 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleC
             ))
           ) : (
             <div className="chat-empty-state">
-              <span>No recent chats</span>
+              <span>{searchQuery ? 'No matching chats found' : 'No recent chats'}</span>
             </div>
-          )}
-        </div>
-
-        <div className={`desktop-pro-plan-card ${isPro ? 'is-pro' : 'is-free'}`}>
-          {isPro ? (
-            <>
-              <div className="pro-card-header">
-                <Crown size={15} className="pro-card-crown" />
-                <div className="pro-card-titles">
-                  <span className="pro-card-title">Pro Plan</span>
-                  <span className={`pro-card-status ${proSubscription.isActive ? 'active' : 'inactive'}`}>
-                    {proSubscription.statusText}
-                  </span>
-                </div>
-              </div>
-              <div className="pro-card-usage">
-                <span className="pro-card-usage-text">{creditStats.formattedText}</span>
-                <div className="pro-card-progress-bar">
-                  <div
-                    className="pro-card-progress-fill"
-                    style={{ width: `${creditStats.percent}%` }}
-                  />
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="pro-card-header">
-                <Crown size={15} className="pro-card-crown" />
-                <div className="pro-card-titles">
-                  <span className="pro-card-title">Upgrade Plan</span>
-                  <span className="pro-card-status">Unlock premium features</span>
-                </div>
-              </div>
-              <p className="pro-card-desc">
-                Get higher limits, 10,000 monthly credits & access to all AI models.
-              </p>
-              <button
-                type="button"
-                className="pro-card-upgrade-btn"
-                onClick={() => onSettingsClick && onSettingsClick('upgrade')}
-              >
-                Upgrade Plan
-              </button>
-            </>
           )}
         </div>
 
@@ -607,60 +522,6 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleC
       </div>
 
       <div className="sidebar-mobile-view">
-        <div className="mobile-sb-user-wrapper" ref={mobileMenuWrapperRef}>
-          <div
-            className="mobile-sb-user-bar"
-            onClick={() => setShowUserMenu(v => !v)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                setShowUserMenu(v => !v);
-              }
-            }}
-          >
-            <div className="mobile-sb-avatar">
-              <UserAvatar className="mobile-sb-avatar-inner" />
-            </div>
-            <div className="mobile-sb-user-details">
-              <div className="mobile-sb-user-name">{USER_DATA.name}</div>
-              <div className="mobile-sb-user-email">{USER_DATA.email}</div>
-            </div>
-            <ChevronDown size={18} className={`mobile-sb-user-chevron ${showUserMenu ? 'open' : ''}`} />
-          </div>
-
-          {showUserMenu && (
-            <div className="mobile-sb-user-menu">
-              <div className="sb-menu-user-row">
-                <UserAvatar className="sb-menu-avatar" />
-                <div className="sb-menu-user-info">
-                  <div className="sb-menu-name">{USER_DATA.name}</div>
-                  <div className="sb-menu-sub">{isAdmin ? 'Super Admin (Pro Access)' : USER_DATA.email}</div>
-                </div>
-              </div>
-
-              {menuItems.map((item, i) => (
-                <React.Fragment key={i}>
-                  {item.dividerBefore && <div className="sb-menu-divider" />}
-                  <button
-                    className="sb-menu-item"
-                    onClick={() => {
-                      if (item.action) item.action();
-                      setShowUserMenu(false);
-                      if (onClose) onClose();
-                    }}
-                  >
-                    <span className="sb-menu-icon">{item.icon}</span>
-                    <span className="sb-menu-label">{item.label}</span>
-                    {item.badge && <span className="sb-menu-badge">{item.badge}</span>}
-                    {item.hasArrow && <ChevronRight size={13} className="sb-menu-arrow" />}
-                  </button>
-                </React.Fragment>
-              ))}
-            </div>
-          )}
-        </div>
-
         <div className="mobile-sb-scroll-area">
           <div className="mobile-sb-nav">
             <button
@@ -784,28 +645,58 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, isCollapsed, onToggleC
           </div>
         </div>
 
-        <div
-          className="mobile-sb-upgrade-card"
-          onClick={() => { if (onSettingsClick) onSettingsClick('upgrade'); if (onClose) onClose(); }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              if (onSettingsClick) onSettingsClick('upgrade');
-              if (onClose) onClose();
-            }
-          }}
-        >
-          <div className="mobile-sb-upgrade-icon-wrap">
-            <Crown size={22} className="mobile-sb-upgrade-crown" />
-          </div>
-          <div className="mobile-sb-upgrade-text">
-            <div className="mobile-sb-upgrade-title">{isPro ? 'Pro Plan' : 'Upgrade Plan'}</div>
-            <div className="mobile-sb-upgrade-sub">
-              {isPro ? proSubscription.statusText : 'Get higher limits and more features'}
+        <div className="mobile-sb-user-wrapper" ref={mobileMenuWrapperRef}>
+          {showUserMenu && (
+            <div className="mobile-sb-user-menu">
+              <div className="sb-menu-user-row">
+                <UserAvatar className="sb-menu-avatar" />
+                <div className="sb-menu-user-info">
+                  <div className="sb-menu-name">{USER_DATA.name}</div>
+                  <div className="sb-menu-sub">{isAdmin ? 'Super Admin (Pro Access)' : USER_DATA.email}</div>
+                </div>
+              </div>
+
+              {menuItems.map((item, i) => (
+                <React.Fragment key={i}>
+                  {item.dividerBefore && <div className="sb-menu-divider" />}
+                  <button
+                    className="sb-menu-item"
+                    onClick={() => {
+                      if (item.action) item.action();
+                      setShowUserMenu(false);
+                      if (onClose) onClose();
+                    }}
+                  >
+                    <span className="sb-menu-icon">{item.icon}</span>
+                    <span className="sb-menu-label">{item.label}</span>
+                    {item.badge && <span className="sb-menu-badge">{item.badge}</span>}
+                    {item.hasArrow && <ChevronRight size={13} className="sb-menu-arrow" />}
+                  </button>
+                </React.Fragment>
+              ))}
             </div>
+          )}
+
+          <div
+            className="mobile-sb-user-bar"
+            onClick={() => setShowUserMenu(v => !v)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                setShowUserMenu(v => !v);
+              }
+            }}
+          >
+            <div className="mobile-sb-avatar">
+              <UserAvatar className="mobile-sb-avatar-inner" />
+            </div>
+            <div className="mobile-sb-user-details">
+              <div className="mobile-sb-user-name">{USER_DATA.name}</div>
+              <div className="mobile-sb-user-email">{USER_DATA.email}</div>
+            </div>
+            <ChevronUp size={18} className={`mobile-sb-user-chevron ${showUserMenu ? 'open' : ''}`} />
           </div>
-          <ChevronRight size={18} className="mobile-sb-upgrade-chevron" />
         </div>
       </div>
 

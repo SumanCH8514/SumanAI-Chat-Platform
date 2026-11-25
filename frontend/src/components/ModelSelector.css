@@ -13,11 +13,11 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: transparent;
-  border: none;
-  padding: 6px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  padding: 4px 10px;
   border-radius: var(--radius-full);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
@@ -27,11 +27,13 @@
 
 .inline-model-pill:hover {
   background: var(--bg-hover);
+  border-color: var(--brand-border);
   color: var(--text-primary);
 }
 
 .inline-model-pill.active {
   background: var(--bg-active);
+  border-color: var(--brand-border);
   color: var(--brand-primary);
 }
 

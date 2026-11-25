@@ -4,7 +4,7 @@ import {
   Home, BookOpen, ExternalLink, Image as ImageIcon,
   Flame, Zap, Sparkles, Wand2, Info, Dices,
   Download, Maximize2, Trash2, ShieldCheck, Layers,
-  Clock, ArrowRight, X, Upload, Check, Cpu, RefreshCw, Copy
+  Clock, ArrowRight, X, Upload, Check, Cpu, RefreshCw, Copy, ChevronDown
 } from 'lucide-react';
 import { auth } from '../../config/firebase';
 import { env } from '../../config/env';
@@ -48,6 +48,9 @@ export const UncensoredImage = () => {
   const [sourceFileName, setSourceFileName] = useState('');
   const [selectedRatio, setSelectedRatio] = useState('1024x1024 (1:1)');
   const [steps, setSteps] = useState(28);
+  const [inspirationsOpen, setInspirationsOpen] = useState(false);
+  const [aspectRatioOpen, setAspectRatioOpen] = useState(true);
+  const [configOpen, setConfigOpen] = useState(false);
   const [loraScale, setLoraScale] = useState(1.0);
   const [seed, setSeed] = useState(384720);
   const [randomizeSeed, setRandomizeSeed] = useState(true);
@@ -67,11 +70,15 @@ export const UncensoredImage = () => {
       const raw = localStorage.getItem('sumanai_uploaded_files');
       if (raw) {
         const list = JSON.parse(raw);
-        const imagesOnly = list.filter((f) => f?.type?.startsWith('image/') || f?.url?.includes('/generated-images/'));
+        const imagesOnly = list.filter((f) =>
+          f?.type === 'image' ||
+          (typeof f?.type === 'string' && f.type.startsWith('image/')) ||
+          (typeof f?.url === 'string' && (f.url.includes('/uncensored/') || f.url.includes('/generated-images/')))
+        );
         if (imagesOnly.length > 0) {
           const mapped = imagesOnly.slice(0, 10).map((f) => ({
             url: f.url,
-            prompt: f.name || 'Generated image'
+            prompt: f.prompt || f.name || 'Generated image'
           }));
           setRecentGallery([...mapped, ...DEFAULT_RECENT_IMAGES].slice(0, 8));
         }
@@ -161,7 +168,7 @@ export const UncensoredImage = () => {
     setIsEnhancing(true);
     try {
       let enriched = '';
-      await chatService.generateResponse(
+      const response = await chatService.generateResponse(
         'qwen/qwen3.8-27b',
         [
           {
@@ -170,10 +177,11 @@ export const UncensoredImage = () => {
           },
           { role: 'user', content: prompt.trim() }
         ],
-        (chunk) => { enriched += chunk; }
+        (chunk) => { enriched = chunk; }
       );
-      if (enriched.trim()) {
-        setPrompt(enriched.trim().replace(/^["']|["']$/g, ''));
+      const finalText = (response || enriched || '').trim().replace(/^["']|["']$/g, '');
+      if (finalText) {
+        setPrompt(finalText);
       }
     } catch {
       void 0;
@@ -195,7 +203,7 @@ export const UncensoredImage = () => {
 
     setIsGenerating(true);
     setErrorMessage('');
-    setStatusText(mode === 'edit' ? 'Uploading source & modifying with Qwen 2.1...' : 'Synthesizing with Qwen-Image-2.1 on ZeroGPU...');
+    setStatusText(mode === 'edit' ? 'Uploading source to Server...' : 'Generating...');
 
     try {
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
@@ -209,47 +217,87 @@ export const UncensoredImage = () => {
       }
 
       const baseUrl = (env.WORKER_URL || '').replace(/\/+$/, '');
-      const response = await fetch(`${baseUrl}/api/generate-uncensored-image`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          mode,
-          prompt: prompt.trim(),
-          size: selectedRatio,
-          steps: Number(steps),
-          seed: Number(activeSeed),
-          randomizeSeed,
-          loraScale: Number(loraScale),
-          image: mode === 'edit' ? sourceImage : undefined
-        })
-      });
+      const payload = {
+        mode,
+        prompt: prompt.trim(),
+        size: selectedRatio,
+        steps: Number(steps),
+        seed: Number(activeSeed),
+        randomizeSeed,
+        loraScale: Number(loraScale),
+        image: mode === 'edit' ? sourceImage : undefined
+      };
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || `Synthesis failed (HTTP ${response.status})`);
-      }
+      const uploadStartTime = Date.now();
+      const data = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${baseUrl}/api/generate-uncensored-image`, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        if (token) {
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        }
+
+        if (xhr.upload) {
+          xhr.upload.onload = () => {
+            if (mode === 'edit') {
+              const elapsed = Date.now() - uploadStartTime;
+              const minDisplayMs = 500;
+              if (elapsed < minDisplayMs) {
+                setTimeout(() => {
+                  setStatusText('Modifying with AI...');
+                }, minDisplayMs - elapsed);
+              } else {
+                setStatusText('Modifying with AI...');
+              }
+            }
+          };
+        }
+
+        xhr.onload = () => {
+          try {
+            const resData = JSON.parse(xhr.responseText || '{}');
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(resData);
+            } else {
+              reject(new Error(resData.error || `Synthesis failed (HTTP ${xhr.status})`));
+            }
+          } catch {
+            reject(new Error(`Synthesis failed (HTTP ${xhr.status})`));
+          }
+        };
+
+        xhr.onerror = () => {
+          reject(new Error('Network error during synthesis. Please check your connection.'));
+        };
+
+        xhr.send(JSON.stringify(payload));
+      });
 
       if (data.imageUrl) {
         setGeneratedImageUrl(data.imageUrl);
         setUsedSeed(data.seed);
 
+        const cleanPrompt = prompt.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_').slice(0, 36) || 'Qwen_Uncensored';
+        const now = Date.now();
+        const newFile = {
+          id: `gen-uncensored-${now}-${Math.random().toString(36).substring(2, 7)}`,
+          name: `${cleanPrompt}.png`,
+          size: '2.4 MB',
+          type: 'image',
+          subtype: 'generated',
+          url: data.imageUrl,
+          prompt: prompt.trim(),
+          chatTitle: 'Uncensored Image Gen',
+          createdAt: now,
+          date: new Date(now).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        };
+
         try {
           const raw = localStorage.getItem('sumanai_uploaded_files');
           const list = raw ? JSON.parse(raw) : [];
-          list.unshift({
-            id: `upload-uncensored-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            name: `Qwen_Uncensored_${Date.now()}.png`,
-            size: '2.4 MB',
-            type: 'image/png',
-            url: data.imageUrl,
-            subtype: 'generated',
-            chatTitle: 'Uncensored Image Gen',
-            date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-          });
-          localStorage.setItem('sumanai_uploaded_files', JSON.stringify(list.slice(0, 50)));
+          const updated = [newFile, ...list.filter((item) => item?.url !== data.imageUrl)].slice(0, 100);
+          localStorage.setItem('sumanai_uploaded_files', JSON.stringify(updated));
+          window.dispatchEvent(new Event('sumanai_files_updated'));
         } catch {
           void 0;
         }
@@ -296,7 +344,7 @@ export const UncensoredImage = () => {
         </div>
 
         <a
-          href="https://huggingface.co/spaces/a-test-user-in-the-wrold/qwen-image-21-uncensored"
+          href="https://huggingface.co/spaces/devSuman/sumanonline-qwen-image-2.1-uncensored"
           target="_blank"
           rel="noopener noreferrer"
           className="uncensored-doc-btn"
@@ -454,124 +502,182 @@ export const UncensoredImage = () => {
           </div>
 
           <div className="uncensored-field-group">
-            <span className="field-label-text">Inspirations</span>
-            <div className="inspirations-grid">
-              {INSPIRATION_PILLS.map((item, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className="inspiration-pill"
-                  onClick={() => handleInspirationClick(item.text, item.prompt)}
-                >
-                  <Wand2 size={12} className="pill-wand-icon" />
-                  <span className="pill-text">{item.text}</span>
-                  <span className="pill-plus">+</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="uncensored-field-group">
-            <span className="field-label-text">Output Aspect Ratio</span>
-            <div className="ratios-row">
-              {ASPECT_RATIOS.map((item) => {
-                const isSelected = selectedRatio === item.id;
-                return (
+            <button
+              type="button"
+              className="collapsible-section-toggle"
+              onClick={() => setInspirationsOpen((prev) => !prev)}
+              aria-expanded={inspirationsOpen}
+            >
+              <span className="field-label-text">Inspirations</span>
+              <ChevronDown
+                size={15}
+                className={`collapsible-chevron ${inspirationsOpen ? 'open' : ''}`}
+              />
+            </button>
+            {inspirationsOpen && (
+              <div className="inspirations-grid collapsible-content-fade">
+                {INSPIRATION_PILLS.map((item, idx) => (
                   <button
-                    key={item.id}
+                    key={idx}
                     type="button"
-                    className={`ratio-btn ${isSelected ? 'active' : ''}`}
-                    onClick={() => setSelectedRatio(item.id)}
+                    className="inspiration-pill"
+                    onClick={() => handleInspirationClick(item.text, item.prompt)}
                   >
-                    <div className="ratio-btn-left">
-                      <span className={`ratio-box-icon ${item.iconClass}`} />
-                      <div className="ratio-labels">
-                        <span className="ratio-title">{item.ratioId}</span>
-                        <span className="ratio-sub">{item.label}</span>
-                      </div>
-                    </div>
-                    {isSelected && (
-                      <span className="ratio-check-circle">
-                        <Check size={10} />
-                      </span>
-                    )}
+                    <Wand2 size={12} className="pill-wand-icon" />
+                    <span className="pill-text">{item.text}</span>
+                    <span className="pill-plus">+</span>
                   </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="uncensored-two-col-sliders">
-            <div className="slider-group">
-              <div className="slider-header-line">
-                <span className="slider-title">
-                  Sampling Steps
-                  <Info size={12} className="info-icon" />
-                </span>
-                <span className="slider-badge">{steps}</span>
+                ))}
               </div>
-              <input
-                type="range"
-                min={8}
-                max={50}
-                value={steps}
-                onChange={(e) => setSteps(Number(e.target.value))}
-                className="blue-range-slider"
-              />
-            </div>
-
-            <div className="slider-group">
-              <div className="slider-header-line">
-                <span className="slider-title">
-                  LoRA Scale
-                  <Info size={12} className="info-icon" />
-                </span>
-                <span className="slider-badge">{Number(loraScale).toFixed(1)}</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={1.5}
-                step={0.1}
-                value={loraScale}
-                onChange={(e) => setLoraScale(Number(e.target.value))}
-                className="blue-range-slider"
-              />
-            </div>
+            )}
           </div>
 
           <div className="uncensored-field-group">
-            <span className="field-label-text">
-              Seed
-              <Info size={12} className="info-icon" />
-            </span>
-            <div className="seed-controls-line">
-              <div className="seed-input-row">
-                <input
-                  type="number"
-                  className="seed-num-input"
-                  value={seed}
-                  disabled={randomizeSeed}
-                  onChange={(e) => setSeed(Number(e.target.value))}
-                />
-                <button
-                  type="button"
-                  className="seed-dice-btn"
-                  onClick={handleRandomSeed}
-                  title="Randomize Seed"
-                >
-                  <Dices size={16} />
-                </button>
+            <button
+              type="button"
+              className="collapsible-section-toggle"
+              onClick={() => setAspectRatioOpen((prev) => !prev)}
+              aria-expanded={aspectRatioOpen}
+            >
+              <div className="collapsible-title-left">
+                <span className="field-label-text">Output Aspect Ratio</span>
+                {!aspectRatioOpen && (
+                  <span className="collapsible-selected-summary">
+                    {ASPECT_RATIOS.find((r) => r.id === selectedRatio)?.ratioId || '1:1'}
+                  </span>
+                )}
               </div>
-              <label className="seed-checkbox-item">
-                <input
-                  type="checkbox"
-                  checked={randomizeSeed}
-                  onChange={(e) => setRandomizeSeed(e.target.checked)}
-                />
-                <span>Randomize each run</span>
-              </label>
-            </div>
+              <ChevronDown
+                size={15}
+                className={`collapsible-chevron ${aspectRatioOpen ? 'open' : ''}`}
+              />
+            </button>
+            {aspectRatioOpen && (
+              <div className="ratios-row collapsible-content-fade">
+                {ASPECT_RATIOS.map((item) => {
+                  const isSelected = selectedRatio === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`ratio-btn ${isSelected ? 'active' : ''}`}
+                      onClick={() => setSelectedRatio(item.id)}
+                    >
+                      <div className="ratio-btn-left">
+                        <span className={`ratio-box-icon ${item.iconClass}`} />
+                        <div className="ratio-labels">
+                          <span className="ratio-title">{item.ratioId}</span>
+                          <span className="ratio-sub">{item.label}</span>
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <span className="ratio-check-circle">
+                          <Check size={10} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="uncensored-field-group">
+            <button
+              type="button"
+              className="collapsible-section-toggle"
+              onClick={() => setConfigOpen((prev) => !prev)}
+              aria-expanded={configOpen}
+            >
+              <div className="collapsible-title-left">
+                <span className="field-label-text">Configuration</span>
+                {!configOpen && (
+                  <span className="collapsible-selected-summary">
+                    Steps: {steps} • LoRA: {Number(loraScale).toFixed(1)}
+                  </span>
+                )}
+              </div>
+              <ChevronDown
+                size={15}
+                className={`collapsible-chevron ${configOpen ? 'open' : ''}`}
+              />
+            </button>
+            {configOpen && (
+              <div className="collapsible-content-fade uncensored-config-body">
+                <div className="uncensored-two-col-sliders">
+                  <div className="slider-group">
+                    <div className="slider-header-line">
+                      <span className="slider-title">
+                        Sampling Steps
+                        <Info size={12} className="info-icon" />
+                      </span>
+                      <span className="slider-badge">{steps}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={8}
+                      max={50}
+                      value={steps}
+                      onChange={(e) => setSteps(Number(e.target.value))}
+                      className="blue-range-slider"
+                    />
+                  </div>
+
+                  <div className="slider-group">
+                    <div className="slider-header-line">
+                      <span className="slider-title">
+                        LoRA Scale
+                        <Info size={12} className="info-icon" />
+                      </span>
+                      <span className="slider-badge">{Number(loraScale).toFixed(1)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1.5}
+                      step={0.1}
+                      value={loraScale}
+                      onChange={(e) => setLoraScale(Number(e.target.value))}
+                      className="blue-range-slider"
+                    />
+                  </div>
+                </div>
+
+                <div className="uncensored-field-group">
+                  <span className="field-label-text">
+                    Seed
+                    <Info size={12} className="info-icon" />
+                  </span>
+                  <div className="seed-controls-line">
+                    <div className="seed-input-row">
+                      <input
+                        type="number"
+                        className="seed-num-input"
+                        value={seed}
+                        disabled={randomizeSeed}
+                        onChange={(e) => setSeed(Number(e.target.value))}
+                      />
+                      <button
+                        type="button"
+                        className="seed-dice-btn"
+                        onClick={handleRandomSeed}
+                        title="Randomize Seed"
+                      >
+                        <Dices size={16} />
+                      </button>
+                    </div>
+                    <label className="seed-checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={randomizeSeed}
+                        onChange={(e) => setRandomizeSeed(e.target.checked)}
+                      />
+                      <span>Randomize each run</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {errorMessage && (
@@ -589,12 +695,12 @@ export const UncensoredImage = () => {
             {isGenerating ? (
               <>
                 <RefreshCw size={16} className="spin-animation" />
-                <span>{statusText || 'Synthesizing on Qwen 2.1...'}</span>
+                <span>{statusText || 'Generating...'}</span>
               </>
             ) : (
               <>
                 <Sparkles size={16} />
-                <span>{mode === 'edit' ? 'Modify Image with LoRA' : 'Generate Uncensored Image'}</span>
+                <span>Generate Image</span>
               </>
             )}
           </button>
@@ -642,8 +748,8 @@ export const UncensoredImage = () => {
               {isGenerating ? (
                 <div className="output-loading-view">
                   <div className="loading-spinner-circle" />
-                  <span className="loading-head">Qwen-Image-2.1 Diffusion Active</span>
-                  <span className="loading-sub">{statusText || 'Generating high-fidelity frames with uncensored LoRA...'}</span>
+                  <span className="loading-head">Generating Image</span>
+                  <span className="loading-sub">{statusText || (mode === 'edit' ? 'Modifying with AI...' : 'Generating...')}</span>
                 </div>
               ) : generatedImageUrl ? (
                 <div className="output-image-view">

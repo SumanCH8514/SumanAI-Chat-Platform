@@ -51,6 +51,9 @@
 }
 
 .skeleton-recent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 10px;
   padding: 0 8px;
 }
@@ -133,96 +136,148 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 24px 20px;
+  padding: 24px 20px 32px;
+  box-sizing: border-box;
 }
 
-.skeleton-empty-state {
+.skeleton-home-center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  max-width: 820px;
   width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  gap: 32px;
+  max-width: 820px;
+  margin: auto auto;
+  gap: 20px;
+  box-sizing: border-box;
 }
 
 .skeleton-greeting {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  margin-bottom: 6px;
+  text-align: center;
 }
 
-.skeleton-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+.skeleton-prompt-card {
   width: 100%;
-}
-
-.skeleton-card {
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  border-radius: var(--radius-lg);
+  height: 126px;
+  border-radius: 24px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-sm);
-  gap: 12px;
-  text-align: left;
-}
-
-.skeleton-card-body {
+  padding: 18px 20px 14px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  justify-content: space-between;
 }
 
-.skeleton-input-container {
-  padding: 16px 24px 24px;
+.skeleton-prompt-top {
   display: flex;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 100%;
-  box-sizing: border-box;
+  align-items: center;
 }
 
-.skeleton-input-bar {
+.skeleton-prompt-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.skeleton-prompt-bottom-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.skeleton-prompt-bottom-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.skeleton-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
   width: 100%;
-  max-width: 800px;
-  height: 58px;
-  padding: 0 16px;
-  border-radius: 28px;
+}
+
+.skeleton-action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 70px;
+  border-radius: 14px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-sm);
-  gap: 14px;
   box-sizing: border-box;
 }
 
-.skeleton-input-left {
+.skeleton-examples-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.skeleton-examples-header {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.skeleton-examples-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+
+.skeleton-example-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
+}
+
+.skeleton-example-icon {
   flex-shrink: 0;
 }
 
-.skeleton-input-mid {
+.skeleton-example-text {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
 
-.skeleton-input-right {
+.skeleton-example-arrow {
   flex-shrink: 0;
+  margin-left: auto;
+}
+
+.skeleton-footer-note {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 @media (max-width: 1024px) {
-  .skeleton-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .skeleton-quick-actions {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -239,19 +294,23 @@
     padding: 10px 14px;
   }
 
-  .skeleton-input-container {
-    padding: 8px 12px 16px;
+  .skeleton-content {
+    padding: 16px 12px;
   }
 
-  .skeleton-grid {
+  .skeleton-quick-actions {
+    display: none;
+  }
+
+  .skeleton-examples-grid {
     grid-template-columns: 1fr;
   }
 
-  .skeleton-empty-state {
-    gap: 20px;
+  .skeleton-home-center {
+    gap: 16px;
   }
 
-  .skeleton-greeting-title {
-    max-width: 240px;
+  .skeleton-greeting-sub {
+    max-width: 280px;
   }
 }

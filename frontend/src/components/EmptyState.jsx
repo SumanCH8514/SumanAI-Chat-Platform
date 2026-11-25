@@ -1,5 +1,4 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { getUserDisplayName } from '../utils/formatters';
 
@@ -10,10 +9,6 @@ const EmptyState = ({ userName }) => {
 
   return (
     <div className="empty-state">
-      <div className="desktop-welcome-badge">
-        <Sparkles size={13} className="welcome-badge-icon" />
-        <span>Welcome to SumanAI</span>
-      </div>
       <div className="greeting">
         <h1 className="hero-title">
           Hello, <span className="hero-name-highlight">{firstName}</span>

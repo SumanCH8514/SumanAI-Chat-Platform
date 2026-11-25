@@ -32,6 +32,29 @@ export const isFileDeleted = (file, deletedFileIds = []) => {
   return false;
 };
 
+export const getFileTimestamp = (f) => {
+  if (!f) return 0;
+  if (typeof f.createdAt === 'number' && f.createdAt > 0) return f.createdAt;
+  if (typeof f.timestamp === 'number' && f.timestamp > 0) return f.timestamp;
+  if (f.date) {
+    const t = new Date(f.date).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (typeof f.id === 'string') {
+    const m = f.id.match(/(\d{10,13})/);
+    if (m) return parseInt(m[1], 10);
+  }
+  if (typeof f.url === 'string') {
+    const m = f.url.match(/(?:img_|vid_|uncensored_)?(\d{10,13})/);
+    if (m) return parseInt(m[1], 10);
+  }
+  if (typeof f.name === 'string') {
+    const m = f.name.match(/(\d{10,13})/);
+    if (m) return parseInt(m[1], 10);
+  }
+  return 0;
+};
+
 export const deduplicateWorkspaceFiles = (chatFiles = [], customFiles = [], deletedFileIds = []) => {
   const deletedSet = deletedFileIds instanceof Set ? deletedFileIds : new Set(deletedFileIds || []);
   const seen = new Set();
@@ -45,15 +68,22 @@ export const deduplicateWorkspaceFiles = (chatFiles = [], customFiles = [], dele
       if (seen.has(key)) continue;
       seen.add(key);
     }
+    const isImg = file.type === 'image' || (typeof file.type === 'string' && file.type.startsWith('image/')) || (typeof file.url === 'string' && (file.url.includes('/generated-images/') || file.url.includes('/uncensored/') || file.url.match(/\.(png|jpe?g|webp|gif|svg)($|\?)/i)));
+    const isVid = file.type === 'video' || (typeof file.type === 'string' && file.type.startsWith('video/')) || (typeof file.url === 'string' && (file.url.includes('/generated-videos/') || file.url.match(/\.(mp4|webm)($|\?)/i)));
+    const normalizedType = isVid ? 'video' : (isImg ? 'image' : (file.type || 'code'));
+    const createdAt = getFileTimestamp(file) || Date.now();
+
     result.push({
       ...file,
-      id: file?.id || (file?.url ? `url-file-${file.url.slice(-16)}` : `file-${Math.random().toString(36).substring(2, 9)}`)
+      id: file?.id || (file?.url ? `url-file-${file.url.slice(-16)}` : `file-${Math.random().toString(36).substring(2, 9)}`),
+      type: normalizedType,
+      createdAt
     });
   }
 
   return result.sort((a, b) => {
-    const timeA = typeof a.createdAt === 'number' ? a.createdAt : new Date(a.createdAt || 0).getTime();
-    const timeB = typeof b.createdAt === 'number' ? b.createdAt : new Date(b.createdAt || 0).getTime();
+    const timeA = getFileTimestamp(a);
+    const timeB = getFileTimestamp(b);
     return timeB - timeA;
   });
 };
