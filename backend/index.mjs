@@ -1004,8 +1004,8 @@ export default {
                 prompt,
                 "None (Base Uncensored)",
                 loraScale,
-                null,
-                null,
+                "",
+                "",
                 mappedAspectRatio,
                 steps,
                 seed,
@@ -1017,8 +1017,8 @@ export default {
                 null,
                 "None (Base Uncensored)",
                 loraScale,
-                null,
-                null,
+                "",
+                "",
                 mappedAspectRatio,
                 steps,
                 seed,
@@ -1049,7 +1049,24 @@ export default {
               });
 
               if (sseRes.ok) {
-                const sseText = await sseRes.text();
+                let sseText = "";
+                if (sseRes.body && typeof sseRes.body.getReader === "function") {
+                  const reader = sseRes.body.getReader();
+                  const decoder = new TextDecoder();
+                  const startRead = Date.now();
+                  while (Date.now() - startRead < 45000) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    sseText += decoder.decode(value, { stream: true });
+                    if (sseText.includes("event: complete") || sseText.includes("event: error")) {
+                      break;
+                    }
+                  }
+                  try { reader.cancel(); } catch { void 0; }
+                } else {
+                  sseText = await sseRes.text();
+                }
+
                 const lines = sseText.split("\n");
                 for (let i = 0; i < lines.length; i++) {
                   const line = lines[i].trim();

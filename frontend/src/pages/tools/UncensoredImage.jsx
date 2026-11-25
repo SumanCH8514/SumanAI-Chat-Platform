@@ -208,85 +208,120 @@ export const UncensoredImage = () => {
       return;
     }
     if (mode === 'edit' && !sourceImage) {
-      setErrorMessage('Please upload or drag-and-drop a source image to edit.');
+      setErrorMessage('Please upload a source image to edit.');
       return;
     }
 
     setIsGenerating(true);
     setErrorMessage('');
-    setStatusText(mode === 'edit' ? 'Uploading source to Server...' : 'Generating...');
+    setStatusText('Connecting to Qwen 2.1 Studio...');
 
     try {
-      const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
-      if (!token) {
-        throw new Error('Please sign in with Google to generate or edit images.');
-      }
-
       const activeSeed = randomizeSeed ? Math.floor(Math.random() * 999999) : seed;
       if (randomizeSeed) {
         setSeed(activeSeed);
       }
 
-      const baseUrl = (env.WORKER_URL || '').replace(/\/+$/, '');
-      const payload = {
-        mode,
-        prompt: prompt.trim(),
-        size: selectedRatio,
-        steps: Number(steps),
-        seed: Number(activeSeed),
-        randomizeSeed,
-        loraScale: Number(loraScale),
-        image: mode === 'edit' ? sourceImage : undefined
-      };
+      let mappedAspectRatio = 'Square · 1:1 (1024x1024)';
+      if (selectedRatio.includes('16:9')) {
+        mappedAspectRatio = 'Landscape · 16:9 (1344x768)';
+      } else if (selectedRatio.includes('9:16')) {
+        mappedAspectRatio = 'Portrait · 9:16 (768x1344)';
+      } else if (selectedRatio.includes('4:3')) {
+        mappedAspectRatio = 'Landscape · 4:3 (1152x864)';
+      } else if (selectedRatio.includes('3:4')) {
+        mappedAspectRatio = 'Portrait · 3:4 (864x1152)';
+      }
 
-      const uploadStartTime = Date.now();
-      const data = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', `${baseUrl}/api/generate-uncensored-image`, true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        if (token) {
-          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      let finalImageUrl = null;
+      let finalSeed = activeSeed;
+
+      try {
+        const { Client, handle_file } = await import('@gradio/client');
+        let imageBlob = null;
+        if (mode === 'edit' && sourceImage) {
+          const res = await fetch(sourceImage);
+          imageBlob = await res.blob();
+        } else {
+          const blankPngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+          const res = await fetch(`data:image/png;base64,${blankPngB64}`);
+          imageBlob = await res.blob();
         }
 
-        if (xhr.upload) {
-          xhr.upload.onload = () => {
-            if (mode === 'edit') {
-              const elapsed = Date.now() - uploadStartTime;
-              const minDisplayMs = 500;
-              if (elapsed < minDisplayMs) {
-                setTimeout(() => {
-                  setStatusText('Modifying with AI...');
-                }, minDisplayMs - elapsed);
-              } else {
-                setStatusText('Modifying with AI...');
-              }
-            }
-          };
-        }
+        setStatusText('Allocating ZeroGPU cluster...');
+        const client = await Client.connect('https://devsuman-sumanonline-qwen-image-2-1-uncensored.hf.space');
 
-        xhr.onload = () => {
-          try {
-            const resData = JSON.parse(xhr.responseText || '{}');
-            if (xhr.status >= 200 && xhr.status < 300) {
-              resolve(resData);
-            } else {
-              reject(new Error(resData.error || `Synthesis failed (HTTP ${xhr.status})`));
+        setStatusText(mode === 'edit' ? 'Modifying image with AI...' : 'Generating image on Qwen 2.1...');
+        const result = await client.predict('/edit', {
+          image: handle_file(imageBlob),
+          prompt: prompt.trim(),
+          lora_adapter: 'None (Base Uncensored)',
+          lora_strength: Number(loraScale) || 1.0,
+          custom_repo: '',
+          custom_file: '',
+          aspect_ratio: mappedAspectRatio,
+          steps: Math.min(Math.max(Number(steps), 8), 35),
+          seed: Number(activeSeed),
+          randomize_seed: Boolean(randomizeSeed)
+        });
+
+        if (result?.data?.[0]) {
+          const item = result.data[0];
+          finalImageUrl = item.url || (item.path ? `https://devsuman-sumanonline-qwen-image-2-1-uncensored.hf.space/gradio_api/file=${item.path}` : null);
+          if (result.data[1]) {
+            try {
+              const meta = typeof result.data[1] === 'string' ? JSON.parse(result.data[1]) : result.data[1];
+              if (meta?.seed !== undefined) finalSeed = Number(meta.seed);
+            } catch {
+              void 0;
             }
-          } catch {
-            reject(new Error(`Synthesis failed (HTTP ${xhr.status})`));
           }
+        }
+      } catch (clientErr) {
+        setStatusText('Connecting to backup cluster...');
+        const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+        const baseUrl = (env.WORKER_URL || '').replace(/\/+$/, '');
+        const payload = {
+          mode,
+          prompt: prompt.trim(),
+          size: selectedRatio,
+          steps: Number(steps),
+          seed: Number(activeSeed),
+          randomizeSeed,
+          loraScale: Number(loraScale),
+          image: mode === 'edit' ? sourceImage : undefined
         };
 
-        xhr.onerror = () => {
-          reject(new Error('Network error during synthesis. Please check your connection.'));
-        };
+        const res = await fetch(`${baseUrl}/api/generate-uncensored-image`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(payload)
+        });
 
-        xhr.send(JSON.stringify(payload));
-      });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          const errMsg = errData.error || clientErr.message || 'Image generation failed';
+          if (errMsg.toLowerCase().includes('zerogpu') || errMsg.toLowerCase().includes('quota')) {
+            throw new Error('ZeroGPU compute quota is temporarily busy on Hugging Face. Please retry in a few moments.');
+          }
+          throw new Error(errMsg);
+        }
 
-      if (data.imageUrl) {
-        setGeneratedImageUrl(data.imageUrl);
-        setUsedSeed(data.seed);
+        const data = await res.json();
+        if (data.imageUrl) {
+          finalImageUrl = data.imageUrl;
+          if (data.seed !== undefined) finalSeed = Number(data.seed);
+        } else {
+          throw new Error('No image URL returned from engine.');
+        }
+      }
+
+      if (finalImageUrl) {
+        setGeneratedImageUrl(finalImageUrl);
+        setUsedSeed(finalSeed);
 
         const cleanPrompt = prompt.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_').slice(0, 36) || 'Qwen_Uncensored';
         const now = Date.now();
@@ -296,11 +331,11 @@ export const UncensoredImage = () => {
           size: '2.4 MB',
           type: 'image',
           subtype: 'generated',
-          url: data.imageUrl,
+          url: finalImageUrl,
           prompt: prompt.trim(),
           mode,
           sizeMode: selectedRatio,
-          seed: data.seed !== undefined ? Number(data.seed) : Number(activeSeed),
+          seed: Number(finalSeed),
           createdAt: now,
           chatTitle: 'Uncensored Image Gen',
           date: new Date(now).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -310,13 +345,13 @@ export const UncensoredImage = () => {
           firestoreService.saveUserGeneration(user.uid, newGenItem).catch(() => {});
         }
 
-        setRecentGallery((prev) => [newGenItem, ...prev.filter((item) => item?.url !== data.imageUrl)].slice(0, 12));
+        setRecentGallery((prev) => [newGenItem, ...prev.filter((item) => item?.url !== finalImageUrl)].slice(0, 12));
 
         try {
           const userFilesKey = user?.uid ? `sumanai_files_${user.uid}` : 'sumanai_uploaded_files';
           const raw = localStorage.getItem(userFilesKey);
           const list = raw ? JSON.parse(raw) : [];
-          const updated = [newGenItem, ...list.filter((item) => item?.url !== data.imageUrl)].slice(0, 100);
+          const updated = [newGenItem, ...list.filter((item) => item?.url !== finalImageUrl)].slice(0, 100);
           localStorage.setItem(userFilesKey, JSON.stringify(updated));
           window.dispatchEvent(new Event('sumanai_files_updated'));
         } catch {
@@ -384,11 +419,11 @@ export const UncensoredImage = () => {
           </div>
           <div className="uncensored-title-texts">
             <h1 className="uncensored-main-title">
-              <span className="desktop-title-text">Uncensored Image Generation & Editing</span>
+              <span className="desktop-title-text">Image Generation & Editing</span>
               <span className="mobile-title-text">Image Generation & Editing</span>
             </h1>
             <p className="uncensored-main-desc">
-              <span className="desktop-desc-text">Generate unrestricted visual concepts or upload photos to modify with natural language instruction prompts.</span>
+              <span className="desktop-desc-text">Create Uncensored images from text or edit existing images with AI.</span>
               <span className="mobile-desc-text">Create Uncensored images from text or edit existing images with AI.</span>
             </p>
           </div>
@@ -436,14 +471,8 @@ export const UncensoredImage = () => {
             <div className="uncensored-field-group uncensored-upload-section">
               <div className="field-label-line">
                 <span className="field-label-text">
-                  <span className="desktop-field-text">
-                    Source Image <span className="prompt-required-star">*</span>
-                    <Info size={12} className="info-icon" />
-                  </span>
-                  <span className="mobile-field-text">
-                    Upload Image <span className="prompt-required-star">*</span>
-                    <Info size={13} className="info-icon" />
-                  </span>
+                  Source Image
+                  <Info size={13} className="info-icon" />
                 </span>
                 {sourceImage && (
                   <button
@@ -467,9 +496,8 @@ export const UncensoredImage = () => {
                   tabIndex={0}
                 >
                   <Upload size={24} className="upload-arrow-icon" />
-                  <span className="upload-main-text">Drag & drop an image here</span>
-                  <span className="upload-sub-text">or tap to browse from your device</span>
-                  <span className="upload-sub-note">JPG, PNG, WEBP up to 10 MB (Required)</span>
+                  <span className="upload-main-text">Click or drag image here to edit</span>
+                  <span className="upload-sub-text">PNG, JPG, or WEBP up to 20MB</span>
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -510,13 +538,7 @@ export const UncensoredImage = () => {
           <div className="uncensored-field-group">
             <div className="field-label-line">
               <span className="field-label-text">
-                <span className="desktop-field-text">
-                  Image Prompt
-                  <Info size={12} className="info-icon" />
-                </span>
-                <span className="mobile-field-text">
-                  Prompt <span className="prompt-required-star">*</span>
-                </span>
+                Prompt <span className="prompt-required-star">*</span>
               </span>
               <button
                 type="button"
