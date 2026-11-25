@@ -51,7 +51,8 @@ const TOOL_DEFINITIONS = [
     name: 'Uncensored Image Gen',
     desc: 'Generate text-to-image or modify photos with Qwen 2.1 uncensored model.',
     icon: <Sparkles size={20} />,
-    badge: null,
+    badge: 'Google Auth',
+    badgeType: 'google-auth',
     iconTheme: 'purple',
     route: '/tools/uncensored-image'
   },

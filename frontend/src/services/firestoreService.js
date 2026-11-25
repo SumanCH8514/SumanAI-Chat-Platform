@@ -294,5 +294,93 @@ export const firestoreService = {
       void err;
     }
     return updateData;
+  },
+
+  saveUserGeneration: async (userId, generation) => {
+    if (!userId || !generation?.url) return null;
+    const genId = generation.id || `gen_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const payload = {
+      id: genId,
+      userId,
+      url: generation.url,
+      prompt: generation.prompt || '',
+      mode: generation.mode || 'generate',
+      size: generation.size || '1024x1024 (1:1)',
+      seed: typeof generation.seed === 'number' ? generation.seed : 0,
+      createdAt: generation.createdAt || Date.now(),
+      name: generation.name || 'Generated image',
+      type: 'image',
+      subtype: generation.subtype || 'generated'
+    };
+
+    try {
+      const localKey = `sumanai_generations_${userId}`;
+      const existing = JSON.parse(localStorage.getItem(localKey) || '[]');
+      const updated = [payload, ...existing.filter((item) => item?.url !== payload.url && item?.id !== genId)].slice(0, 50);
+      localStorage.setItem(localKey, JSON.stringify(updated));
+    } catch {
+      void 0;
+    }
+
+    const db = getDb();
+    if (!db) return payload;
+    try {
+      const genRef = doc(db, 'users', userId, 'generations', genId);
+      await setDoc(genRef, payload);
+    } catch {
+      void 0;
+    }
+    return payload;
+  },
+
+  getUserGenerations: async (userId, limitCount = 20) => {
+    if (!userId) return [];
+    let localGens = [];
+    try {
+      localGens = JSON.parse(localStorage.getItem(`sumanai_generations_${userId}`) || '[]');
+    } catch {
+      localGens = [];
+    }
+
+    const db = getDb();
+    if (!db) return localGens.slice(0, limitCount);
+    try {
+      const gensRef = collection(db, 'users', userId, 'generations');
+      const q = query(gensRef, orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const firestoreGens = querySnapshot.docs.map((d) => d.data());
+      if (firestoreGens.length > 0) {
+        try {
+          localStorage.setItem(`sumanai_generations_${userId}`, JSON.stringify(firestoreGens.slice(0, 50)));
+        } catch {
+          void 0;
+        }
+        return firestoreGens.slice(0, limitCount);
+      }
+    } catch {
+      void 0;
+    }
+    return localGens.slice(0, limitCount);
+  },
+
+  deleteUserGeneration: async (userId, genId) => {
+    if (!userId || !genId) return;
+    try {
+      const localKey = `sumanai_generations_${userId}`;
+      const existing = JSON.parse(localStorage.getItem(localKey) || '[]');
+      const updated = existing.filter((item) => item?.id !== genId);
+      localStorage.setItem(localKey, JSON.stringify(updated));
+    } catch {
+      void 0;
+    }
+
+    const db = getDb();
+    if (!db) return;
+    try {
+      const genRef = doc(db, 'users', userId, 'generations', genId);
+      await deleteDoc(genRef);
+    } catch {
+      void 0;
+    }
   }
 };

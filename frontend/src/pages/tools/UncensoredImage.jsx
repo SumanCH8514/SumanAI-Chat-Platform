@@ -4,21 +4,25 @@ import {
   Home, BookOpen, ExternalLink, Image as ImageIcon,
   Flame, Zap, Sparkles, Wand2, Info, Dices,
   Download, Maximize2, Trash2, ShieldCheck, Layers,
-  Clock, ArrowRight, X, Upload, Check, Cpu, RefreshCw, Copy, ChevronDown
+  Clock, ArrowRight, X, Upload, Check, Cpu, RefreshCw, Copy, ChevronDown,
+  Sliders, MoreVertical
 } from 'lucide-react';
 import { auth } from '../../config/firebase';
 import { env } from '../../config/env';
+import { useAuthStore } from '../../store/useAuthStore';
 import { chatService } from '../../services/ChatService';
+import { firestoreService } from '../../services/firestoreService';
+import Skeleton from '../../components/Skeleton';
 import { downloadImage } from '../../utils/downloadUtils';
 import './ToolAppShared.css';
 import './UncensoredImage.css';
 
 const ASPECT_RATIOS = [
-  { id: '1024x1024 (1:1)', ratioId: '1:1', label: 'Square', iconClass: 'ratio-1-1' },
-  { id: '1344x768 (16:9)', ratioId: '16:9', label: 'Landscape', iconClass: 'ratio-16-9' },
-  { id: '768x1344 (9:16)', ratioId: '9:16', label: 'Portrait', iconClass: 'ratio-9-16' },
-  { id: '1184x864 (4:3)', ratioId: '4:3', label: 'Standard', iconClass: 'ratio-4-3' },
-  { id: '864x1184 (3:4)', ratioId: '3:4', label: 'Vertical', iconClass: 'ratio-3-4' }
+  { id: '1024x1024 (1:1)', ratioId: '1:1', label: 'Square', mobileLabel: 'Square', iconClass: 'ratio-1-1' },
+  { id: '1344x768 (16:9)', ratioId: '16:9', label: 'Landscape', mobileLabel: 'Widescreen', iconClass: 'ratio-16-9' },
+  { id: '768x1344 (9:16)', ratioId: '9:16', label: 'Portrait', mobileLabel: 'Portrait', iconClass: 'ratio-9-16' },
+  { id: '1184x864 (4:3)', ratioId: '4:3', label: 'Standard', mobileLabel: 'Standard', iconClass: 'ratio-4-3' },
+  { id: '864x1184 (3:4)', ratioId: '3:4', label: 'Vertical', mobileLabel: 'Vertical', iconClass: 'ratio-3-4' }
 ];
 
 const INSPIRATION_PILLS = [
@@ -28,19 +32,15 @@ const INSPIRATION_PILLS = [
   { text: 'Futuristic sports car', prompt: 'An elegant retro-futuristic sports car speeding across a desert highway at golden hour with motion blur' }
 ];
 
-const DEFAULT_RECENT_IMAGES = [
-  { url: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=300&q=80', prompt: 'Cyberpunk portrait' },
-  { url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&q=80', prompt: 'Cozy fantasy cottage' },
-  { url: 'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=300&q=80', prompt: 'Purple neon supercar' },
-  { url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=300&q=80', prompt: 'Mountain valley landscape' },
-  { url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=300&q=80', prompt: 'Photorealistic cat portrait' },
-  { url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=300&q=80', prompt: 'Alpine castle under stars' },
-  { url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=300&q=80', prompt: 'Warm studio workspace' }
-];
-
 export const UncensoredImage = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const { user, openAuthModal } = useAuthStore();
+  const isGoogleUser = Boolean(
+    user &&
+    !user.isAnonymous &&
+    (user.providerData?.some((p) => p.providerId === 'google.com') || Boolean(user.email))
+  );
 
   const [mode, setMode] = useState('generate');
   const [prompt, setPrompt] = useState('A sleek futuristic android woman with glowing porcelain cybernetic lines and luminous amber eyes');
@@ -63,30 +63,36 @@ export const UncensoredImage = () => {
   const [usedSeed, setUsedSeed] = useState(null);
   const [copied, setCopied] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [recentGallery, setRecentGallery] = useState(DEFAULT_RECENT_IMAGES);
+  const [recentGallery, setRecentGallery] = useState([]);
+  const [isGalleryLoading, setIsGalleryLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('sumanai_uploaded_files');
-      if (raw) {
-        const list = JSON.parse(raw);
-        const imagesOnly = list.filter((f) =>
-          f?.type === 'image' ||
-          (typeof f?.type === 'string' && f.type.startsWith('image/')) ||
-          (typeof f?.url === 'string' && (f.url.includes('/uncensored/') || f.url.includes('/generated-images/')))
-        );
-        if (imagesOnly.length > 0) {
-          const mapped = imagesOnly.slice(0, 10).map((f) => ({
-            url: f.url,
-            prompt: f.prompt || f.name || 'Generated image'
-          }));
-          setRecentGallery([...mapped, ...DEFAULT_RECENT_IMAGES].slice(0, 8));
-        }
-      }
-    } catch {
-      void 0;
+    let isMounted = true;
+    if (!user?.uid) {
+      setRecentGallery([]);
+      setIsGalleryLoading(false);
+      return;
     }
-  }, [generatedImageUrl]);
+
+    setIsGalleryLoading(true);
+    firestoreService.getUserGenerations(user.uid, 12)
+      .then((list) => {
+        if (isMounted) {
+          setRecentGallery(Array.isArray(list) ? list : []);
+          setIsGalleryLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setRecentGallery([]);
+          setIsGalleryLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.uid]);
 
   const handleRandomSeed = () => {
     setSeed(Math.floor(Math.random() * 999999));
@@ -196,6 +202,11 @@ export const UncensoredImage = () => {
 
   const handleGenerate = async () => {
     if (!prompt.trim() || isGenerating) return;
+    if (!isGoogleUser) {
+      setErrorMessage('Please sign in with Google to use Uncensored Image Gen.');
+      if (openAuthModal) openAuthModal();
+      return;
+    }
     if (mode === 'edit' && !sourceImage) {
       setErrorMessage('Please upload or drag-and-drop a source image to edit.');
       return;
@@ -279,7 +290,7 @@ export const UncensoredImage = () => {
 
         const cleanPrompt = prompt.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_').slice(0, 36) || 'Qwen_Uncensored';
         const now = Date.now();
-        const newFile = {
+        const newGenItem = {
           id: `gen-uncensored-${now}-${Math.random().toString(36).substring(2, 7)}`,
           name: `${cleanPrompt}.png`,
           size: '2.4 MB',
@@ -287,16 +298,26 @@ export const UncensoredImage = () => {
           subtype: 'generated',
           url: data.imageUrl,
           prompt: prompt.trim(),
-          chatTitle: 'Uncensored Image Gen',
+          mode,
+          sizeMode: selectedRatio,
+          seed: data.seed !== undefined ? Number(data.seed) : Number(activeSeed),
           createdAt: now,
+          chatTitle: 'Uncensored Image Gen',
           date: new Date(now).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
         };
 
+        if (user?.uid) {
+          firestoreService.saveUserGeneration(user.uid, newGenItem).catch(() => {});
+        }
+
+        setRecentGallery((prev) => [newGenItem, ...prev.filter((item) => item?.url !== data.imageUrl)].slice(0, 12));
+
         try {
-          const raw = localStorage.getItem('sumanai_uploaded_files');
+          const userFilesKey = user?.uid ? `sumanai_files_${user.uid}` : 'sumanai_uploaded_files';
+          const raw = localStorage.getItem(userFilesKey);
           const list = raw ? JSON.parse(raw) : [];
-          const updated = [newFile, ...list.filter((item) => item?.url !== data.imageUrl)].slice(0, 100);
-          localStorage.setItem('sumanai_uploaded_files', JSON.stringify(updated));
+          const updated = [newGenItem, ...list.filter((item) => item?.url !== data.imageUrl)].slice(0, 100);
+          localStorage.setItem(userFilesKey, JSON.stringify(updated));
           window.dispatchEvent(new Event('sumanai_files_updated'));
         } catch {
           void 0;
@@ -362,9 +383,13 @@ export const UncensoredImage = () => {
             <ImageIcon size={22} />
           </div>
           <div className="uncensored-title-texts">
-            <h1 className="uncensored-main-title">Uncensored Image Generation & Editing</h1>
+            <h1 className="uncensored-main-title">
+              <span className="desktop-title-text">Uncensored Image Generation & Editing</span>
+              <span className="mobile-title-text">Image Generation & Editing</span>
+            </h1>
             <p className="uncensored-main-desc">
-              Generate unrestricted visual concepts or upload photos to modify with natural language instruction prompts.
+              <span className="desktop-desc-text">Generate unrestricted visual concepts or upload photos to modify with natural language instruction prompts.</span>
+              <span className="mobile-desc-text">Create new images from text or edit existing images with AI.</span>
             </p>
           </div>
         </div>
@@ -391,7 +416,7 @@ export const UncensoredImage = () => {
             <button
               type="button"
               className={`uncensored-tab ${mode === 'generate' ? 'active' : ''}`}
-              onClick={() => setMode('generate')}
+              onClick={() => { setMode('generate'); setErrorMessage(''); }}
             >
               <Sparkles size={14} />
               <span>Text to Image</span>
@@ -399,7 +424,7 @@ export const UncensoredImage = () => {
             <button
               type="button"
               className={`uncensored-tab ${mode === 'edit' ? 'active' : ''}`}
-              onClick={() => setMode('edit')}
+              onClick={() => { setMode('edit'); setErrorMessage(''); }}
             >
               <ImageIcon size={14} />
               <span className="tab-label-full">Image to Image (Edit)</span>
@@ -408,11 +433,17 @@ export const UncensoredImage = () => {
           </div>
 
           {mode === 'edit' && (
-            <div className="uncensored-field-group">
+            <div className="uncensored-field-group uncensored-upload-section">
               <div className="field-label-line">
                 <span className="field-label-text">
-                  Source Image
-                  <Info size={12} className="info-icon" />
+                  <span className="desktop-field-text">
+                    Source Image <span className="prompt-required-star">*</span>
+                    <Info size={12} className="info-icon" />
+                  </span>
+                  <span className="mobile-field-text">
+                    Upload Image <span className="prompt-required-star">*</span>
+                    <Info size={13} className="info-icon" />
+                  </span>
                 </span>
                 {sourceImage && (
                   <button
@@ -430,20 +461,25 @@ export const UncensoredImage = () => {
                 <div
                   className="uncensored-upload-box"
                   onDragOver={(e) => e.preventDefault()}
-                  onDrop={handleDrop}
+                  onDrop={(e) => handleDrop(e)}
                   onClick={() => fileInputRef.current?.click()}
                   role="button"
                   tabIndex={0}
                 >
-                  <Upload size={22} className="upload-arrow-icon" />
-                  <span className="upload-main-text">Click or drag image here to edit</span>
-                  <span className="upload-sub-text">PNG, JPG, or WEBP up to 20MB</span>
+                  <Upload size={24} className="upload-arrow-icon" />
+                  <span className="upload-main-text">Drag & drop an image here</span>
+                  <span className="upload-sub-text">or tap to browse from your device</span>
+                  <span className="upload-sub-note">JPG, PNG, WEBP up to 10 MB (Required)</span>
                   <input
                     type="file"
                     ref={fileInputRef}
                     accept="image/*"
                     style={{ display: 'none' }}
-                    onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        handleFileSelect(e.target.files[0]);
+                      }
+                    }}
                   />
                 </div>
               ) : (
@@ -474,8 +510,13 @@ export const UncensoredImage = () => {
           <div className="uncensored-field-group">
             <div className="field-label-line">
               <span className="field-label-text">
-                Image Prompt
-                <Info size={12} className="info-icon" />
+                <span className="desktop-field-text">
+                  Image Prompt
+                  <Info size={12} className="info-icon" />
+                </span>
+                <span className="mobile-field-text">
+                  Prompt <span className="prompt-required-star">*</span>
+                </span>
               </span>
               <button
                 type="button"
@@ -495,13 +536,16 @@ export const UncensoredImage = () => {
                 maxLength={2000}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder={mode === 'edit' ? 'Describe modifications to make to the image...' : 'A sleek futuristic android woman with glowing porcelain cybernetic lines...'}
+                placeholder={mode === 'edit' ? 'Describe modifications to make to the image...' : 'Describe the image you want to generate...'}
               />
-              <span className="prompt-char-count">{prompt.length} / 2000</span>
+              <span className="prompt-char-count">
+                <span className="desktop-field-text">{prompt.length} / 2000</span>
+                <span className="mobile-field-text">{prompt.length} / 1000</span>
+              </span>
             </div>
           </div>
 
-          <div className="uncensored-field-group">
+          <div className="uncensored-field-group inspirations-section-group">
             <button
               type="button"
               className="collapsible-section-toggle"
@@ -540,7 +584,10 @@ export const UncensoredImage = () => {
               aria-expanded={aspectRatioOpen}
             >
               <div className="collapsible-title-left">
-                <span className="field-label-text">Output Aspect Ratio</span>
+                <span className="field-label-text">
+                  <span className="desktop-field-text">Output Aspect Ratio</span>
+                  <span className="mobile-field-text">Aspect Ratio</span>
+                </span>
                 {!aspectRatioOpen && (
                   <span className="collapsible-selected-summary">
                     {ASPECT_RATIOS.find((r) => r.id === selectedRatio)?.ratioId || '1:1'}
@@ -567,7 +614,10 @@ export const UncensoredImage = () => {
                         <span className={`ratio-box-icon ${item.iconClass}`} />
                         <div className="ratio-labels">
                           <span className="ratio-title">{item.ratioId}</span>
-                          <span className="ratio-sub">{item.label}</span>
+                          <span className="ratio-sub">
+                            <span className="desktop-ratio-label">{item.label}</span>
+                            <span className="mobile-ratio-label">{item.mobileLabel || item.label}</span>
+                          </span>
                         </div>
                       </div>
                       {isSelected && (
@@ -590,9 +640,15 @@ export const UncensoredImage = () => {
               aria-expanded={configOpen}
             >
               <div className="collapsible-title-left">
-                <span className="field-label-text">Configuration</span>
+                <span className="field-label-text">
+                  <span className="desktop-field-text">Configuration</span>
+                  <span className="mobile-field-text mobile-advanced-toggle-title">
+                    <Sliders size={15} className="mobile-sliders-icon" />
+                    <span>Advanced Options</span>
+                  </span>
+                </span>
                 {!configOpen && (
-                  <span className="collapsible-selected-summary">
+                  <span className="collapsible-selected-summary desktop-field-text">
                     Steps: {steps} • LoRA: {Number(loraScale).toFixed(1)}
                   </span>
                 )}
@@ -604,6 +660,13 @@ export const UncensoredImage = () => {
             </button>
             {configOpen && (
               <div className="collapsible-content-fade uncensored-config-body">
+                <div className="mobile-model-selector-row">
+                  <span className="mobile-model-label">Model</span>
+                  <div className="mobile-model-pill">
+                    <span>High Quality (Default)</span>
+                    <ChevronDown size={14} />
+                  </div>
+                </div>
                 <div className="uncensored-two-col-sliders">
                   <div className="slider-group">
                     <div className="slider-header-line">
@@ -711,9 +774,10 @@ export const UncensoredImage = () => {
             <div className="output-card-header" title={usedSeed !== null ? `Seed: ${usedSeed}` : undefined}>
               <div className="output-header-title">
                 <ImageIcon size={16} className="output-icon" />
-                <span>Output Canvas</span>
+                <span className="desktop-title-text">Output Canvas</span>
+                <span className="mobile-title-text">Generation Results</span>
               </div>
-              <div className="output-actions-cluster">
+              <div className="output-actions-cluster desktop-only-actions">
                 <button
                   type="button"
                   className="output-action-icon-btn"
@@ -740,6 +804,24 @@ export const UncensoredImage = () => {
                   title="Clear Output"
                 >
                   <Trash2 size={15} />
+                </button>
+              </div>
+              <div className="output-actions-mobile">
+                <button
+                  type="button"
+                  className="mobile-header-icon-btn"
+                  onClick={() => navigate('/files')}
+                  title="History"
+                >
+                  <Clock size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="mobile-header-icon-btn"
+                  onClick={() => {}}
+                  title="More"
+                >
+                  <MoreVertical size={16} />
                 </button>
               </div>
             </div>
@@ -785,9 +867,13 @@ export const UncensoredImage = () => {
                     <Sparkles size={16} className="art-sparkle-1" />
                     <Sparkles size={12} className="art-sparkle-2" />
                   </div>
-                  <h3 className="empty-heading">Ready for Image Synthesis</h3>
+                  <h3 className="empty-heading">
+                    <span className="desktop-empty-text">Ready for Image Synthesis</span>
+                    <span className="mobile-empty-text">Ready to generate an image?</span>
+                  </h3>
                   <p className="empty-paragraph">
-                    Enter a prompt and click "Generate Uncensored Image" to create your image here.
+                    <span className="desktop-empty-text">Enter a prompt and click "Generate Uncensored Image" to create your image here.</span>
+                    <span className="mobile-empty-text">Enter a prompt, choose your settings, and click “Generate Image” to get started.</span>
                   </p>
                 </div>
               )}
@@ -852,21 +938,41 @@ export const UncensoredImage = () => {
               </button>
             </div>
 
-            <div className="recent-thumbnails-row">
-              {recentGallery.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="recent-thumb-item"
-                  onClick={() => {
-                    setGeneratedImageUrl(item.url);
-                    if (item.prompt) setPrompt(item.prompt);
-                  }}
-                  title={item.prompt || 'View generated image'}
-                >
-                  <img src={item.url} alt={item.prompt || 'Thumbnail'} className="recent-thumb-img" />
+            {isGalleryLoading ? (
+              <div className="recent-thumbnails-row">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="recent-thumb-skeleton">
+                    <Skeleton width="74px" height="74px" borderRadius="8px" />
+                  </div>
+                ))}
+              </div>
+            ) : recentGallery.length > 0 ? (
+              <div className="recent-thumbnails-row">
+                {recentGallery.map((item, idx) => (
+                  <div
+                    key={item.id || idx}
+                    className="recent-thumb-item"
+                    onClick={() => {
+                      setGeneratedImageUrl(item.url);
+                      if (item.prompt) setPrompt(item.prompt);
+                    }}
+                    title={item.prompt || 'View generated image'}
+                  >
+                    <img src={item.url} alt={item.prompt || 'Thumbnail'} className="recent-thumb-img" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="recent-gallery-empty">
+                <div className="recent-empty-icon-wrap">
+                  <ImageIcon size={18} />
                 </div>
-              ))}
-            </div>
+                <div className="recent-empty-text-wrap">
+                  <span className="recent-empty-title">No recent generations yet</span>
+                  <span className="recent-empty-sub">Images you generate are securely saved to your personal cloud library.</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

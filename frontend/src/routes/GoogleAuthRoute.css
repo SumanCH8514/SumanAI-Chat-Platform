@@ -1,0 +1,262 @@
+.google-auth-gate-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 120px);
+  width: 100%;
+  padding: 32px 20px;
+  box-sizing: border-box;
+}
+
+.google-auth-gate-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 24px;
+  padding: 36px 32px;
+  text-align: center;
+  box-shadow: 0 12px 32px -8px rgba(124, 58, 237, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.google-auth-gate-icon-wrap {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(99, 102, 241, 0.08) 100%);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.google-auth-gate-sparkle {
+  color: var(--brand-primary, #7c3aed);
+}
+
+.google-auth-gate-lock-pill {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f59e0b;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-card, #ffffff);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
+}
+
+.google-auth-gate-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(124, 58, 237, 0.08);
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  color: var(--brand-primary, #7c3aed);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.google-auth-gate-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brand-primary, #7c3aed);
+}
+
+.google-auth-gate-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  margin: 0 0 10px 0;
+  letter-spacing: -0.02em;
+}
+
+.google-auth-gate-subtitle {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-secondary, #64748b);
+  margin: 0 0 22px 0;
+}
+
+.google-auth-gate-subtitle strong {
+  color: var(--text-primary, #0f172a);
+}
+
+.google-auth-gate-perks {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--bg-hover, rgba(0, 0, 0, 0.02));
+  border: 1px solid var(--border-light, #e2e8f0);
+  margin-bottom: 24px;
+  box-sizing: border-box;
+}
+
+.google-auth-gate-perk {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #1e293b);
+  text-align: left;
+}
+
+.google-auth-perk-icon {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+.google-auth-gate-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.google-auth-gate-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 46px;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
+}
+
+.google-auth-gate-primary-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.google-auth-gate-primary-btn:active {
+  transform: scale(0.99);
+}
+
+.google-icon-svg {
+  flex-shrink: 0;
+}
+
+.google-auth-gate-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 42px;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text-secondary, #64748b);
+  border: 1px solid transparent;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.google-auth-gate-secondary-btn:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+  color: var(--text-primary, #0f172a);
+}
+
+[data-theme="dark"] .google-auth-gate-card,
+.dark .google-auth-gate-card {
+  background: var(--bg-card, #131722);
+  border-color: var(--border-light, rgba(255, 255, 255, 0.09));
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .google-auth-gate-icon-wrap,
+.dark .google-auth-gate-icon-wrap {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.15) 0%, rgba(129, 140, 248, 0.08) 100%);
+  border-color: rgba(167, 139, 250, 0.25);
+}
+
+[data-theme="dark"] .google-auth-gate-lock-pill,
+.dark .google-auth-gate-lock-pill {
+  border-color: var(--bg-card, #131722);
+}
+
+[data-theme="dark"] .google-auth-gate-badge,
+.dark .google-auth-gate-badge {
+  background: rgba(167, 139, 250, 0.12);
+  border-color: rgba(167, 139, 250, 0.25);
+  color: #c4b5fd;
+}
+
+[data-theme="dark"] .google-auth-gate-badge-dot,
+.dark .google-auth-gate-badge-dot {
+  background: #c4b5fd;
+}
+
+[data-theme="dark"] .google-auth-gate-subtitle strong,
+.dark .google-auth-gate-subtitle strong {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .google-auth-gate-perks,
+.dark .google-auth-gate-perks {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .google-auth-gate-perk,
+.dark .google-auth-gate-perk {
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .google-auth-gate-primary-btn,
+.dark .google-auth-gate-primary-btn {
+  background: #1e293b;
+  color: #f8fafc;
+  border-color: #334155;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"] .google-auth-gate-primary-btn:hover,
+.dark .google-auth-gate-primary-btn:hover {
+  background: #253347;
+  border-color: #475569;
+}
+
+@media (max-width: 640px) {
+  .google-auth-gate-card {
+    padding: 28px 20px;
+    border-radius: 20px;
+  }
+
+  .google-auth-gate-title {
+    font-size: 20px;
+  }
+
+  .google-auth-gate-subtitle {
+    font-size: 13px;
+  }
+}

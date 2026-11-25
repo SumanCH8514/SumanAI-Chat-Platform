@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
+import GoogleAuthRoute from './GoogleAuthRoute';
 import ChatPage from '../pages/ChatPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import MainLayout from '../layouts/MainLayout';
@@ -133,7 +134,9 @@ export const AppRoutes = ({ onSettingsClick, onLoginClick }) => {
           element={
             <ProtectedRoute>
               <MainLayout onSettingsClick={onSettingsClick} onLoginClick={onLoginClick}>
-                <UncensoredImage />
+                <GoogleAuthRoute onLoginClick={onLoginClick}>
+                  <UncensoredImage />
+                </GoogleAuthRoute>
               </MainLayout>
             </ProtectedRoute>
           }

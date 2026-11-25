@@ -78,6 +78,21 @@ service cloud.firestore {
         && (!('userId' in data) || (data.userId is string && data.userId.size() <= 128));
     }
 
+    function isValidGeneration(data, genId, userId) {
+      return data.keys().hasOnly(['id', 'userId', 'url', 'prompt', 'mode', 'size', 'seed', 'createdAt', 'name', 'type', 'subtype'])
+        && (!('id' in data) || (data.id is string && data.id == genId))
+        && (!('userId' in data) || (data.userId is string && (data.userId == userId || data.userId == request.auth.uid)))
+        && (!('url' in data) || (data.url is string && data.url.size() <= 2048))
+        && (!('prompt' in data) || (data.prompt is string && data.prompt.size() <= 4000))
+        && (!('mode' in data) || (data.mode is string && data.mode.size() <= 100))
+        && (!('size' in data) || ((data.size is string && data.size.size() <= 100) || data.size is number))
+        && (!('seed' in data) || (data.seed is number || (data.seed is string && data.seed.size() <= 100)))
+        && (!('createdAt' in data) || (data.createdAt is number || data.createdAt is timestamp))
+        && (!('name' in data) || (data.name is string && data.name.size() <= 256))
+        && (!('type' in data) || (data.type is string && data.type.size() <= 100))
+        && (!('subtype' in data) || (data.subtype is string && data.subtype.size() <= 100));
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
@@ -125,6 +140,18 @@ service cloud.firestore {
         allow update: if isOwner(userId)
           && isValidChat(request.resource.data, chatId)
           && (!('id' in resource.data) || (!('id' in request.resource.data) || request.resource.data.id == resource.data.id))
+          && (!('createdAt' in resource.data) || (!('createdAt' in request.resource.data) || request.resource.data.createdAt == resource.data.createdAt));
+        allow delete: if isOwner(userId);
+      }
+
+      match /generations/{genId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidGeneration(request.resource.data, genId, userId);
+        allow update: if isOwner(userId)
+          && isValidGeneration(request.resource.data, genId, userId)
+          && (!('id' in resource.data) || (!('id' in request.resource.data) || request.resource.data.id == resource.data.id))
+          && (!('userId' in resource.data) || (!('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId))
           && (!('createdAt' in resource.data) || (!('createdAt' in request.resource.data) || request.resource.data.createdAt == resource.data.createdAt));
         allow delete: if isOwner(userId);
       }

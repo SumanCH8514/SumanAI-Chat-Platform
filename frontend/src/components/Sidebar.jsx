@@ -23,6 +23,7 @@ import './Sidebar.css';
 const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
   const { user, logout } = useAuthStore();
   const isGuest = Boolean(user?.isAnonymous);
+  const isLoggedIn = Boolean(user && !isGuest);
   const isAdmin = adminService.checkIsAdmin(user);
   const isPro = adminService.checkHasProAccess(user);
   const userSubtitle = isGuest
@@ -646,7 +647,7 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
         </div>
 
         <div className="mobile-sb-user-wrapper" ref={mobileMenuWrapperRef}>
-          {showUserMenu && (
+          {showUserMenu && isLoggedIn && (
             <div className="mobile-sb-user-menu">
               <div className="sb-menu-user-row">
                 <UserAvatar className="sb-menu-avatar" />
@@ -677,26 +678,50 @@ const Sidebar = ({ onSettingsClick, onLoginClick, isOpen, onClose }) => {
             </div>
           )}
 
-          <div
-            className="mobile-sb-user-bar"
-            onClick={() => setShowUserMenu(v => !v)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                setShowUserMenu(v => !v);
-              }
-            }}
-          >
-            <div className="mobile-sb-avatar">
-              <UserAvatar className="mobile-sb-avatar-inner" />
+          {isLoggedIn ? (
+            <div
+              className="mobile-sb-user-bar"
+              onClick={() => setShowUserMenu(v => !v)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setShowUserMenu(v => !v);
+                }
+              }}
+            >
+              <div className="mobile-sb-avatar">
+                <UserAvatar className="mobile-sb-avatar-inner" />
+              </div>
+              <div className="mobile-sb-user-details">
+                <div className="mobile-sb-user-name">{USER_DATA.name}</div>
+                <div className="mobile-sb-user-email">{USER_DATA.email}</div>
+              </div>
+              <ChevronUp size={18} className={`mobile-sb-user-chevron ${showUserMenu ? 'open' : ''}`} />
             </div>
-            <div className="mobile-sb-user-details">
-              <div className="mobile-sb-user-name">{USER_DATA.name}</div>
-              <div className="mobile-sb-user-email">{USER_DATA.email}</div>
+          ) : (
+            <div
+              className="mobile-sb-login-bar"
+              onClick={handleLoginTrigger}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  handleLoginTrigger();
+                }
+              }}
+              aria-label="Log in or sign up"
+            >
+              <div className="mobile-sb-login-avatar">
+                <LogIn size={20} className="mobile-sb-login-icon" />
+              </div>
+              <div className="mobile-sb-user-details">
+                <div className="mobile-sb-login-title">Log in | Sign up</div>
+                <div className="mobile-sb-login-sub">Sync chats & access models</div>
+              </div>
+              <ChevronRight size={18} className="mobile-sb-login-arrow" />
             </div>
-            <ChevronUp size={18} className={`mobile-sb-user-chevron ${showUserMenu ? 'open' : ''}`} />
-          </div>
+          )}
         </div>
       </div>
 
