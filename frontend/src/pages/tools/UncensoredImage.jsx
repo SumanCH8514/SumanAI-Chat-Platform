@@ -389,7 +389,7 @@ export const UncensoredImage = () => {
             </h1>
             <p className="uncensored-main-desc">
               <span className="desktop-desc-text">Generate unrestricted visual concepts or upload photos to modify with natural language instruction prompts.</span>
-              <span className="mobile-desc-text">Create new images from text or edit existing images with AI.</span>
+              <span className="mobile-desc-text">Create Uncensored images from text or edit existing images with AI.</span>
             </p>
           </div>
         </div>
